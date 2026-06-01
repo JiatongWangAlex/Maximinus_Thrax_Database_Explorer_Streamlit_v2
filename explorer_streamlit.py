@@ -139,7 +139,7 @@ def run_standard_search(user_input):
             
             -- Line broken Bullet List Bibliography
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
-        ),
+        )
         """
 
         
@@ -700,7 +700,7 @@ def fetch_metadata_by_id(inscription_id):
             
             -- Line broken Bullet List Bibliography
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
-        ),
+        )
         """
         cursor.execute(sql, (int(inscription_id),))
         rows = cursor.fetchall()
