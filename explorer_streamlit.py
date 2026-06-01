@@ -104,7 +104,7 @@ def run_standard_search(user_input):
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
-                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, mt.pleiades_id,
+                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
@@ -598,7 +598,7 @@ def execute_advanced_search(f_dict):
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
-                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, mt.pleiades_id,
+                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
@@ -668,7 +668,7 @@ def fetch_metadata_by_id(inscription_id):
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
-                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, mt.pleiades_id,
+                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
