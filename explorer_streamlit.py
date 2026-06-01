@@ -422,14 +422,16 @@ def generate_person_report(p_id):
         # Executing the exact logic block using native positional bindings (?) compatible with standard python sqlite3 bindings
         cursor.execute(sql, (int(p_id),))
         result = cursor.fetchone()
-        conn.close()
         
         if result and result[0]:
-            st.session_state.search_results = result[0]
+            st.session_state.search_results = f"```text\n{result[0]}\n```"
         else:
             st.session_state.search_results = f"No person dossier card compiled for Person ID {p_id}."
     except Exception as e:
         st.session_state.search_results = f"Dossier production error: {e}"
+    finally:
+        if conn:
+            conn.close()
 
 def get_filter_options(table, col):
     options = ["All"]
