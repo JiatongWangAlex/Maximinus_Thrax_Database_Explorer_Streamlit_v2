@@ -140,6 +140,7 @@ def run_standard_search(user_input):
             -- Line broken Bullet List Bibliography
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         )
+        SELECT tl FROM Sec0_Metadata ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
 
         
@@ -593,6 +594,7 @@ def execute_advanced_search(f_dict):
             return
 
         # 2. Generate full reports for everyone
+        # 2. Generate full reports for everyone
         sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
@@ -701,6 +703,7 @@ def fetch_metadata_by_id(inscription_id):
             -- Line broken Bullet List Bibliography
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         )
+        SELECT tl FROM Sec0_Metadata ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
         cursor.execute(sql, (int(inscription_id),))
         rows = cursor.fetchall()
