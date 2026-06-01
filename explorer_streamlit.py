@@ -105,7 +105,6 @@ def run_standard_search(user_input):
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
-                   vd.virorum_distributio AS vd_text,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
@@ -113,7 +112,6 @@ def run_standard_search(user_input):
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
-            LEFT JOIN "virorum_distributio" vd  ON mt.virorum_distributio_id = vd.virorum_distributio_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
             WHERE mt.inscription_id = TargetInscription.selected_id
@@ -128,16 +126,8 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Pleiades Hyperlink
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Itinere Hyperlink
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10.5 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Virorum Distributio:** ' || COALESCE(vd_text, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Line broken Bullet List Bibliography
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         )
         SELECT tl FROM Sec0_Metadata ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
@@ -594,19 +584,22 @@ def execute_advanced_search(f_dict):
             return
 
         # 2. Generate full reports for everyone
-        # 2. Generate full reports for everyone
+       
         sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
-                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name
+                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
+                   r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s               ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
+            LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
+            LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
@@ -619,8 +612,8 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || COALESCE(place_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Virorum Distributio:** N/A' || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
@@ -668,7 +661,6 @@ def fetch_metadata_by_id(inscription_id):
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
-                   vd.virorum_distributio AS vd_text,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
@@ -676,7 +668,6 @@ def fetch_metadata_by_id(inscription_id):
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
-            LEFT JOIN "virorum_distributio" vd  ON mt.virorum_distributio_id = vd.virorum_distributio_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
             WHERE mt.inscription_id = TargetInscription.selected_id
@@ -691,16 +682,8 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Pleiades Hyperlink
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Itinere Hyperlink
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10.5 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Virorum Distributio:** ' || COALESCE(vd_text, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            
-            -- Line broken Bullet List Bibliography
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         )
         SELECT tl FROM Sec0_Metadata ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
