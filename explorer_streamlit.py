@@ -99,7 +99,7 @@ def run_standard_search(user_input):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-       sql = """
+        sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
