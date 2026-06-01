@@ -331,17 +331,15 @@ def generate_person_report(p_id):
             SELECT ? AS selected_person_id
         )
         SELECT 
-            '**Name:** ' || p.person_name || ' | **Person ID:** ' || p.person_id || char(10) || char(10) ||
-            '**Virorum Distributio:** ' || COALESCE(vd.virorum_distributio, 'None') || char(10) || char(10) ||
+            'Name: ' || p.person_name || ' | person id: ' || p.person_id || char(10) || char(10) ||
             
-            '**Attested positions in inscriptions:**' || char(10) || '  • ' ||
+            '**Attested positions in inscriptions:**' || char(10) || 
                 COALESCE((
-                    SELECT GROUP_CONCAT(pos_grp.pos_summary, char(10) || '  • ')
+                    SELECT GROUP_CONCAT(pos_grp.pos_summary, char(10) || char(10))
                     FROM (
-                        SELECT pos.position_description || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
-                               GROUP_CONCAT(inner_pos.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS pos_summary
+                        SELECT '• **' || pos.position_description || ':**' || char(10) || '  ' || 
+                               GROUP_CONCAT(inner_pos.ref_with_id, ', ') AS pos_summary
                         FROM (
-                            -- 🎯 EVERY INSCRIPTION ID IS NOW AN ACTIVE CLICKABLE LINK (?ins_id=)
                             SELECT DISTINCT ip2.person_id, pa2.position_id, m2.inscription_ref || ' (id: [' || m2.inscription_id || '](?ins_id=' || m2.inscription_id || '))' AS ref_with_id
                             FROM inscriptions_and_persons ip2
                             JOIN Max_Thrax m2 ON ip2.inscription_id = m2.inscription_id
@@ -362,12 +360,12 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip3.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    '**Attested status in inscriptions:**' || char(10) || '  • ' ||
+                    '**Attested status in inscriptions:**' || char(10) ||
                     (
-                        SELECT GROUP_CONCAT(sd_grp.sd_summary, char(10) || '  • ')
+                        SELECT GROUP_CONCAT(sd_grp.sd_summary, char(10) || char(10))
                         FROM (
-                            SELECT sd.status_designation || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
-                                   GROUP_CONCAT(inner_sd.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS sd_summary
+                            SELECT '• **' || sd.status_designation || ':**' || char(10) || '  ' || 
+                                   GROUP_CONCAT(inner_sd.ref_with_id, ', ') AS sd_summary
                             FROM (
                                 SELECT DISTINCT ip3.person_id, sda2.status_designation_id, m3.inscription_ref || ' (id: [' || m3.inscription_id || '](?ins_id=' || m3.inscription_id || '))' AS ref_with_id
                                 FROM inscriptions_and_persons ip3
@@ -391,12 +389,12 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip4.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    '**Attested unit in inscription:**' || char(10) || '  • ' ||
+                    '**Attested unit in inscription:**' || char(10) ||
                     (
-                        SELECT GROUP_CONCAT(unit_grp.unit_summary, char(10) || '  • ')
+                        SELECT GROUP_CONCAT(unit_grp.unit_summary, char(10) || char(10))
                         FROM (
-                            SELECT col.collective_name || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
-                                   GROUP_CONCAT(inner_unit.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS unit_summary
+                            SELECT '• **' || col.collective_name || ':**' || char(10) || '  ' || 
+                                   GROUP_CONCAT(inner_unit.ref_with_id, ', ') AS unit_summary
                             FROM (
                                 SELECT DISTINCT ip4.person_id, uaa.collective_id, m4.inscription_ref || ' (id: [' || m4.inscription_id || '](?ins_id=' || m4.inscription_id || '))' AS ref_with_id
                                 FROM inscriptions_and_persons ip4
@@ -415,8 +413,8 @@ def generate_person_report(p_id):
             '**Notes:** ' || COALESCE(p.person_notes, 'None') AS "Dossier Card"
 
         FROM persons p
-        JOIN persons_and_virorum_distributio pvd ON p.person_id = pvd.person_id
-        JOIN virorum_distributio vd ON pvd.virorum_distributio_id = vd.virorum_distributio_id
+        LEFT JOIN persons_and_virorum_distributio pvd ON p.person_id = pvd.person_id
+        LEFT JOIN virorum_distributio vd ON pvd.virorum_distributio_id = vd.virorum_distributio_id
         CROSS JOIN TargetPerson
         WHERE p.person_id = TargetPerson.selected_person_id
         GROUP BY p.person_id;
