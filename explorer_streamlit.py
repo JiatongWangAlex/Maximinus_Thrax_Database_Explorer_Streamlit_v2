@@ -132,7 +132,7 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
             SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -646,7 +646,7 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
             SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -735,7 +735,7 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
             SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
