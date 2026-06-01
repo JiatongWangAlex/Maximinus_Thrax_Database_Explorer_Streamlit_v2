@@ -243,7 +243,7 @@ def run_standard_search(user_input):
         
         # 2. LOOP THROUGH EVERY SINGLE MATCHING ID AND STITCH THEM TOGETHER
         for rank, ins_id in enumerate(all_matched_ids, 1):
-            out_str.append(f"## DOSSIER CARD #{rank} (Database ID: {ins_id})\n")
+            out_str.append(f"## Result {rank} | Inscription ID: {ins_id}\n")
             
             # Execute the giant query uniquely for THIS inscription ID in the loop
             cursor.execute(sql, (int(ins_id),))
@@ -630,7 +630,7 @@ def execute_advanced_search(f_dict):
 
         # 3. Stitch every matching custom card together sequentially
         for rank, ins_id in enumerate(all_matched_ids, 1):
-            out_str.append(f"## DOSSIER CARD #{rank} (Database ID: {ins_id})\n")
+            out_str.append(f"## Result {rank} | Inscription ID: {ins_id}\n")
             
             cursor.execute(sql, (int(ins_id),))
             card_rows = cursor.fetchall()
