@@ -118,7 +118,7 @@ def run_standard_search(user_input):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '* **Inscription Text (Formatted):**' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '  ' || char(10)), 'N/A') || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -615,7 +615,7 @@ def execute_advanced_search(f_dict):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '* **Inscription Text (Formatted):**' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '  ' || char(10)), 'N/A') || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -687,7 +687,7 @@ def fetch_metadata_by_id(inscription_id):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '* **Inscription Text (Formatted):**' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '  ' || char(10)), 'N/A') || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
