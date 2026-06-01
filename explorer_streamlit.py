@@ -939,6 +939,10 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
     ### EDCS number
     * Have an EDCS record in mind? You can generate an inscription report using that as well, provided we have the inscription.
     * Insert the EDCS record number,formatted as EDCS-12345678 and click Generate Report
+
+    ### Inscription ID
+    * Browsing the map and want to learn more about a specific inscription without scrolling to it in the search results? Type its ID here and click Generate Report!
+    * NOTE: This will delete your original search results, maybe open a new window for this if you used complex filters.
     
     ### Lookup Person ID by Name
     * Want to search for a specific individual without using the very helpful main search bar for some reason? Be my guest. 
