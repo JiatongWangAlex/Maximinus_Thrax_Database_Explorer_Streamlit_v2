@@ -124,7 +124,9 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -329,17 +331,18 @@ def generate_person_report(p_id):
             SELECT ? AS selected_person_id
         )
         SELECT 
-            'Name: ' || p.person_name || ' | person id: ' || p.person_id || char(10) ||
-            'virorum distributio: ' || vd.virorum_distributio || char(10) ||
+            '**Name:** ' || p.person_name || ' | **Person ID:** ' || p.person_id || char(10) || char(10) ||
+            '**Virorum Distributio:** ' || COALESCE(vd.virorum_distributio, 'None') || char(10) || char(10) ||
             
-            'attested positions in inscriptions: ' || char(10) || '  • ' ||
+            '**Attested positions in inscriptions:**' || char(10) || '  • ' ||
                 COALESCE((
                     SELECT GROUP_CONCAT(pos_grp.pos_summary, char(10) || '  • ')
                     FROM (
-                        SELECT pos.position_description || ':' || char(10) || '      ' || 
-                               GROUP_CONCAT(inner_pos.ref_with_id, char(10) || '      ') AS pos_summary
+                        SELECT pos.position_description || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
+                               GROUP_CONCAT(inner_pos.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS pos_summary
                         FROM (
-                            SELECT DISTINCT ip2.person_id, pa2.position_id, m2.inscription_ref || ' (id: ' || m2.inscription_id || ')' AS ref_with_id
+                            -- 🎯 EVERY INSCRIPTION ID IS NOW AN ACTIVE CLICKABLE LINK (?ins_id=)
+                            SELECT DISTINCT ip2.person_id, pa2.position_id, m2.inscription_ref || ' (id: [' || m2.inscription_id || '](?ins_id=' || m2.inscription_id || '))' AS ref_with_id
                             FROM inscriptions_and_persons ip2
                             JOIN Max_Thrax m2 ON ip2.inscription_id = m2.inscription_id
                             JOIN position_attestations pa2 ON ip2.inscription_person_id = pa2.inscription_person_id
@@ -349,7 +352,7 @@ def generate_person_report(p_id):
                         WHERE inner_pos.person_id = TargetPerson.selected_person_id
                         GROUP BY pos.position_id
                     ) pos_grp
-                ), 'None') || char(10) ||
+                ), 'None') || char(10) || char(10) ||
                 
             CASE 
                 WHEN EXISTS (
@@ -359,14 +362,14 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip3.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    'attested status in inscriptions: ' || char(10) || '  • ' ||
+                    '**Attested status in inscriptions:**' || char(10) || '  • ' ||
                     (
                         SELECT GROUP_CONCAT(sd_grp.sd_summary, char(10) || '  • ')
                         FROM (
-                            SELECT sd.status_designation || ':' || char(10) || '      ' || 
-                                   GROUP_CONCAT(inner_sd.ref_with_id, char(10) || '      ') AS sd_summary
+                            SELECT sd.status_designation || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
+                                   GROUP_CONCAT(inner_sd.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS sd_summary
                             FROM (
-                                SELECT DISTINCT ip3.person_id, sda2.status_designation_id, m3.inscription_ref || ' (id: ' || m3.inscription_id || ')' AS ref_with_id
+                                SELECT DISTINCT ip3.person_id, sda2.status_designation_id, m3.inscription_ref || ' (id: [' || m3.inscription_id || '](?ins_id=' || m3.inscription_id || '))' AS ref_with_id
                                 FROM inscriptions_and_persons ip3
                                 JOIN Max_Thrax m3 ON ip3.inscription_id = m3.inscription_id
                                 JOIN status_designation_attestations sda2 ON ip3.inscription_person_id = sda2.inscription_person_id
@@ -376,7 +379,7 @@ def generate_person_report(p_id):
                             WHERE inner_sd.person_id = TargetPerson.selected_person_id
                             GROUP BY sd.status_designation_id
                         ) sd_grp
-                    ) || char(10)
+                    ) || char(10) || char(10)
                 ELSE ''
             END ||
 
@@ -388,14 +391,14 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip4.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    'attested unit in inscription: ' || char(10) || '  • ' ||
+                    '**Attested unit in inscription:**' || char(10) || '  • ' ||
                     (
                         SELECT GROUP_CONCAT(unit_grp.unit_summary, char(10) || '  • ')
                         FROM (
-                            SELECT col.collective_name || ':' || char(10) || '      ' || 
-                                   GROUP_CONCAT(inner_unit.ref_with_id, char(10) || '      ') AS unit_summary
+                            SELECT col.collective_name || ':' || char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' || 
+                                   GROUP_CONCAT(inner_unit.ref_with_id, char(10) || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;') AS unit_summary
                             FROM (
-                                SELECT DISTINCT ip4.person_id, uaa.collective_id, m4.inscription_ref || ' (id: ' || m4.inscription_id || ')' AS ref_with_id
+                                SELECT DISTINCT ip4.person_id, uaa.collective_id, m4.inscription_ref || ' (id: [' || m4.inscription_id || '](?ins_id=' || m4.inscription_id || '))' AS ref_with_id
                                 FROM inscriptions_and_persons ip4
                                 JOIN Max_Thrax m4 ON ip4.inscription_id = m4.inscription_id
                                 JOIN unit_affiliation_attestations uaa ON ip4.inscription_person_id = uaa.inscription_person_id
@@ -405,11 +408,11 @@ def generate_person_report(p_id):
                             WHERE inner_unit.person_id = TargetPerson.selected_person_id
                             GROUP BY col.collective_id
                         ) unit_grp
-                    ) || char(10)
+                    ) || char(10) || char(10)
                 ELSE ''
             END ||
                 
-            'Notes: ' || COALESCE(p.person_notes, 'None') AS "Dossier Card"
+            '**Notes:** ' || COALESCE(p.person_notes, 'None') AS "Dossier Card"
 
         FROM persons p
         JOIN persons_and_virorum_distributio pvd ON p.person_id = pvd.person_id
@@ -424,7 +427,7 @@ def generate_person_report(p_id):
         result = cursor.fetchone()
         
         if result and result[0]:
-            st.session_state.search_results = f"```text\n{result[0]}\n```"
+            st.session_state.search_results = result[0]
         else:
             st.session_state.search_results = f"No person dossier card compiled for Person ID {p_id}."
     except Exception as e:
@@ -620,7 +623,9 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -690,7 +695,9 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -849,13 +856,20 @@ def generate_active_map():
 # APPLICATION CORE GRAPHICAL INTERFACE
 # =========================================================
 st.subheader("Maximinus Thrax Database Explorer")
-# Check if a user clicked an inscription ID link in the report
+
 query_params = st.query_params
+
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
-        # Call the existing metadata function to print the full card directly into session state
+        st.query_params.clear() 
         fetch_metadata_by_id(url_id)
+
+elif "person_id" in query_params:
+    url_per_id = query_params["person_id"]
+    if url_per_id.isdigit():
+        st.query_params.clear() 
+        generate_person_report(url_per_id)
 
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
