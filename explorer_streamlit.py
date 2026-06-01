@@ -118,7 +118,6 @@ def run_standard_search(user_input):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -132,6 +131,12 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
+        Sec0_Text_Header AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
+        Sec0_Text_Body AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
         Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
@@ -140,7 +145,19 @@ def run_standard_search(user_input):
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         Sec3_Inscription_Headers AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '#### ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)),
         Sec3_Intervention_Details AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END ELSE '' END || char(10) AS tl FROM "interventions_and_inscriptions" i JOIN "interventions" iam ON i.intervention_id = iam.intervention_id LEFT JOIN "extent" e ON iam.extent_id = e.extent_id LEFT JOIN "methods" m ON iam.method_id = m.method_id JOIN "Max_Thrax" mt ON i.inscription_id = mt.inscription_id CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND i.role_id = 1 AND iam.method_id <> 1)
-        SELECT tl FROM (SELECT * FROM Sec0_Metadata UNION ALL SELECT * FROM Sec0_Spacer UNION ALL SELECT * FROM Sec1_Header UNION ALL SELECT * FROM Sec1_List UNION ALL SELECT * FROM Sec1_Spacer UNION ALL SELECT * FROM Sec2_Summary UNION ALL SELECT * FROM Sec2_Spacer UNION ALL SELECT * FROM Sec3_Inscription_Headers UNION ALL SELECT * FROM Sec3_Intervention_Details) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
+        SELECT tl FROM (
+            SELECT * FROM Sec0_Metadata 
+            UNION ALL SELECT * FROM Sec0_Text_Header 
+            UNION ALL SELECT * FROM Sec0_Text_Body 
+            UNION ALL SELECT * FROM Sec0_Spacer 
+            UNION ALL SELECT * FROM Sec1_Header 
+            UNION ALL SELECT * FROM Sec1_List 
+            UNION ALL SELECT * FROM Sec1_Spacer 
+            UNION ALL SELECT * FROM Sec2_Summary 
+            UNION ALL SELECT * FROM Sec2_Spacer 
+            UNION ALL SELECT * FROM Sec3_Inscription_Headers 
+            UNION ALL SELECT * FROM Sec3_Intervention_Details
+        ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
 
         
@@ -615,7 +632,6 @@ def execute_advanced_search(f_dict):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -629,6 +645,12 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
+        Sec0_Text_Header AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
+        Sec0_Text_Body AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
         Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
@@ -637,7 +659,19 @@ def execute_advanced_search(f_dict):
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         Sec3_Inscription_Headers AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '#### ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)),
         Sec3_Intervention_Details AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END ELSE '' END || char(10) AS tl FROM "interventions_and_inscriptions" i JOIN "interventions" iam ON i.intervention_id = iam.intervention_id LEFT JOIN "extent" e ON iam.extent_id = e.extent_id LEFT JOIN "methods" m ON iam.method_id = m.method_id JOIN "Max_Thrax" mt ON i.inscription_id = mt.inscription_id CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND i.role_id = 1 AND iam.method_id <> 1)
-        SELECT tl FROM (SELECT * FROM Sec0_Metadata UNION ALL SELECT * FROM Sec0_Spacer UNION ALL SELECT * FROM Sec1_Header UNION ALL SELECT * FROM Sec1_List UNION ALL SELECT * FROM Sec1_Spacer UNION ALL SELECT * FROM Sec2_Summary UNION ALL SELECT * FROM Sec2_Spacer UNION ALL SELECT * FROM Sec3_Inscription_Headers UNION ALL SELECT * FROM Sec3_Intervention_Details) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
+        SELECT tl FROM (
+            SELECT * FROM Sec0_Metadata 
+            UNION ALL SELECT * FROM Sec0_Text_Header 
+            UNION ALL SELECT * FROM Sec0_Text_Body 
+            UNION ALL SELECT * FROM Sec0_Spacer 
+            UNION ALL SELECT * FROM Sec1_Header 
+            UNION ALL SELECT * FROM Sec1_List 
+            UNION ALL SELECT * FROM Sec1_Spacer 
+            UNION ALL SELECT * FROM Sec2_Summary 
+            UNION ALL SELECT * FROM Sec2_Spacer 
+            UNION ALL SELECT * FROM Sec3_Inscription_Headers 
+            UNION ALL SELECT * FROM Sec3_Intervention_Details
+        ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
 
         # 3. Stitch every matching custom card together sequentially
@@ -687,7 +721,6 @@ def fetch_metadata_by_id(inscription_id):
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 2 AS inner_lo, '**Inscription Text (Formatted):**\' || char(10) || COALESCE(replace(inscription_text_formatted, char(10), '\' || char(10)), 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -701,6 +734,12 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
+        Sec0_Text_Header AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text (Formatted):**' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
+        Sec0_Text_Body AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
         Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
@@ -709,7 +748,19 @@ def fetch_metadata_by_id(inscription_id):
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         Sec3_Inscription_Headers AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '#### ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)),
         Sec3_Intervention_Details AS (SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END ELSE '' END || char(10) AS tl FROM "interventions_and_inscriptions" i JOIN "interventions" iam ON i.intervention_id = iam.intervention_id LEFT JOIN "extent" e ON iam.extent_id = e.extent_id LEFT JOIN "methods" m ON iam.method_id = m.method_id JOIN "Max_Thrax" mt ON i.inscription_id = mt.inscription_id CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id AND i.role_id = 1 AND iam.method_id <> 1)
-        SELECT tl FROM (SELECT * FROM Sec0_Metadata UNION ALL SELECT * FROM Sec0_Spacer UNION ALL SELECT * FROM Sec1_Header UNION ALL SELECT * FROM Sec1_List UNION ALL SELECT * FROM Sec1_Spacer UNION ALL SELECT * FROM Sec2_Summary UNION ALL SELECT * FROM Sec2_Spacer UNION ALL SELECT * FROM Sec3_Inscription_Headers UNION ALL SELECT * FROM Sec3_Intervention_Details) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
+        SELECT tl FROM (
+            SELECT * FROM Sec0_Metadata 
+            UNION ALL SELECT * FROM Sec0_Text_Header 
+            UNION ALL SELECT * FROM Sec0_Text_Body 
+            UNION ALL SELECT * FROM Sec0_Spacer 
+            UNION ALL SELECT * FROM Sec1_Header 
+            UNION ALL SELECT * FROM Sec1_List 
+            UNION ALL SELECT * FROM Sec1_Spacer 
+            UNION ALL SELECT * FROM Sec2_Summary 
+            UNION ALL SELECT * FROM Sec2_Spacer 
+            UNION ALL SELECT * FROM Sec3_Inscription_Headers 
+            UNION ALL SELECT * FROM Sec3_Intervention_Details
+        ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
         cursor.execute(sql, (int(inscription_id),))
         rows = cursor.fetchall()
