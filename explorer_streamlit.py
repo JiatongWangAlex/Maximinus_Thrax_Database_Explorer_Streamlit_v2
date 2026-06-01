@@ -263,9 +263,10 @@ def run_standard_search(user_input):
             
         # 3. Stitch every single compiled card together into the final display state
         st.session_state.search_results = "\n\n".join(out_str)
-        
         conn.close()
-
+    except Exception as e:
+        st.error(f"An unexpected database error occurred: {e}")
+        
 def run_ref_search(ref_query):
     if not ref_query.strip():
         st.session_state.search_results = "Please enter an Inscription Reference code."
