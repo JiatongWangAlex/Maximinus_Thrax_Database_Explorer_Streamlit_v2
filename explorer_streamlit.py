@@ -533,7 +533,7 @@ def execute_advanced_search(f_dict):
         WHERE 1=1
     """
 
-    # 2. Text Search with Boolean (Fully Upgraded with Inscription Text + Metadata Fallbacks)
+    # 2. Text Search with Boolean, Fallbacks, AND Latin Lemmatization Parser
     phrase = f_dict.get('text', '').strip()
     if phrase:
         applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}'")
@@ -562,33 +562,51 @@ def execute_advanced_search(f_dict):
                 if t_clean in ("AND", "OR", "NOT"):
                     current_op = t_clean
                 else:
-                    # Clean punctuation for text match
+                    # --- LATIN PARSER INTEGRATION ---
+                    # Clean token and fetch its morphological cluster synonyms just like standard search
                     clean_word = clean_epigraphic_text(t_clean).lower()
+                    root_lemma = LATIN_LEMMA_MAP.get(clean_word, clean_word)
+                    synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_word]))
                     
-                    # Smashed version for continuous string fallback
-                    continuous_word = t_clean.lower().replace(" ", "")
-                    continuous_word = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_word)
+                    # Generate continuous string fallback versions for all synonyms
+                    continuous_words = []
+                    for syn in synonyms:
+                        cw = syn.lower().replace(" ", "")
+                        cw = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', cw)
+                        if cw:
+                            continuous_words.append(cw)
+                    continuous_words = list(set(continuous_words))
                     
-                    # Raw word with wildcard padding for metadata falls (Persons/Collectives)
+                    # Track query parameters dynamically for this synonym cluster
+                    syn_stripped_pnames = []
+                    for idx, syn in enumerate(synonyms):
+                        pname = f"b_syn_str_{len(query_params)}"
+                        query_params[pname] = f"%{syn}%"
+                        syn_stripped_pnames.append(pname)
+                        
+                    syn_recon_pnames = []
+                    for idx, cw in enumerate(continuous_words):
+                        pname = f"b_syn_rec_{len(query_params)}"
+                        query_params[pname] = f"%{cw}%"
+                        syn_recon_pnames.append(pname)
+                    
+                    # Raw strings for names/collectives
                     meta_word = f"%{t_clean}%"
-                    
-                    p_stripped = f"bool_strip_{len(query_params)}"
-                    p_recon = f"bool_recon_{len(query_params)}"
-                    p_clean = f"bool_clean_{len(query_params)}"
                     p_pers = f"bool_pers_{len(query_params)}"
                     p_col = f"bool_col_{len(query_params)}"
-                    
-                    query_params[p_stripped] = f"%{clean_word}%"
-                    query_params[p_recon] = f"%{continuous_word}%"
-                    query_params[p_clean] = f"%{continuous_word}%"
                     query_params[p_pers] = meta_word
                     query_params[p_col] = meta_word
                     
-                    # Multi-dimensional fallback logic (Text, Reconstituted, Smashed, Linked Persons, Linked Collectives)
+                    # Construct SQL checks for the entire Latin family cluster
+                    stripped_likes = " OR ".join([f"mt.inscription_text_stripped LIKE :{p}" for p in syn_stripped_pnames])
+                    recon_likes = " OR ".join([f"mt.reconstituted_text LIKE :{p}" for p in syn_recon_pnames])
+                    clean_likes = " OR ".join([f"mt.cleaned_text LIKE :{p}" for p in syn_recon_pnames])
+                    
+                    # Piece together the full multi-dimensional fallback criteria
                     sub_clause = (
-                        f"(mt.inscription_text_stripped LIKE :{p_stripped} "
-                        f"OR mt.reconstituted_text LIKE :{p_recon} "
-                        f"OR mt.cleaned_text LIKE :{p_clean} "
+                        f"({stripped_likes} "
+                        f"OR {recon_likes} "
+                        f"OR {clean_likes} "
                         f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
                         f"OR col.collective_name LIKE :{p_col})"
                     )
@@ -608,28 +626,45 @@ def execute_advanced_search(f_dict):
             where_clauses.append(bool_clause)
             
         else:
-            # Simple query fallback parity
+            # --- SIMPLE ADVANCED SEARCH WORD (NO BOOLEANS) ---
             clean_phrase = clean_epigraphic_text(phrase).lower()
-            continuous_phrase = phrase.lower().replace(" ", "")
-            continuous_phrase = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_phrase)
-            meta_phrase = f"%{phrase}%"
+            root_lemma = LATIN_LEMMA_MAP.get(clean_phrase, clean_phrase)
+            synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_phrase]))
             
-            p_stripped = f"phrase_strip_{len(query_params)}"
-            p_recon = f"phrase_recon_{len(query_params)}"
-            p_clean = f"phrase_clean_{len(query_params)}"
+            continuous_words = []
+            for syn in synonyms:
+                cw = syn.lower().replace(" ", "")
+                cw = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', cw)
+                if cw:
+                    continuous_words.append(cw)
+            continuous_words = list(set(continuous_words))
+            
+            syn_stripped_pnames = []
+            for idx, syn in enumerate(synonyms):
+                pname = f"p_syn_str_{len(query_params)}"
+                query_params[pname] = f"%{syn}%"
+                syn_stripped_pnames.append(pname)
+                
+            syn_recon_pnames = []
+            for idx, cw in enumerate(continuous_words):
+                pname = f"p_syn_rec_{len(query_params)}"
+                query_params[pname] = f"%{cw}%"
+                syn_recon_pnames.append(pname)
+                
+            meta_phrase = f"%{phrase}%"
             p_pers = f"phrase_pers_{len(query_params)}"
             p_col = f"phrase_col_{len(query_params)}"
-            
-            query_params[p_stripped] = f"%{clean_phrase}%"
-            query_params[p_recon] = f"%{continuous_phrase}%"
-            query_params[p_clean] = f"%{continuous_phrase}%"
             query_params[p_pers] = meta_phrase
             query_params[p_col] = meta_phrase
             
+            stripped_likes = " OR ".join([f"mt.inscription_text_stripped LIKE :{p}" for p in syn_stripped_pnames])
+            recon_likes = " OR ".join([f"mt.reconstituted_text LIKE :{p}" for p in syn_recon_pnames])
+            clean_likes = " OR ".join([f"mt.cleaned_text LIKE :{p}" for p in syn_recon_pnames])
+            
             where_clauses.append(
-                f"(mt.inscription_text_stripped LIKE :{p_stripped} "
-                f"OR mt.reconstituted_text LIKE :{p_recon} "
-                f"OR mt.cleaned_text LIKE :{p_clean} "
+                f"({stripped_likes} "
+                f"OR {recon_likes} "
+                f"OR {clean_likes} "
                 f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
                 f"OR col.collective_name LIKE :{p_col})"
             )
