@@ -503,7 +503,6 @@ def get_filter_options(table, col):
         pass
     return options
         
-
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -572,12 +571,10 @@ def execute_advanced_search(f_dict):
                     current_op = t_clean
                 else:
                     # --- LATIN PARSER INTEGRATION ---
-                    # Clean token and fetch its morphological cluster synonyms just like standard search
                     clean_word = clean_epigraphic_text(t_clean).lower()
                     root_lemma = LATIN_LEMMA_MAP.get(clean_word, clean_word)
                     synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_word]))
                     
-                    # Generate continuous string fallback versions for all synonyms
                     continuous_words = []
                     for syn in synonyms:
                         cw = syn.lower().replace(" ", "")
@@ -586,7 +583,6 @@ def execute_advanced_search(f_dict):
                             continuous_words.append(cw)
                     continuous_words = list(set(continuous_words))
                     
-                    # Track query parameters dynamically for this synonym cluster
                     syn_stripped_pnames = []
                     for idx, syn in enumerate(synonyms):
                         pname = f"b_syn_str_{len(query_params)}"
@@ -599,19 +595,16 @@ def execute_advanced_search(f_dict):
                         query_params[pname] = f"%{cw}%"
                         syn_recon_pnames.append(pname)
                     
-                    # Raw strings for names/collectives
                     meta_word = f"%{t_clean}%"
                     p_pers = f"bool_pers_{len(query_params)}"
                     p_col = f"bool_col_{len(query_params)}"
                     query_params[p_pers] = meta_word
                     query_params[p_col] = meta_word
                     
-                    # Construct SQL checks for the entire Latin family cluster
                     stripped_likes = " OR ".join([f"mt.inscription_text_stripped LIKE :{p}" for p in syn_stripped_pnames])
                     recon_likes = " OR ".join([f"mt.reconstituted_text LIKE :{p}" for p in syn_recon_pnames])
                     clean_likes = " OR ".join([f"mt.cleaned_text LIKE :{p}" for p in syn_recon_pnames])
                     
-                    # Piece together the full multi-dimensional fallback criteria
                     sub_clause = (
                         f"({stripped_likes} "
                         f"OR {recon_likes} "
@@ -677,23 +670,25 @@ def execute_advanced_search(f_dict):
                 f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
                 f"OR col.collective_name LIKE :{p_col})"
             )
+
     # 3. Mapping Configuration
     mapping = [
-        ('relevance_index', 'mt.relevance_index', 'Relevance'), 
-        ('material_name', 'm.material_name', 'Material'),
-        ('support_name', 's.support_name', 'Support Type'), 
-        ('context_name', 'ct.context_name', 'Context Type'),
-        ('number_of_inscriptions', 'o.number_of_inscriptions', 'Inscriptions on Object'), 
-        ('province_name', 'pr.province_name', 'Roman Province'),
-        ('status_designation', 'sd.status_designation', 'Social Status Designation'), 
-        ('position_description', 'pos.position_description', 'Office/Military Role'),
-        ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'), 
+        ('relevance_index', 'mt.relevance_index', 'Relevance'),
         ('distributio_titulorum', 'dt.distributio_titulorum', 'Distributio Titulorum'),
-        ('intervention_status', 'mt.intervention_status', 'Intervention Status'), 
+        ('material_name', 'm.material_name', 'Material'),
+        ('support_name', 's.support_name', 'Support Type'),
+        ('context_name', 'ct.context_name', 'Context Type'),
+        ('province_name', 'pr.province_name', 'Province'),
+        ('number_of_inscriptions', 'o.number_of_inscriptions', 'Inscriptions on Object'),
+        ('person_id', 'ip_f.person_id', 'Person'),
+        ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'),
+        ('status_designation', 'sd.status_designation', 'Status Designation'),
+        ('position_description', 'pos.position_description', 'Office/Military Role'),
+        ('collective_name', 'col.collective_name', 'Collective/Military Unit'),
+        ('intervention_status', 'mt.intervention_status', 'Intervention Status'),
         ('method_description', 'meth.method_description', 'Method of Intervention'),
-        ('extent_description', 'ext.extent_description', 'Extent of Intervention'), 
-        ('target_description', 'targ.target_description', 'Target of Intervention'),
-        ('collective_name', 'col.collective_name', 'Collective/Military Unit')
+        ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
+        ('target_description', 'targ.target_description', 'Target of Intervention')
     ]
 
     for key, column_sql, display_name in mapping:
@@ -728,7 +723,6 @@ def execute_advanced_search(f_dict):
                 p_name = f"param_{key}_{idx}"  # e.g., param_material_name_0
                 param_names.append(f":{p_name}")
                 query_params[p_name] = item
-
             
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
             
@@ -743,7 +737,6 @@ def execute_advanced_search(f_dict):
         cursor = conn.cursor()
         cursor.execute(final_sql, query_params)
         rows = cursor.fetchall()
-        # Keep track of active record hits across your ecosystem
         st.session_state.active_inscription_ids = [row[0] for row in rows]
         all_matched_ids = st.session_state.active_inscription_ids
         
@@ -767,12 +760,11 @@ def execute_advanced_search(f_dict):
             return
 
         # 2. Generate full reports for everyone
-       
         sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
@@ -859,7 +851,7 @@ def execute_advanced_search(f_dict):
             out_str.append("\n\n---\n\n")
             
         st.session_state.search_results = "\n\n".join(out_str)
-    
+        
         conn.close()
     except Exception as e:
         st.session_state.search_results = f"Advanced Search System Failure: {e}"
@@ -1222,43 +1214,86 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
     st.markdown("---")
     st.markdown("### Filters")
     
+    # --- DYNAMIC PERSON DATABASE LOOKUP ---
+    # Fetch data directly from your persons table using your existing app pattern
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
+        db_persons = cursor.fetchall()
+        conn.close()
+        # Build dictionary map: {person_id: person_name}
+        person_options = {row[0]: row[1] for row in db_persons}
+    except Exception:
+        person_options = {}
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        # Binary choice
-        f_rel = st.selectbox("Relevant?:", get_filter_options("Max_Thrax", "relevance_index"))
+        # 1. Relevance (mt.relevance_index)
+        f_rel = st.selectbox("Relevance:", get_filter_options("Max_Thrax", "relevance_index"))
         
-        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
-        f_num_ins = st.multiselect("Inscriptions on Object (Count):", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
-        f_sup_name = st.multiselect("Support:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
+        # 2. Distributio Titulorum (dt.distributio_titulorum)
+        f_dist_tit = st.multiselect("Distributio Titulorum:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
+        
+        # 3. Material (m.material_name)
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
+        
+        # 4. Support Type (s.support_name)
+        f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
+        
+        # 5. Context Type (ct.context_name)
+        f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"])
+        
+        # 6. Province (pr.province_name)
+        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
 
     with col2:
-        f_in_con = st.multiselect("Context:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"])
-        f_dist_tit = st.multiselect("Distributio Titulorum:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
+        # 7. Inscriptions on Object (o.number_of_inscriptions)
+        f_num_ins = st.multiselect("Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
+        
+        # 8. Person (ip_f.person_id)
+        f_person_id = st.multiselect(
+            "Person:",
+            options=list(person_options.keys()),
+            format_func=lambda x: person_options[x]
+        )
+        
+        # 9. Distributio Virorum (vd.virorum_distributio)
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
+        
+        # 10. Status Designation (sd.status_designation)
         f_status = st.multiselect("Status Designation:", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
-        f_pos = st.multiselect("Office / Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
+        
+        # 11. Office/Military Role (pos.position_description)
+        f_pos = st.multiselect("Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
 
     with col3:
-        f_unit = st.multiselect("Organization / Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        # 12. Collective/Military Unit (col.collective_name)
+        f_unit = st.multiselect("Collective/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
         
-        # Binary choice
-        f_interv_stat = st.selectbox("Intervention?:", get_filter_options("Max_Thrax", "intervention_status"))
+        # 13. Intervention Status (mt.intervention_status)
+        f_interv_stat = st.selectbox("Intervention Status:", get_filter_options("Max_Thrax", "intervention_status"))
         
+        # 14. Method of Intervention (meth.method_description)
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"])
+        
+        # 15. Extent of Intervention (ext.extent_description)
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"])
+        
+        # 16. Target of Intervention (targ.target_description)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
 
     if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
         form_payload = {
             'text': f_text,
             'relevance_index': f_rel,
-            'province_name': f_prov,         # This now safely sends a list!
-            'number_of_inscriptions': f_num_ins, # This now safely sends a list!
-            'support_name': f_sup_name,
-            'material_name': f_obj_mat,
-            'context_name': f_in_con,
             'distributio_titulorum': f_dist_tit,
+            'material_name': f_obj_mat,
+            'support_name': f_sup_name,
+            'context_name': f_in_con,
+            'province_name': f_prov,
+            'number_of_inscriptions': f_num_ins,
+            'person_id': f_person_id,
             'virorum_distributio': f_vir_dist,
             'status_designation': f_status,
             'position_description': f_pos,
