@@ -54,6 +54,6 @@ With advanced search, you can look for multiple words by connecting them with Bo
 
 #### Available Filters:
 The advanced search suite offers the following filters: 
-* Relevance, Material, Support, Type of Context, Number of Inscriptions on Object, Roman Province, Social Status Designation, Office/Magistracy/Military Role, Distributio Virorum, Distributio Titulorum, Intervention Status, Method of Intervention, Extent of Intervention, Target of Intervention, and Collective/Military Unit.
+* Relevance?, Material, Support, Context, Number of Inscriptions on Object, Province, Status Designation, Office/Military Role, Distributio Virorum, Distributio Titulorum, Intervention?, Method of Intervention, Extent of Intervention, Target of Intervention, and Organization/Military Unit.
 
-> **Note on the "Relevance" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
+> **Note on the "Relevance?" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
