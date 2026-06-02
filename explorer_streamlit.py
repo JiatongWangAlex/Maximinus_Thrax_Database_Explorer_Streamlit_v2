@@ -1212,7 +1212,7 @@ with col_s4:
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
     else:
-        pid_input_var = st.text_input("Person Selector:", placeholder="e.g. 29")
+        pid_input_var = st.text_input("Person Selector:", placeholder="Select from the list")
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
             generate_person_report(pid_input_var)
 # =========================================================
