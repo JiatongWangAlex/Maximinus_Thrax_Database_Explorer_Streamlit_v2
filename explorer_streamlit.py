@@ -1174,11 +1174,11 @@ st.markdown("### Search Results")
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     
-    # Clean up the ghost characters and split the text by its lines
+    # Clean up hidden formatting codes
     clean_results = raw_results.replace("\r\n", "\n").replace("\r", "\n")
-    lines = clean_results.split("\n")
     
-    # Print each line perfectly on its own row
-    for line in lines:
-        if line.strip():  # If the line isn't totally empty
-            st.markdown(line)
+    # Force every line break to be a tight, soft markdown break
+    # This keeps your dashes completely intact, stops double spacing, and kills the header bug
+    tight_layout_text = clean_results.replace("\n", "  \n")
+    
+    st.markdown(tight_layout_text)
