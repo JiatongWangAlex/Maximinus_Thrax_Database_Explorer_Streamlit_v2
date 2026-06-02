@@ -533,23 +533,21 @@ def execute_advanced_search(f_dict):
         WHERE 1=1
     """
 
-    # 2. Text Search with Boolean
+    # 2. Text Search with Boolean (Fully Upgraded with Inscription Text + Metadata Fallbacks)
     phrase = f_dict.get('text', '').strip()
     if phrase:
         applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}'")
         
-        # Check for boolean operators regardless of case or whitespace amounts
+        # Check for boolean operators regardless of case
         upper_phrase = phrase.upper()
         if " AND " in upper_phrase or " OR " in upper_phrase or " NOT " in upper_phrase:
             
-            # Normalize spaces around operators and force them to uppercase so splitting is uniform
-            # This prevents mixed case like "and" or "And" from breaking your query
+            # Normalize spaces around operators and force them to uppercase
             norm_phrase = phrase
             norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
             norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
             norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
             
-            # Split cleanly on the normalized operators, keeping them in the list
             tokens = re.split(r'( AND | OR | NOT )', norm_phrase)
             
             bool_clause = "("
@@ -564,31 +562,77 @@ def execute_advanced_search(f_dict):
                 if t_clean in ("AND", "OR", "NOT"):
                     current_op = t_clean
                 else:
-                    # Clean punctuation out of the token so text matches robustly
+                    # Clean punctuation for text match
                     clean_word = clean_epigraphic_text(t_clean).lower()
-                    p_name = f"boolean_token_{len(query_params)}"
+                    
+                    # Smashed version for continuous string fallback
+                    continuous_word = t_clean.lower().replace(" ", "")
+                    continuous_word = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_word)
+                    
+                    # Raw word with wildcard padding for metadata falls (Persons/Collectives)
+                    meta_word = f"%{t_clean}%"
+                    
+                    p_stripped = f"bool_strip_{len(query_params)}"
+                    p_recon = f"bool_recon_{len(query_params)}"
+                    p_clean = f"bool_clean_{len(query_params)}"
+                    p_pers = f"bool_pers_{len(query_params)}"
+                    p_col = f"bool_col_{len(query_params)}"
+                    
+                    query_params[p_stripped] = f"%{clean_word}%"
+                    query_params[p_recon] = f"%{continuous_word}%"
+                    query_params[p_clean] = f"%{continuous_word}%"
+                    query_params[p_pers] = meta_word
+                    query_params[p_col] = meta_word
+                    
+                    # Multi-dimensional fallback logic (Text, Reconstituted, Smashed, Linked Persons, Linked Collectives)
+                    sub_clause = (
+                        f"(mt.inscription_text_stripped LIKE :{p_stripped} "
+                        f"OR mt.reconstituted_text LIKE :{p_recon} "
+                        f"OR mt.cleaned_text LIKE :{p_clean} "
+                        f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
+                        f"OR col.collective_name LIKE :{p_col})"
+                    )
                     
                     if current_op == "NOT":
-                        # If NOT is the very first thing in the clause, we don't prefix with an isolated AND
                         prefix = "" if is_first_term else " AND "
-                        bool_clause += f"{prefix}mt.inscription_text_stripped NOT LIKE :{p_name}"
-                        current_op = "AND" # Reset default back to AND
+                        bool_clause += f"{prefix}NOT {sub_clause}"
+                        current_op = "AND"
                     elif is_first_term:
-                        bool_clause += f"mt.inscription_text_stripped LIKE :{p_name}"
+                        bool_clause += sub_clause
                     else:
-                        bool_clause += f" {current_op} mt.inscription_text_stripped LIKE :{p_name}"
+                        bool_clause += f" {current_op} {sub_clause}"
                     
-                    query_params[p_name] = f"%{clean_word}%"
                     is_first_term = False
                     
             bool_clause += ")"
             where_clauses.append(bool_clause)
+            
         else:
-            # Clean standard queries seamlessly before matching stripped db text
+            # Simple query fallback parity
             clean_phrase = clean_epigraphic_text(phrase).lower()
-            where_clauses.append("mt.inscription_text_stripped LIKE :phrase")
-            query_params['phrase'] = f"%{clean_phrase}%"
-
+            continuous_phrase = phrase.lower().replace(" ", "")
+            continuous_phrase = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_phrase)
+            meta_phrase = f"%{phrase}%"
+            
+            p_stripped = f"phrase_strip_{len(query_params)}"
+            p_recon = f"phrase_recon_{len(query_params)}"
+            p_clean = f"phrase_clean_{len(query_params)}"
+            p_pers = f"phrase_pers_{len(query_params)}"
+            p_col = f"phrase_col_{len(query_params)}"
+            
+            query_params[p_stripped] = f"%{clean_phrase}%"
+            query_params[p_recon] = f"%{continuous_phrase}%"
+            query_params[p_clean] = f"%{continuous_phrase}%"
+            query_params[p_pers] = meta_phrase
+            query_params[p_col] = meta_phrase
+            
+            where_clauses.append(
+                f"(mt.inscription_text_stripped LIKE :{p_stripped} "
+                f"OR mt.reconstituted_text LIKE :{p_recon} "
+                f"OR mt.cleaned_text LIKE :{p_clean} "
+                f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
+                f"OR col.collective_name LIKE :{p_col})"
+            )
     # 3. Mapping Configuration
     mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'), 
