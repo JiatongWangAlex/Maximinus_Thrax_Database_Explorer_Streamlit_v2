@@ -1026,7 +1026,7 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
     * **OR** (e.g., 'cohors OR legio' to find either term)
     * **NOT** (e.g., 'Maximinus NOT Maximus' to exclude specific textual entries)
 
-    * The advanced search also offers the following filters: Relevance, Material, Support, Type of Context, Number of Inscriptions on Object, Roman Province, Social Status Designation, Office/ Magistracy / Military Role, Distributio Virorum, Distributio Titulorum, Intervention Status, Method of Intervention, Extent of Intervention, Target of Intervention, Collective / Military Unit.
+    * The advanced search also offers the following filters: Relevance?, Material, Support, Context, Number of Inscriptions on Object, Province, Status Designation, Office/Military Role, Distributio Virorum, Distributio Titulorum, Intervention?, Method of Intervention, Extent of Intervention, Target of Intervention, and Organization/Military Unit.
 
     * Note on the field Relevance: some objects bear both an inscription created during the time of Maximinus Thrax and a later or earlier inscription-- For all inscriptions mentioning Maximinus Thrax or Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet Maximiniana, the relevance field is true.
     """)
