@@ -24,7 +24,7 @@
 ### Lookup Person ID by Name
 * Want to search for a specific individual without using the main search bar? Insert the person's name, click the **Person Name** button, and look at the **Select Person** field to the right.
 * **Select the desired individual** before clicking the **Generate Report** button.
-* > **NOTE:** Please manually select an individual before generating a report. The default individual at the top of the selection bar is not guaranteed to be the person you have in mind. 
+  > **NOTE:** Please manually select an individual before generating a report. The default individual at the top of the selection bar is not guaranteed to be the person you have in mind. 
     
 ### Interactive Map
 * Loading the map may take a second due to the size of the itiner-e roads layer.
