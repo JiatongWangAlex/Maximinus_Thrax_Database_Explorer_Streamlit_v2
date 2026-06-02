@@ -1174,15 +1174,19 @@ st.markdown("### Search Results")
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     
-    # Clean up standard carriage returns
+    # 1. Clean standard line breaks
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
     
-    # Inject a Zero-Width Space (\u200b) right into the hyphens.
-    # This renders as a perfect solid line visually, but tricks markdown 
-    # into thinking it's regular text so it NEVER blows up into a header.
-    safe_markdown_text = clean_text.replace("------ /", "---\u200b--- /")
-    safe_markdown_text = safe_markdown_text.replace("----- /", "--\u200b--- /")
-    safe_markdown_text = safe_markdown_text.replace("---- /", "--\u200b-- /")
+    # 2. Break the results apart by double-newlines to isolate the text blocks
+    blocks = clean_text.split("\n\n")
     
-    # Render with pure markdown so all your bolding and metadata work perfectly
-    st.markdown(safe_markdown_text)
+    for block in blocks:
+        # If the block contains your problem inscription text (e.g., has 'RIGHT:')
+        if "RIGHT:" in block or "------ /" in block:
+            # Swap newlines inside just this block to HTML breaks
+            html_block = block.replace("\n", "<br>")
+            # Force it to display at normal size, keeping your dashes intact and tight
+            st.markdown(f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>', unsafe_allow_html=True)
+        else:
+            # For everything else (Context, Material, etc.), keep regular Markdown active
+            st.markdown(block)
