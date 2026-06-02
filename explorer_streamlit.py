@@ -537,27 +537,50 @@ def execute_advanced_search(f_dict):
     phrase = f_dict.get('text', '').strip()
     if phrase:
         applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}'")
-        if any(op in phrase for op in (" AND ", " OR ", " NOT ")):
-            tokens = re.split(r'(\s+AND\s+|\s+OR\s+|\s+NOT\s+)', phrase)
+        
+        # Check for boolean operators regardless of case or whitespace amounts
+        upper_phrase = phrase.upper()
+        if " AND " in upper_phrase or " OR " in upper_phrase or " NOT " in upper_phrase:
+            
+            # Normalize spaces around operators and force them to uppercase so splitting is uniform
+            # This prevents mixed case like "and" or "And" from breaking your query
+            norm_phrase = phrase
+            norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
+            norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
+            norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
+            
+            # Split cleanly on the normalized operators, keeping them in the list
+            tokens = re.split(r'( AND | OR | NOT )', norm_phrase)
+            
             bool_clause = "("
             current_op = "AND"
+            is_first_term = True
+            
             for token in tokens:
                 t_clean = token.strip()
-                if not t_clean: continue
+                if not t_clean: 
+                    continue
+                
                 if t_clean in ("AND", "OR", "NOT"):
                     current_op = t_clean
                 else:
                     # Clean punctuation out of the token so text matches robustly
                     clean_word = clean_epigraphic_text(t_clean).lower()
                     p_name = f"boolean_token_{len(query_params)}"
+                    
                     if current_op == "NOT":
-                        bool_clause += f" AND mt.inscription_text_stripped NOT LIKE :{p_name}"
-                        current_op = "AND"
-                    elif bool_clause == "(":
+                        # If NOT is the very first thing in the clause, we don't prefix with an isolated AND
+                        prefix = "" if is_first_term else " AND "
+                        bool_clause += f"{prefix}mt.inscription_text_stripped NOT LIKE :{p_name}"
+                        current_op = "AND" # Reset default back to AND
+                    elif is_first_term:
                         bool_clause += f"mt.inscription_text_stripped LIKE :{p_name}"
                     else:
                         bool_clause += f" {current_op} mt.inscription_text_stripped LIKE :{p_name}"
+                    
                     query_params[p_name] = f"%{clean_word}%"
+                    is_first_term = False
+                    
             bool_clause += ")"
             where_clauses.append(bool_clause)
         else:
@@ -586,13 +609,13 @@ def execute_advanced_search(f_dict):
     ]
 
     for key, column_sql, display_name in mapping:
-        val = f_dict.get(key, [])  # 1. Grab what the user selected (now defaults to a list)
+        val = f_dict.get(key, [])  # 3.1 Grab what the user selected (now defaults to a list)
         
         # Skip if they didn't select anything
         if not val or val == "All" or val == ["All"]:
             continue
 
-        # 2. If it is a single input
+        # 3.2 If it is a single input
         if not isinstance(val, list):
             val_str = str(val).strip()
             if not val_str:
@@ -606,7 +629,7 @@ def execute_advanced_search(f_dict):
             where_clauses.append(f"{column_sql} = :{p_name}")
             query_params[p_name] = val
 
-        # 3 If it IS a list from a Streamlit multi-select widget
+        # 3.3 If it IS a list from a Streamlit multi-select widget
         else:
             # Add to your results summary text
             applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
