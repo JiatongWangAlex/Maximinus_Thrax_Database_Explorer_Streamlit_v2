@@ -1081,20 +1081,6 @@ def generate_active_map():
 # APPLICATION CORE GRAPHICAL INTERFACE
 # =========================================================
 
-if "hide_search_banner" not in st.session_state:
-    st.session_state.hide_search_banner = False
-
-if not st.session_state.hide_search_banner:
-    # st.warning provides the classic yellow background alert frame
-    with st.warning("⚠️ ATTENTION"):
-        st.write("PLEASE PRESS SEARCH OR GENERATE MAP")
-        st.write("ENTER ALONE DOES NOT TRIGGER THE FUNCTIONS")
-        
-        # Space out the button nicely inside the yellow frame
-        if st.button("I understand", use_container_width=True):
-            st.session_state.hide_search_banner = True
-            st.rerun()
-
 query_params = st.query_params
 
 if "ins_id" in query_params:
@@ -1182,10 +1168,10 @@ with col_text1:
         label_visibility="collapsed"
     )
 with col_text2:
-    if st.button("Search Text", key="btn_execute_text", use_container_width=True):
+    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
         run_standard_search(text_input_var)
 with col_text3:
-    if st.button("Generate Map", key="global_map_btn", use_container_width=True):
+    if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
         generate_active_map()
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Full Inscription Report and Person Report Generator")
@@ -1257,7 +1243,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"])
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
 
-    if st.button("Execute Advanced Filter Search", key="btn_advanced_filter_search", use_container_width=True):
+    if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
         form_payload = {
             'text': f_text,
             'relevance_index': f_rel,
