@@ -1227,10 +1227,10 @@ with col_s4:
 # ADVANCED SEARCH WRAPPER
 # =========================================================
 with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=False):
-    st.markdown("### Inscription Text Query Filters")
+    st.markdown("### Advanced Search")
     
     # Text search assigned to its own private, isolated row context
-    f_text = st.text_input("Inscription Text Query (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
+    f_text = st.text_input("Advanced Text Search (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
     
     st.markdown("---")
     st.markdown("### Filters")
@@ -1288,7 +1288,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         
         # --- VISUAL ALIGNMENT INJECTOR ---
     
-        st.markdown("<div style='padding-top: 27px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
         
         # 9. Distributio Virorum (vd.virorum_distributio) -> NOW ALIGNED
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
