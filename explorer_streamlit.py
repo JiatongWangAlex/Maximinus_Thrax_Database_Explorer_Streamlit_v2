@@ -987,7 +987,7 @@ col_text1, col_text2, col_text3 = st.columns([2, 1, 1])
 with col_text1:    
     text_input_var = st.text_input(
         "Enter search text:", 
-        placeholder="e.g., Serennianus",
+        placeholder="e.g., Quintus Decius",
         key="main_text_input", 
         label_visibility="collapsed"
     )
