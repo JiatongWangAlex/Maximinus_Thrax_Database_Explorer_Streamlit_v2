@@ -266,7 +266,6 @@ def run_standard_search(user_input):
                 seen_fallback_ids.add(ins_id)
                 
         st.session_state.active_inscription_ids = list(seen_text_ids.union(seen_fallback_ids))
-        
         all_matched_ids = st.session_state.active_inscription_ids
         
         if not all_matched_ids:
@@ -274,11 +273,33 @@ def run_standard_search(user_input):
             conn.close()
             return
             
+        # -----------------------------------------
+        object_count = 0
+        if all_matched_ids:
+            obj_cursor = conn.cursor()
+            chunk_size = 900
+            unique_objects = set()
+            
+            # Split IDs into safe chunks to prevent SQLite parameter limits from crashing
+            for i in range(0, len(all_matched_ids), chunk_size):
+                chunk = all_matched_ids[i:i + chunk_size]
+                placeholders = ",".join(["?"] * len(chunk))
+                
+                obj_cursor.execute(
+                    f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({placeholders});', 
+                    chunk
+                )
+                for row in obj_cursor.fetchall():
+                    unique_objects.add(row[0])
+            
+            object_count = len(unique_objects)
+        # -----------------------------------------
+            
         out_str = []
         
-        # 1. Create the grand header for the entire search collection
+        # 1. Create the header for the entire search results
         header = f"## Search Results\nFound {len(text_rows)} direct matches and {len(unique_fallback_rows)} indirect matches!\n"
-        header += f"Compiled dossiers for all {len(all_matched_ids)} matching inscriptions:\n\n"
+        header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects:\n\n"
         out_str.append(header)
         
         # 2. LOOP THROUGH EVERY SINGLE MATCHING ID AND STITCH THEM TOGETHER
@@ -769,7 +790,26 @@ def execute_advanced_search(f_dict):
         
         out_str = []
         
-        # 1. Build a clean, structured Markdown header log tracking query parameters
+        object_count = 0
+        if all_matched_ids:
+            obj_cursor = conn.cursor()
+            chunk_size = 900
+            unique_objects = set()
+            
+            # Split IDs into safe chunks to prevent SQLite parameter limits (999) from crashing
+            for i in range(0, len(all_matched_ids), chunk_size):
+                chunk = all_matched_ids[i:i + chunk_size]
+                placeholders = ",".join(["?"] * len(chunk))
+                
+                obj_cursor.execute(
+                    f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({placeholders});', 
+                    chunk
+                )
+                for row in obj_cursor.fetchall():
+                    unique_objects.add(row[0])
+            
+            object_count = len(unique_objects)
+        # -----------------------------------------
         header_lines = ["## Advanced Search Results\n"]
         header_lines.append("**Filters Applied:**\n")
         if applied_criteria_summary:
@@ -777,7 +817,7 @@ def execute_advanced_search(f_dict):
         else:
             header_lines.append("  • *[None - Broad Query Execution Mode]*\n")
             
-        header_lines.append(f"\n**Results:** Found {len(all_matched_ids)} matching inscriptions.\n\n---\n\n")
+        header_lines.append(f"\n**Results:** Found **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects.\n\n---\n\n")
         out_str.append("".join(header_lines))
         
         if not all_matched_ids:
