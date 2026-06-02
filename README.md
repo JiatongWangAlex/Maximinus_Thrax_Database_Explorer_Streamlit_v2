@@ -1,60 +1,59 @@
 ## How to Use
 
-    ### Keyword Search
-    * Enter a keyword or phrase in the top bar and press the Search Button (pressing Enter alone does not work). 
-    * A report will be generated for every matching inscription. This report contains some relevant metadata.
-    * In addition, it also records interventions to the each inscription, and the target, extent and method of each intervention.
-    * Every individual mentioned in an inscription is hyperlinked to their database internal record. Click on the link to explore!
-    * Legal reasons aside, since this entire database is smaller than one photograph, we do not host photographs. Almost every inscription is linked to an EDCS record which provides a photo when available.
-    * For more information on the ancient place next to which an inscription is discovered, click the hyperlink to Pleiades, the ancient world gazzetter.
-    * Over 80 percent of inscriptions in this corpus are milestones, for more information on the road segment a milestone belonged to, click the hyperlinked road segment to see its page on the itiner-e project.
+### Keyword Search
+* Enter a keyword or phrase in the top bar and press the **Search Button** (note: pressing Enter alone does not work). 
+* A report will be generated for every matching inscription containing relevant metadata.
+* It records interventions to each inscription, as well as the target, extent, and method of each intervention.
+* Every individual mentioned in an inscription is hyperlinked to their internal database record. Click on the link to explore!
+* Legal reasons aside, since this entire database is smaller than one photograph, we do not host photos. Instead, almost every inscription is linked to an **EDCS** record which provides a photo when available.
+* For more information on the ancient place where an inscription was discovered, click the hyperlink to **Pleiades**, the ancient world gazetteer.
+* Over 80 percent of inscriptions in this corpus are milestones. For more information on the road segment a milestone belonged to, click the hyperlinked road segment to see its page on the **itiner-e project**.
     
-    ### Person Reports:
-    * This database tracks not only the attested office, group affiliation (e.g. to specific military units, priestly colleges etc.), and social status designation (specifically rangtitels and titles like consularis) of every individual appearing within the corpus but also in which inscriptions the information is attested. Generate a detailed prosopography report by copying a person's ID into the corresponding field and pressing Enter. You can also search for a person's ID using the Person Name field.
+### Person Reports
+* This database tracks the attested office, group affiliation (e.g., specific military units, priestly colleges, etc.), and social status designation (specifically *rangtitels* and titles like *consularis*) of every individual appearing within the corpus, alongside the specific inscriptions where this information is attested. 
+* Generate a detailed prosopography report by copying a person's ID into the corresponding field and pressing **Enter**. You can also search for a person's ID using the **Person Name** field.
 
-    ### EDCS number
-    * Have an EDCS record in mind? You can generate an inscription report using that as well, provided we have the inscription.
-    * Insert the EDCS record number,formatted as EDCS-12345678 and click Generate Report
+### EDCS Number
+* Have an EDCS record in mind? You can generate an inscription report using that as well, provided the inscription is in our database.
+* Insert the EDCS record number formatted as `EDCS-12345678` and click **Generate Report**.
 
-    ### Inscription ID
-    * Browsing the map and want to learn more about a specific inscription without scrolling to it in the search results? Type its ID here and click Generate Report!
-    * NOTE: This will delete your original search results, maybe open a new window for this if you used complex filters.
+### Inscription ID
+* Browsing the map and want to learn more about a specific inscription without scrolling to it in the search results? Type its ID here and click **Generate Report!**
+* > ⚠️ **NOTE:** This will clear your original search results. Consider opening a new window for this if you are using complex filters.
     
-    ### Lookup Person ID by Name
-    * Want to search for a specific individual without using the very helpful main search bar for some reason? Be my guest. 
-    * Insert the person's name, click the button Person Name, and look at the Select Person field to the right
-    * SELECT THE DESIRED INVIDIDUAL before clicking the button Generate Report
+### Lookup Person ID by Name
+* Want to search for a specific individual without using the main search bar? Insert the person's name, click the **Person Name** button, and look at the **Select Person** field to the right.
+* **Select the desired individual** before clicking the **Generate Report** button.
+* > 🛑 **CRITICAL:** Please manually select an individual before generating a report. The default individual at the top of the selection bar is not guaranteed to be the person you have in mind. 
     
-    * PLEASE SELECT AN INDIVIDUAL BEFORE GENERATING REPORT. THE DEFAULT INDIVIDUAL AT THE TOP OF THE SELECT BAR IS NOT GUARANTEED TO BE WHO YOU HAVE IN MIND. 
-    
-    ### Interactive Map
-    * Loading the map may take a second due to the size of the itiner-e roads layer.
-    * YOU NEED TO MANUALLY PRESS THE GENERATE MAP BUTTON EVERY TIME after your search or your person / inscription report generation to see all relevant inscriptions on an interactive map.
-    * You can click a dot on the map to view its details.
-    * In all applicable cases the EDCS record is hyperlinked.
-    * Similarly, so is the Pleiades record on the area in which the inscription is found.
-    * For all inscriptions on milestones, the details popup notes the inscription is on a milestone, names the road segment it served, and contains a link to said road segment on the itiner-e project. Sometimes itiner-e may show you a welcome screen. Click the Explore Roman Roads button to continue to the linked segment. Click the Details button on the left to see more information about the road segment (once on the itiner-e project).
-    * For all inscriptions on other inscribed objects, titulorum distributio (type of inscription) and type of support are displayed instead of road information in the details popup.
-    * Some objects bear multiple inscriptions. The details popup tells you the number of inscriptions on the support of the inscription and the sequence ID of the inscription you selected. A sequence ID of 1 means the inscription was the earliest inscription on the object, 2 means it was the second inscription on the object etc.
+### Interactive Map
+* Loading the map may take a second due to the size of the itiner-e roads layer.
+* > 🔄 **IMPORTANT:** You must manually press the **Generate Map** button *every time* after a search or after generating a person/inscription report to display the relevant inscriptions on the map.
+* Click any dot on the map to view its details.
+* In all applicable cases, the **EDCS** record and the **Pleiades** record (for the findspot area) are hyperlinked.
+* **For milestone inscriptions:** The details popup notes that the inscription is on a milestone, names the road segment it served, and links to that segment on the itiner-e project. 
+    * *Note on itiner-e:* If it shows a welcome screen, click *Explore Roman Roads* to continue to the linked segment, then click *Details* on the left for more information.
+* **For non-milestone inscriptions:** The *titulorum distributio* (type of inscription) and type of support are displayed in the details popup instead of road information.
+* **For multiple inscriptions on a single object:** The popup displays the total number of inscriptions on the support and the sequence ID of your selected inscription. A sequence ID of `1` means it was the earliest inscription on the object, `2` means it was the second, etc.
 
-    ***
+---
 
-    ### Work in Progress (WIP):
-    * Each inscription is associated with an object ID's in the database but the UI currently does not display object ID since the Object ID based search is still being developed. Once it is developed, the details popup will also show the object ID so users can easily find all inscriptions on the same object they see on the map.
-    * HOWEVER you can see all the inscriptions on the same object in chronological order if you copy the inscription ID and search it in the inscription ID field to generate the full inscription report. 
-    * You may also query the database directly for all records related to a specific object_id using sql.
+### Work in Progress (WIP)
+* Each inscription is associated with an object ID in the database, but the UI does not currently display it because Object ID-based searching is still under active development. Once finished, the details popup will display the object ID so you can easily find all companion inscriptions on the map.
+* **Current Workaround:** You can see all inscriptions on the same object in chronological order by copying the inscription ID and searching it in the **Inscription ID** field to generate a full inscription report.
+* Advanced users may also query the database directly for all records related to a specific `object_id` using SQL.
 
-    ***
+---
 
-    ### Advanced Search
-    With advanced search, you can search for multiple words by connecting them with Boolean logic operators. 
-    (Please write these in uppercase:)
-    * **AND** (e.g., 'Maximinus AND legatus' to find both terms together)
-    * **OR** (e.g., 'cohors OR legio' to find either term)
-    * **NOT** (e.g., 'Maximinus NOT Maximus' to exclude specific textual entries)
+### Advanced Search
+With advanced search, you can look for multiple words by connecting them with Boolean logic operators (which must be written in **UPPERCASE**):
 
-    * The advanced search also offers the following filters: Relevance, Material, Support, Type of Context, Number of Inscriptions on Object, Roman Province, Social Status Designation, Office/ Magistracy / Military Role, Distributio Virorum, Distributio Titulorum, Intervention Status, Method of Intervention, Extent of Intervention, Target of Intervention, Collective / Military Unit.
+* **AND** (e.g., `Maximinus AND legatus` to find entries containing both terms)
+* **OR** (e.g., `cohors OR legio` to find entries containing either term)
+* **NOT** (e.g., `Maximinus NOT Maximus` to exclude specific textual entries)
 
-    * Note on the field Relevance: some objects bear both an inscription created during the time of Maximinus Thrax and a later or earlier inscription-- For all inscriptions mentioning Maximinus Thrax or Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet Maximiniana, the relevance field is true.
-    """)
-# Main Word/Phrase Search Row with Generate Map
+#### Available Filters:
+The advanced search suite offers the following filters: 
+* Relevance, Material, Support, Type of Context, Number of Inscriptions on Object, Roman Province, Social Status Designation, Office/Magistracy/Military Role, Distributio Virorum, Distributio Titulorum, Intervention Status, Method of Intervention, Extent of Intervention, Target of Intervention, and Collective/Military Unit.
+
+> ℹ️ **Note on the "Relevance" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
