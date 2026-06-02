@@ -671,7 +671,7 @@ def execute_advanced_search(f_dict):
                 f"OR col.collective_name LIKE :{p_col})"
             )
 
-    # 3. Mapping Configuration
+   # 3. Mapping Configuration
     mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'),
         ('distributio_titulorum', 'dt.distributio_titulorum', 'Distributio Titulorum'),
@@ -680,7 +680,7 @@ def execute_advanced_search(f_dict):
         ('context_name', 'ct.context_name', 'Context Type'),
         ('province_name', 'pr.province_name', 'Province'),
         ('number_of_inscriptions', 'o.number_of_inscriptions', 'Inscriptions on Object'),
-        ('person_id', 'ip_f.person_id', 'Person'),
+        # Note: 'person_id' is skipped here and intercepted with custom operator logic below
         ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'),
         ('status_designation', 'sd.status_designation', 'Status Designation'),
         ('position_description', 'pos.position_description', 'Office/Military Role'),
@@ -691,14 +691,39 @@ def execute_advanced_search(f_dict):
         ('target_description', 'targ.target_description', 'Target of Intervention')
     ]
 
-    for key, column_sql, display_name in mapping:
-        val = f_dict.get(key, [])  # 3.1 Grab what the user selected (now defaults to a list)
+    # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
+    person_ids = f_dict.get('person_id', [])
+    person_op = f_dict.get('person_operator', 'OR')
+
+    if person_ids and person_ids != "All" and person_ids != ["All"]:
+        applied_criteria_summary.append(f"  • Person ({person_op}): {', '.join(map(str, person_ids))}")
         
-        # Skip if they didn't select anything
+        # Create dedicated parameters for the selected people
+        person_params = []
+        for idx, p_id in enumerate(person_ids):
+            p_param_name = f"param_person_id_{idx}"
+            query_params[p_param_name] = p_id
+            person_params.append(f":{p_param_name}")
+
+        if person_op == "AND":
+            # Requires a sub-query checking that the count of matched target IDs matches the total selected
+            where_clauses.append(f"""
+                (SELECT COUNT(DISTINCT ip_sub.person_id) 
+                 FROM "inscriptions_and_persons" ip_sub 
+                 WHERE ip_sub.inscription_id = mt.inscription_id 
+                 AND ip_sub.person_id IN ({', '.join(person_params)})) = {len(person_ids)}
+            """)
+        else:
+            # Traditional OR mapping logic using simple inclusion matching
+            where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
+
+    # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
+    for key, column_sql, display_name in mapping:
+        val = f_dict.get(key, [])
+        
         if not val or val == "All" or val == ["All"]:
             continue
 
-        # 3.2 If it is a single input
         if not isinstance(val, list):
             val_str = str(val).strip()
             if not val_str:
@@ -711,16 +736,12 @@ def execute_advanced_search(f_dict):
             p_name = f"param_{key}"
             where_clauses.append(f"{column_sql} = :{p_name}")
             query_params[p_name] = val
-
-        # 3.3 If it IS a list from a Streamlit multi-select widget
         else:
-            # Add to your results summary text
             applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
             
-            # Make unique placeholders for every item in the list
             param_names = []
             for idx, item in enumerate(val):
-                p_name = f"param_{key}_{idx}"  # e.g., param_material_name_0
+                p_name = f"param_{key}_{idx}"
                 param_names.append(f":{p_name}")
                 query_params[p_name] = item
             
@@ -1215,14 +1236,12 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
     st.markdown("### Filters")
     
     # --- DYNAMIC PERSON DATABASE LOOKUP ---
-    # Fetch data directly from your persons table using your existing app pattern
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
         db_persons = cursor.fetchall()
         conn.close()
-        # Build dictionary map: {person_id: person_name}
         person_options = {row[0]: row[1] for row in db_persons}
     except Exception:
         person_options = {}
@@ -1256,6 +1275,15 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             "Person:",
             options=list(person_options.keys()),
             format_func=lambda x: person_options[x]
+        )
+        
+        # Sub-toggle to explicitly let users choose how multiple people choices interact
+        f_person_operator = st.radio(
+            "Match selected people using:",
+            options=["OR (Any of these people)", "AND (All of these people)"],
+            horizontal=True,
+            index=0,
+            label_visibility="collapsed" # Keeps UI clean right beneath the dropdown
         )
         
         # 9. Distributio Virorum (vd.virorum_distributio)
@@ -1294,6 +1322,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             'province_name': f_prov,
             'number_of_inscriptions': f_num_ins,
             'person_id': f_person_id,
+            'person_operator': "AND" if "AND" in f_person_operator else "OR", # Safely passing the operator
             'virorum_distributio': f_vir_dist,
             'status_designation': f_status,
             'position_description': f_pos,
