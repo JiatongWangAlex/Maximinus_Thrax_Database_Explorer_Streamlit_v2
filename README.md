@@ -35,15 +35,7 @@
     * *Note on itiner-e:* If it shows a welcome screen, click *Explore Roman Roads* to continue to the linked segment, then click *Details* on the left for more information.
 * **For non-milestone inscriptions:** The *titulorum distributio* (type of inscription) and type of support are displayed in the details popup instead of road information.
 * **For multiple inscriptions on a single object:** The popup displays the total number of inscriptions on the support and the sequence ID of your selected inscription. A sequence ID of `1` means it was the earliest inscription on the object, `2` means it was the second, etc.
-
----
-
-### Work in Progress (WIP)
-* Each inscription is associated with an object ID in the database, but the UI does not currently display it because Object ID-based searching is still under active development. Once finished, the details popup will display the object ID so you can easily find all companion inscriptions on the map.
-* **Current Workaround:** You can see all inscriptions on the same object in chronological order by copying the inscription ID and searching it in the **Inscription ID** field to generate a full inscription report.
-* Advanced users may also query the database directly for all records related to a specific `object_id` using SQL.
-
----
+* * You can see all the inscriptions on the same object in chronological order if you click on the hyperlinked inscription ID. This will open a report in a new window. 
 
 ### Advanced Search
 With advanced search, you can look for multiple words by connecting them with Boolean logic operators (which must be written in **UPPERCASE**):
