@@ -1359,7 +1359,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
                 'intervention_status': f_interv_stat,
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
-                'target_description': f_interv_tgt
+                'target_description': f_interv_tgt,
                 'status_tituli_name': f_status_tituli
             }
             execute_advanced_search(form_payload)
