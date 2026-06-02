@@ -1174,14 +1174,15 @@ st.markdown("### Search Results")
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     
-    # 1. Clean the carriage returns
+    # Clean up standard carriage returns
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
     
-    # 2. Swap newlines for HTML break tags to force a perfectly tight layout
-    html_layout = clean_text.replace("\n", "<br>")
+    # Inject a Zero-Width Space (\u200b) right into the hyphens.
+    # This renders as a perfect solid line visually, but tricks markdown 
+    # into thinking it's regular text so it NEVER blows up into a header.
+    safe_markdown_text = clean_text.replace("------ /", "---\u200b--- /")
+    safe_markdown_text = safe_markdown_text.replace("----- /", "--\u200b--- /")
+    safe_markdown_text = safe_markdown_text.replace("---- /", "--\u200b-- /")
     
-    # 3. Wrap it in a safe tag so Markdown cannot process it as a header
-    safe_rendered_text = f"<p style='font-size:inherit; font-weight:normal;'>{html_layout}</p>"
-    
-    # 4. Display with HTML allowed
-    st.markdown(safe_rendered_text, unsafe_allow_html=True)
+    # Render with pure markdown so all your bolding and metadata work perfectly
+    st.markdown(safe_markdown_text)
