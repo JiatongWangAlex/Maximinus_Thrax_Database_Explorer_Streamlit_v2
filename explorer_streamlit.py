@@ -1085,16 +1085,15 @@ if "hide_search_banner" not in st.session_state:
     st.session_state.hide_search_banner = False
 
 if not st.session_state.hide_search_banner:
-    with st.status("ATTENTION", expanded=True, state="error"):
-        st.markdown("""
-        ### PLEASE PRESS SEARCH OR GENERATE MAP TO USE THE CORRESPONDING FUNCTION
-        **PRESSING ENTER ALONE DOES NOT WORK**
-        """)
+    # st.warning provides the classic yellow background alert frame
+    with st.warning("⚠️ ATTENTION"):
+        st.write("PLEASE PRESS SEARCH OR GENERATE MAP")
+        st.write("ENTER ALONE DOES NOT TRIGGER THE FUNCTIONS")
         
+        # Space out the button nicely inside the yellow frame
         if st.button("I understand", use_container_width=True):
             st.session_state.hide_search_banner = True
             st.rerun()
-st.subheader("Maximinus Thrax Database Explorer")
 
 query_params = st.query_params
 
