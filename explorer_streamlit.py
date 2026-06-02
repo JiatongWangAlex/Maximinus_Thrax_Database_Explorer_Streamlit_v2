@@ -1246,7 +1246,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
     except Exception:
         person_options = {}
 
-   col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
     with col1:
         # 1. Relevance (mt.relevance_index)
         f_rel = st.selectbox("Relevance:", get_filter_options("Max_Thrax", "relevance_index"))
