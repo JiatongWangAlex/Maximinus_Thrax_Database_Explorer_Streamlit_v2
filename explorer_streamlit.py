@@ -744,7 +744,7 @@ def execute_advanced_search(f_dict):
         
         # 1. Build a clean, structured Markdown header log tracking query parameters
         header_lines = ["## Advanced Search Results\n"]
-        header_lines.append("**Active Search Criteria Applied:**\n")
+        header_lines.append("**Filters Applied:**\n")
         if applied_criteria_summary:
             header_lines.extend([f"{c}\n" for c in applied_criteria_summary])
         else:
