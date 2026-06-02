@@ -1288,7 +1288,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         
         # --- VISUAL ALIGNMENT INJECTOR ---
     
-        st.markdown("<div style='padding-top: 30px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-top: 25px;'></div>", unsafe_allow_html=True)
         
         # 9. Distributio Virorum (vd.virorum_distributio) -> SCOOTED DOWN
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
