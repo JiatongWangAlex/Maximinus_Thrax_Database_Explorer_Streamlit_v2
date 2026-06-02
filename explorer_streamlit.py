@@ -1033,12 +1033,15 @@ def generate_active_map():
             roads_data,
             name="Itinere Land Roads",
             show=True,
+            overlay=True,
+            control=True,
             style_function=lambda feature: {
                 "color": "#ff33a1",
                 "weight": 2.2,
                 "opacity": 0.8,
             }
         ).add_to(mymap)
+    # -------------------------------------------------------------
     # -------------------------------------------------------------
 
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
