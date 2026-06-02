@@ -1174,11 +1174,14 @@ st.markdown("### Search Results")
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     
-    # Clean up hidden formatting codes
-    clean_results = raw_results.replace("\r\n", "\n").replace("\r", "\n")
+    # 1. Clean the carriage returns
+    clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
     
-    # Force every line break to be a tight, soft markdown break
-    # This keeps your dashes completely intact, stops double spacing, and kills the header bug
-    tight_layout_text = clean_results.replace("\n", "  \n")
+    # 2. Swap newlines for HTML break tags to force a perfectly tight layout
+    html_layout = clean_text.replace("\n", "<br>")
     
-    st.markdown(tight_layout_text)
+    # 3. Wrap it in a safe tag so Markdown cannot process it as a header
+    safe_rendered_text = f"<p style='font-size:inherit; font-weight:normal;'>{html_layout}</p>"
+    
+    # 4. Display with HTML allowed
+    st.markdown(safe_rendered_text, unsafe_allow_html=True)
