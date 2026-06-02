@@ -103,18 +103,20 @@ def run_standard_search(user_input):
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
-                   r_roads.road_name, r_roads.itinere_id
+                   r_roads.road_name, r_roads.itinere_id,
+                   st.status_tituli_name -- <--- Added conservation status field here
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
-            LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
+            LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
@@ -137,6 +139,9 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            -- Physically moved right below Material in the code layout:
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             
@@ -173,7 +178,6 @@ def run_standard_search(user_input):
             UNION ALL SELECT * FROM Sec3_Intervention_Details
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
-
         
         if is_unit_query:
             search_terms = re.findall(r'\w+', converted_input.lower())
@@ -538,6 +542,7 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "targets" targ ON iat.target_id = targ.target_id
         LEFT JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
         LEFT JOIN "collectives" col ON ic.collective_id = col.collective_id
+        LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
         WHERE 1=1
     """
 
@@ -689,6 +694,7 @@ def execute_advanced_search(f_dict):
         ('method_description', 'meth.method_description', 'Method of Intervention'),
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
         ('target_description', 'targ.target_description', 'Target of Intervention')
+        ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
     ]
 
     # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
@@ -788,15 +794,17 @@ def execute_advanced_search(f_dict):
             SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
-                   r_roads.road_name, r_roads.itinere_id
+                   r_roads.road_name, r_roads.itinere_id,
+                   st.status_tituli_name -- <--- Added conservation status field here
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
-            LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
+            LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
@@ -819,6 +827,9 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            -- Physically moved right below Material in the code layout:
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             
@@ -856,6 +867,7 @@ def execute_advanced_search(f_dict):
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
 
+        
         # 3. Stitch every matching custom card together sequentially
         for rank, ins_id in enumerate(all_matched_ids, 1):
             out_str.append(f"## Result {rank}\n")
@@ -888,18 +900,20 @@ def fetch_metadata_by_id(inscription_id):
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
-                   r_roads.road_name, r_roads.itinere_id
+                   r_roads.road_name, r_roads.itinere_id,
+                   st.status_tituli_name -- <--- Added conservation status field here
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
-            LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
+            LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
@@ -922,6 +936,9 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            -- Physically moved right below Material in the code layout:
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
             
@@ -1255,7 +1272,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         f_rel = st.selectbox("Relevance:", get_filter_options("Max_Thrax", "relevance_index"))
         
         # 2. Distributio Titulorum (dt.distributio_titulorum)
-        f_dist_tit = st.multiselect("Distributio Titulorum:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
+        f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
         
         # 3. Material (m.material_name)
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
@@ -1294,7 +1311,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
         
         # 9. Distributio Virorum (vd.virorum_distributio) -> NOW ALIGNED
-        f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
+        f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
         
         # 10. Status Designation (sd.status_designation)
         f_status = st.multiselect("Status Designation:", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
@@ -1317,7 +1334,9 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         
         # 16. Target of Intervention (targ.target_description)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
-
+        
+        # 17. Status Tituli (st.status_tituli_name)
+        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"])
     col1, col2, col3 = st.columns([2, 2, 3])
 
     with col1:
@@ -1341,6 +1360,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
                 'target_description': f_interv_tgt
+                'status_tituli_name': f_status_tituli
             }
             execute_advanced_search(form_payload)
 
