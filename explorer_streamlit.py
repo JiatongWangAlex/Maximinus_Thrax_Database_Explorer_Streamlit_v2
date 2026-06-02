@@ -1246,7 +1246,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
     except Exception:
         person_options = {}
 
-    col1, col2, col3 = st.columns(3)
+   col1, col2, col3 = st.columns(3)
     with col1:
         # 1. Relevance (mt.relevance_index)
         f_rel = st.selectbox("Relevance:", get_filter_options("Max_Thrax", "relevance_index"))
@@ -1257,11 +1257,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         # 3. Material (m.material_name)
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
         
-        # --- VISUAL ALIGNMENT INJECTOR ---
-        # This matches the height of the radio toggle in column 2 so that item 4 lines up with item 9
-        st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
-        
-        # 4. Support Type (s.support_name) -> NOW LINED UP WITH DISTRIBUTIO VIRORUM
+        # 4. Support Type (s.support_name) -> UNTOUCHED, sits in its original natural position
         f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
         
         # 5. Context Type (ct.context_name)
@@ -1281,7 +1277,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             format_func=lambda x: person_options[x]
         )
         
-        # The toggle causing the offset in Screenshot 2026-06-02 at 18.22.24.png
+        # Radio toggle underneath Person
         f_person_operator = st.radio(
             "Match selected people using:",
             options=["OR (Any of these people)", "AND (All of these people)"],
@@ -1290,7 +1286,11 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             label_visibility="collapsed"
         )
         
-        # 9. Distributio Virorum (vd.virorum_distributio) -> NOW LINED UP WITH SUPPORT TYPE
+        # --- VISUAL ALIGNMENT INJECTOR ---
+        # This scoots Distributio Virorum DOWN so it lines up beautifully with Support Type
+        st.markdown("<div style='padding-top: 14px;'></div>", unsafe_allow_html=True)
+        
+        # 9. Distributio Virorum (vd.virorum_distributio) -> SCOOTED DOWN
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
         
         # 10. Status Designation (sd.status_designation)
