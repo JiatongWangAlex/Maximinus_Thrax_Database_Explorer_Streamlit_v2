@@ -926,7 +926,8 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
     ## How to Use
 
     ### Keyword Search
-    * Use the top bar to search for inscriptions using a keyword or phrase. This report contains some relevant metadata.
+    * Enter a keyword or phrase in the top bar and press the Search Button (pressing Enter alone does not work). 
+    * A report will be generated for every matching inscription. This report contains some relevant metadata.
     * In addition, it also records interventions to the each inscription, and the target, extent and method of each intervention.
     * Every individual mentioned in an inscription is hyperlinked to their database internal record. Click on the link to explore!
     * Legal reasons aside, since this entire database is smaller than one photograph, we do not host photographs. Almost every inscription is linked to an EDCS record which provides a photo when available.
