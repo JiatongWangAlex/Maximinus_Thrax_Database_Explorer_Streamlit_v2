@@ -1145,13 +1145,7 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
     * For all inscriptions on milestones, the details popup notes the inscription is on a milestone, names the road segment it served, and contains a link to said road segment on the itiner-e project. Sometimes itiner-e may show you a welcome screen. Click the Explore Roman Roads button to continue to the linked segment. Click the Details button on the left to see more information about the road segment (once on the itiner-e project).
     * For all inscriptions on other inscribed objects, titulorum distributio (type of inscription) and type of support are displayed instead of road information in the details popup.
     * Some objects bear multiple inscriptions. The details popup tells you the number of inscriptions on the support of the inscription and the sequence ID of the inscription you selected. A sequence ID of 1 means the inscription was the earliest inscription on the object, 2 means it was the second inscription on the object etc.
-
-    ***
-
-    ### Work in Progress (WIP):
-    * Each inscription is associated with an object ID's in the database but the UI currently does not display object ID since the Object ID based search is still being developed. Once it is developed, the details popup will also show the object ID so users can easily find all inscriptions on the same object they see on the map.
-    * HOWEVER you can see all the inscriptions on the same object in chronological order if you copy the inscription ID and search it in the inscription ID field to generate the full inscription report. 
-    * You may also query the database directly for all records related to a specific object_id using sql.
+    * You can see all the inscriptions on the same object in chronological order if you click on the hyperlinked inscription ID. This will open a report in a new window.
 
     ***
 
