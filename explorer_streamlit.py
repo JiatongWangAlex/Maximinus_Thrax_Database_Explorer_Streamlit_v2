@@ -1074,36 +1074,36 @@ with col_s4:
 # =========================================================
 # ADVANCED SEARCH WRAPPER
 # =========================================================
-with st.expander("🔍 Click to Expand / Collapse Advanced Multi-Criteria Search Filters", expanded=False):
+with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=False):
     st.markdown("### Inscription Text Query Filters")
     
     # Text search assigned to its own private, isolated row context
     f_text = st.text_input("Inscription Text Query (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
     
     st.markdown("---")
-    st.markdown("### Multi-Criteria Context & Object Dropdown Filters")
+    st.markdown("### Filters")
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        f_rel = st.selectbox("Relevance Index:", get_filter_options("Max_Thrax", "relevance_index"))
-        f_prov = st.selectbox("Roman Province Name:", get_filter_options("provinces", "province_name"))
+        f_rel = st.selectbox("Relevant?:", get_filter_options("Max_Thrax", "relevance_index"))
+        f_prov = st.selectbox("Province:", get_filter_options("provinces", "province_name"))
         f_num_ins = st.selectbox("Inscriptions on Object (Count):", get_filter_options("objects", "number_of_inscriptions"))
-        f_sup_name = st.selectbox("Support Classification Type:", get_filter_options("support", "support_name"))
-        f_obj_mat = st.selectbox("Material Composition:", get_filter_options("materials", "material_name"))
+        f_sup_name = st.selectbox("Support:", get_filter_options("support", "support_name"))
+        f_obj_mat = st.selectbox("Material:", get_filter_options("materials", "material_name"))
 
     with col2:
-        f_in_con = st.selectbox("Context Type Classification:", get_filter_options("context_types", "context_name"))
-        f_dist_tit = st.selectbox("Distributio Titulorum Value:", get_filter_options("distributio_titulorum", "distributio_titulorum"))
-        f_vir_dist = st.selectbox("Distributio Virorum Value:", get_filter_options("virorum_distributio", "virorum_distributio"))
-        f_status = st.selectbox("Social Status Designation:", get_filter_options("status_designations", "status_designation"))
-        f_pos = st.selectbox("Office / Military Role Description:", get_filter_options("positions", "position_description"))
+        f_in_con = st.selectbox("Context:", get_filter_options("context_types", "context_name"))
+        f_dist_tit = st.selectbox("Distributio Titulorum:", get_filter_options("distributio_titulorum", "distributio_titulorum"))
+        f_vir_dist = st.selectbox("Distributio Virorum:", get_filter_options("virorum_distributio", "virorum_distributio"))
+        f_status = st.selectbox("Status Designation:", get_filter_options("status_designations", "status_designation"))
+        f_pos = st.selectbox("Office / Military Role:", get_filter_options("positions", "position_description"))
 
     with col3:
-        f_unit = st.selectbox("Collective / Military Unit:", get_filter_options("collectives", "collective_name"))
-        f_interv_stat = st.selectbox("Archaeological Intervention Status:", get_filter_options("Max_Thrax", "intervention_status"))
+        f_unit = st.selectbox("Organization / Military Unit:", get_filter_options("collectives", "collective_name"))
+        f_interv_stat = st.selectbox("Intervention?:", get_filter_options("Max_Thrax", "intervention_status"))
         f_interv_meth = st.selectbox("Method of Intervention:", get_filter_options("methods", "method_description"))
         f_interv_ext = st.selectbox("Extent of Intervention:", get_filter_options("extent", "extent_description"))
-        f_interv_tgt = st.selectbox("Target Focus of Intervention:", get_filter_options("targets", "target_description"))
+        f_interv_tgt = st.selectbox("Target of Intervention:", get_filter_options("targets", "target_description"))
 
     if st.button("Execute Advanced Filter Search", key="btn_advanced_filter_search", use_container_width=True):
         form_payload = {
