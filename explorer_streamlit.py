@@ -621,7 +621,7 @@ def execute_advanced_search(f_dict):
             
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
             
-    # Assemble complete SQL string
+    # Assemble complete sql string
     if where_clauses:
         final_sql = base_sql + " AND " + " AND ".join(where_clauses) + " ORDER BY mt.inscription_id DESC;"
     else:
