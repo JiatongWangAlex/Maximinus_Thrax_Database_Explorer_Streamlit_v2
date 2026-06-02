@@ -1287,8 +1287,8 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         )
         
         # --- VISUAL ALIGNMENT INJECTOR ---
-        # This scoots Distributio Virorum DOWN so it lines up beautifully with Support Type
-        st.markdown("<div style='padding-top: 14px;'></div>", unsafe_allow_html=True)
+    
+        st.markdown("<div style='padding-top: 42px;'></div>", unsafe_allow_html=True)
         
         # 9. Distributio Virorum (vd.virorum_distributio) -> SCOOTED DOWN
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
