@@ -1213,7 +1213,7 @@ with col_s4:
             generate_person_report(extracted_id)
     else:
         pid_input_var = st.text_input("Person ID Dossier Selector:", placeholder="e.g. 29")
-        if st.button("Generate Person Report", use_container_width=True):
+        if st.button("Generate Person Report", use_container_width=True, type="primary"):
             generate_person_report(pid_input_var)
 # =========================================================
 # ADVANCED SEARCH WRAPPER
