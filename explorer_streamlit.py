@@ -103,12 +103,13 @@ def run_standard_search(user_input):
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+                   mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
-            LEFT JOIN "support" s               ON mt.support_id = s.support_id
+            LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
@@ -117,7 +118,20 @@ def run_standard_search(user_input):
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
+                   '**Record Number:** ' || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
+                       ELSE '' 
+                   END || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL AND line_ref IS NOT NULL THEN ' ' || line_ref
+                       WHEN line_ref IS NOT NULL THEN line_ref
+                       WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
+                       ELSE ''
+                   END || 
+                   ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -617,12 +631,13 @@ def execute_advanced_search(f_dict):
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+                   mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
-            LEFT JOIN "support" s               ON mt.support_id = s.support_id
+            LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
@@ -631,7 +646,20 @@ def execute_advanced_search(f_dict):
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
+                   '**Record Number:** ' || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
+                       ELSE '' 
+                   END || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL AND line_ref IS NOT NULL THEN ' ' || line_ref
+                       WHEN line_ref IS NOT NULL THEN line_ref
+                       WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
+                       ELSE ''
+                   END || 
+                   ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -706,12 +734,13 @@ def fetch_metadata_by_id(inscription_id):
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
-            SELECT mt.inscription_id, mt.inscription_ref, mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, -- <--- Added line_ref here
+                   mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
-            LEFT JOIN "support" s               ON mt.support_id = s.support_id
+            LEFT JOIN "support" s                ON mt.support_id = s.support_id
             LEFT JOIN "materials" m             ON mt.material_id = m.material_id
             LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
             LEFT JOIN "places" pl               ON mt.place_id = pl.place_id
@@ -720,7 +749,20 @@ def fetch_metadata_by_id(inscription_id):
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, '**Record Number:** ' || CASE WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' ELSE 'N/A' END || ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
+                   '**Record Number:** ' || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
+                       ELSE '' 
+                   END || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL AND line_ref IS NOT NULL THEN ' ' || line_ref
+                       WHEN line_ref IS NOT NULL THEN line_ref
+                       WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
+                       ELSE ''
+                   END || 
+                   ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Corrected Lemmas:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
