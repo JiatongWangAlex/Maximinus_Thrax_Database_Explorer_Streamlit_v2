@@ -1183,18 +1183,18 @@ with col_text3:
     if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
         generate_active_map()
 # Full Reports Panel Layout Execution Shell
-st.markdown("### Full Inscription Report and Person Report Generator")
+st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
 with col_s1:
     ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input")
-    if st.button("Generate Full Inscription Report (EDCS)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
             # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
 with col_s2:
     id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
-    if st.button("Generate Full Inscription Report (ID)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
