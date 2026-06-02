@@ -19,16 +19,16 @@
 
 ### Inscription ID
 * Browsing the map and want to learn more about a specific inscription without scrolling to it in the search results? Type its ID here and click **Generate Report!**
-* > ⚠️ **NOTE:** This will clear your original search results. Consider opening a new window for this if you are using complex filters.
+* > **NOTE:** This will clear your original search results. Consider opening a new window for this if you are using complex filters.
     
 ### Lookup Person ID by Name
 * Want to search for a specific individual without using the main search bar? Insert the person's name, click the **Person Name** button, and look at the **Select Person** field to the right.
 * **Select the desired individual** before clicking the **Generate Report** button.
-* > 🛑 **CRITICAL:** Please manually select an individual before generating a report. The default individual at the top of the selection bar is not guaranteed to be the person you have in mind. 
+* > **NOTE:** Please manually select an individual before generating a report. The default individual at the top of the selection bar is not guaranteed to be the person you have in mind. 
     
 ### Interactive Map
 * Loading the map may take a second due to the size of the itiner-e roads layer.
-* > 🔄 **IMPORTANT:** You must manually press the **Generate Map** button *every time* after a search or after generating a person/inscription report to display the relevant inscriptions on the map.
+* > **NOTE:** You must manually press the **Generate Map** button *every time* after a search or after generating a person/inscription report to display the relevant inscriptions on the map.
 * Click any dot on the map to view its details.
 * In all applicable cases, the **EDCS** record and the **Pleiades** record (for the findspot area) are hyperlinked.
 * **For milestone inscriptions:** The details popup notes that the inscription is on a milestone, names the road segment it served, and links to that segment on the itiner-e project. 
@@ -56,4 +56,4 @@ With advanced search, you can look for multiple words by connecting them with Bo
 The advanced search suite offers the following filters: 
 * Relevance, Material, Support, Type of Context, Number of Inscriptions on Object, Roman Province, Social Status Designation, Office/Magistracy/Military Role, Distributio Virorum, Distributio Titulorum, Intervention Status, Method of Intervention, Extent of Intervention, Target of Intervention, and Collective/Military Unit.
 
-> ℹ️ **Note on the "Relevance" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
+> **Note on the "Relevance" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
