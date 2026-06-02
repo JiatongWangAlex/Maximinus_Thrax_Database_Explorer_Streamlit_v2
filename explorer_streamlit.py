@@ -1200,7 +1200,7 @@ with col_s2:
         fetch_metadata_by_id(id_input_var)
 with col_s3:
     pname_input_var = st.text_input("Lookup Person ID by Name:", placeholder="e.g. Maximinus")
-    if st.button("Find Person ID", use_container_width=True):
+    if st.button("Find Person", use_container_width=True):
         lookup_person_options(pname_input_var)
 
 with col_s4:
@@ -1212,7 +1212,7 @@ with col_s4:
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
     else:
-        pid_input_var = st.text_input("Person ID Dossier Selector:", placeholder="e.g. 29")
+        pid_input_var = st.text_input("Person Selector:", placeholder="e.g. 29")
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
             generate_person_report(pid_input_var)
 # =========================================================
