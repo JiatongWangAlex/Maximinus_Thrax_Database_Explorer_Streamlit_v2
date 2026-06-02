@@ -1114,10 +1114,12 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
 * A report will be generated for every matching inscription containing relevant metadata.
 * It records interventions to each inscription, as well as the target, extent, and method of each intervention.
 * Every individual mentioned in an inscription is hyperlinked to their internal database record. Click on the link to explore!
-* Legal reasons aside, since this entire database is smaller than one photograph, we do not host photos. Instead, almost every inscription is linked to an **EDCS** record which provides a photo when available.
+* Legal reasons aside, since this entire database is smaller than one hi-res photograph, we do not host photos. Instead, almost every inscription is linked to an **EDCS** record which provides a photo when available.
 * For more information on the ancient place where an inscription was discovered, click the hyperlink to **Pleiades**, the ancient world gazetteer.
 * Over 80 percent of inscriptions in this corpus are milestones. For more information on the road segment a milestone belonged to, click the hyperlinked road segment to see its page on the **itiner-e project**.
-    
+* Due to the nature of the corpus, all Dates are in CE / AD / d.C. 
+* Likewise, currently no separate field explaining the reason for the dating of an inscription exists due to the nature of the corpus. Every relevant inscrption is dated by internal evidence to a period during the reign of Maximinus Thrax.
+
 ### Person Reports
 * This database tracks the attested office, group affiliation (e.g., specific military units, priestly colleges, etc.), and social status designation (specifically *rangtitels* and titles like *consularis*) of every individual appearing within the corpus, alongside the specific inscriptions where this information is attested. 
 * Generate a detailed prosopography report by copying a person's ID into the corresponding field and pressing **Enter**. You can also search for a person's ID using the **Person Name** field.
