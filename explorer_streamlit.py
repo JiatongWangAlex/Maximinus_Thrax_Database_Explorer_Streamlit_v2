@@ -586,17 +586,41 @@ def execute_advanced_search(f_dict):
     ]
 
     for key, column_sql, display_name in mapping:
-        val = f_dict.get(key, '').strip()
-        if val and val != "All":
-            applied_criteria_summary.append(f"  • {display_name}: '{val}'")
-            if key == 'relevance_index':
-                val = 1 if val in ("True", "1") else 0
-            if key == 'intervention_status':
-                val = 1 if val in ("True", "1") else 0
+        val = f_dict.get(key, [])  # 1. Grab what the user selected (now defaults to a list)
+        
+        # Skip if they didn't select anything
+        if not val or val == "All" or val == ["All"]:
+            continue
+
+        # 2. If it is a single input
+        if not isinstance(val, list):
+            val_str = str(val).strip()
+            if not val_str:
+                continue
+                
+            applied_criteria_summary.append(f"  • {display_name}: '{val_str}'")
+            if key in ('relevance_index', 'intervention_status'):
+                val = 1 if val_str in ("True", "1") else 0
+                
             p_name = f"param_{key}"
             where_clauses.append(f"{column_sql} = :{p_name}")
             query_params[p_name] = val
 
+        # 3 If it IS a list from a Streamlit multi-select widget
+        else:
+            # Add to your results summary text
+            applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
+            
+            # Make unique placeholders for every item in the list
+            param_names = []
+            for idx, item in enumerate(val):
+                p_name = f"param_{key}_{idx}"  # e.g., param_material_name_0
+                param_names.append(f":{p_name}")
+                query_params[p_name] = item
+
+            
+            where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
+            
     # Assemble complete SQL string
     if where_clauses:
         final_sql = base_sql + " AND " + " AND ".join(where_clauses) + " ORDER BY mt.inscription_id DESC;"
@@ -1091,32 +1115,37 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
     
     col1, col2, col3 = st.columns(3)
     with col1:
+        # Binary choice
         f_rel = st.selectbox("Relevant?:", get_filter_options("Max_Thrax", "relevance_index"))
-        f_prov = st.selectbox("Province:", get_filter_options("provinces", "province_name"))
-        f_num_ins = st.selectbox("Inscriptions on Object (Count):", get_filter_options("objects", "number_of_inscriptions"))
-        f_sup_name = st.selectbox("Support:", get_filter_options("support", "support_name"))
-        f_obj_mat = st.selectbox("Material:", get_filter_options("materials", "material_name"))
+        
+        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
+        f_num_ins = st.multiselect("Inscriptions on Object (Count):", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
+        f_sup_name = st.multiselect("Support:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
+        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
 
     with col2:
-        f_in_con = st.selectbox("Context:", get_filter_options("context_types", "context_name"))
-        f_dist_tit = st.selectbox("Distributio Titulorum:", get_filter_options("distributio_titulorum", "distributio_titulorum"))
-        f_vir_dist = st.selectbox("Distributio Virorum:", get_filter_options("virorum_distributio", "virorum_distributio"))
-        f_status = st.selectbox("Status Designation:", get_filter_options("status_designations", "status_designation"))
-        f_pos = st.selectbox("Office / Military Role:", get_filter_options("positions", "position_description"))
+        f_in_con = st.multiselect("Context:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"])
+        f_dist_tit = st.multiselect("Distributio Titulorum:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
+        f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
+        f_status = st.multiselect("Status Designation:", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
+        f_pos = st.multiselect("Office / Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
 
     with col3:
-        f_unit = st.selectbox("Organization / Military Unit:", get_filter_options("collectives", "collective_name"))
+        f_unit = st.multiselect("Organization / Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        
+        # Binary choice
         f_interv_stat = st.selectbox("Intervention?:", get_filter_options("Max_Thrax", "intervention_status"))
-        f_interv_meth = st.selectbox("Method of Intervention:", get_filter_options("methods", "method_description"))
-        f_interv_ext = st.selectbox("Extent of Intervention:", get_filter_options("extent", "extent_description"))
-        f_interv_tgt = st.selectbox("Target of Intervention:", get_filter_options("targets", "target_description"))
+        
+        f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"])
+        f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"])
+        f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
 
     if st.button("Execute Advanced Filter Search", key="btn_advanced_filter_search", use_container_width=True):
         form_payload = {
             'text': f_text,
             'relevance_index': f_rel,
-            'province_name': f_prov,
-            'number_of_inscriptions': f_num_ins,
+            'province_name': f_prov,         # This now safely sends a list!
+            'number_of_inscriptions': f_num_ins, # This now safely sends a list!
             'support_name': f_sup_name,
             'material_name': f_obj_mat,
             'context_name': f_in_con,
