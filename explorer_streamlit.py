@@ -142,7 +142,7 @@ def run_standard_search(user_input):
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
@@ -310,21 +310,30 @@ def run_ref_search(ref_query):
         cursor = conn.cursor()
         cursor.execute('SELECT inscription_id, inscription_text, inscription_ref, line_ref, further_bibliography FROM "Max_Thrax" WHERE inscription_ref LIKE ?;', (f"%{ref_query.strip()}%",))
         rows = cursor.fetchall()
-        conn.close()
+        
+        # --- DO NOT CLOSE THE CONNECTION YET ---
 
         if not rows:
             st.session_state.search_results = f"No inscriptions found matching reference: {ref_query}"
+            st.session_state.active_inscription_ids = [] # Explicitly clear old map markers out
+            conn.close() # Safe to close on an empty exit branch
             return
 
+        # Securely lock the IDs into the session tracking layer while rows is alive
         st.session_state.active_inscription_ids = [row[0] for row in rows]
+        
         out_str = [f"Found {len(rows)} matching inscription reference records:\n", "="*70 + "\n\n"]
         for idx, row in enumerate(rows, 1):
             ins_id, ins_text, ins_ref, line_ref, further_bib = row
             out_str.append(f"[{idx}] {ins_ref} {line_ref if line_ref else ''} | ID: {ins_id}\n\nText:\n{ins_text}\n\nBibliography:\n{further_bib}\n" + "-"*70 + "\n\n")
         st.session_state.search_results = "".join(out_str)
+        
+        # --- CLOSE CONNECTION SAFELY HERE ---
+        conn.close()
+        
     except Exception as e:
         st.session_state.search_results = f"Reference Search Error: {e}"
-
+        
 def lookup_person_options(name_query):
     if not name_query.strip():
         st.warning("Please enter a name to match.")
@@ -802,7 +811,7 @@ def execute_advanced_search(f_dict):
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
@@ -905,7 +914,7 @@ def fetch_metadata_by_id(inscription_id):
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
-            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itinere-project.org/roads/' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Header AS (
