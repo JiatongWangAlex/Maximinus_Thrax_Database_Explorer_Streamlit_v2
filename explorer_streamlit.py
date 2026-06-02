@@ -693,7 +693,7 @@ def execute_advanced_search(f_dict):
         ('intervention_status', 'mt.intervention_status', 'Intervention Status'),
         ('method_description', 'meth.method_description', 'Method of Intervention'),
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
-        ('target_description', 'targ.target_description', 'Target of Intervention')
+        ('target_description', 'targ.target_description', 'Target of Intervention'),
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
     ]
 
