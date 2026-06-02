@@ -1194,13 +1194,13 @@ with col_s1:
             run_ref_search(ref_input_var)
 with col_s2:
     id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
-    if st.button("Generate Full Inscription Report (ID)", use_container_width=True):
+    if st.button("Generate Full Inscription Report (ID)", use_container_width=True, type="primary"):
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
 with col_s3:
     pname_input_var = st.text_input("Lookup Person ID by Name:", placeholder="e.g. Maximinus")
-    if st.button("Person Name", use_container_width=True):
+    if st.button("Find Person ID", use_container_width=True):
         lookup_person_options(pname_input_var)
 
 with col_s4:
@@ -1208,7 +1208,7 @@ with col_s4:
         options_list = [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         selected_option = st.selectbox("Select Person:", options_list)
         
-        if st.button("Generate Person Report", use_container_width=True):
+        if st.button("Generate Person Report", use_container_width=True, type="primary"):
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
     else:
