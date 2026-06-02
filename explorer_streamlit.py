@@ -1172,4 +1172,13 @@ if st.session_state.trigger_map_html:
 st.markdown("### Search Results")
 
 with st.container(height=520, border=True):
-    st.markdown(st.session_state.search_results)
+    raw_results = st.session_state.search_results
+    
+    # Clean up the ghost characters and split the text by its lines
+    clean_results = raw_results.replace("\r\n", "\n").replace("\r", "\n")
+    lines = clean_results.split("\n")
+    
+    # Print each line perfectly on its own row
+    for line in lines:
+        if line.strip():  # If the line isn't totally empty
+            st.markdown(line)
