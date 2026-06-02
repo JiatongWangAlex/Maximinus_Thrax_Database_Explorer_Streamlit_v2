@@ -984,8 +984,13 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
 # Main Word/Phrase Search Row with Generate Map
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2, col_text3 = st.columns([2, 1, 1])
-with col_text1:
-    text_input_var = st.text_input("Enter search text:", key="main_text_input", label_visibility="collapsed")
+with col_text1:    
+    text_input_var = st.text_input(
+        "Enter search text:", 
+        placeholder="e.g., Serennianus",
+        key="main_text_input", 
+        label_visibility="collapsed"
+    )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True):
         run_standard_search(text_input_var)
