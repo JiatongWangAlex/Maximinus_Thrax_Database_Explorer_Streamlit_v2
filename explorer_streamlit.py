@@ -1257,7 +1257,11 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         # 3. Material (m.material_name)
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
         
-        # 4. Support Type (s.support_name)
+        # --- VISUAL ALIGNMENT INJECTOR ---
+        # This matches the height of the radio toggle in column 2 so that item 4 lines up with item 9
+        st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
+        
+        # 4. Support Type (s.support_name) -> NOW LINED UP WITH DISTRIBUTIO VIRORUM
         f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
         
         # 5. Context Type (ct.context_name)
@@ -1277,16 +1281,16 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             format_func=lambda x: person_options[x]
         )
         
-        # Sub-toggle to explicitly let users choose how multiple people choices interact
+        # The toggle causing the offset in Screenshot 2026-06-02 at 18.22.24.png
         f_person_operator = st.radio(
             "Match selected people using:",
             options=["OR (Any of these people)", "AND (All of these people)"],
             horizontal=True,
             index=0,
-            label_visibility="collapsed" # Keeps UI clean right beneath the dropdown
+            label_visibility="collapsed"
         )
         
-        # 9. Distributio Virorum (vd.virorum_distributio)
+        # 9. Distributio Virorum (vd.virorum_distributio) -> NOW LINED UP WITH SUPPORT TYPE
         f_vir_dist = st.multiselect("Distributio Virorum:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
         
         # 10. Status Designation (sd.status_designation)
@@ -1294,7 +1298,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         
         # 11. Office/Military Role (pos.position_description)
         f_pos = st.multiselect("Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
-
+        
     with col3:
         # 12. Collective/Military Unit (col.collective_name)
         f_unit = st.multiselect("Collective/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
