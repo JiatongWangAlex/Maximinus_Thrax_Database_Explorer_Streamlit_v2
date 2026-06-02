@@ -478,8 +478,12 @@ def get_filter_options(table, col):
         for row in cursor.fetchall():
             val = str(row[0])
             
-            # Mask binary relevance indexing for cleaner UX
+            
             if col == 'relevance_index':
+                if val == '0': val = "False"
+                elif val == '1': val = "True"
+                    
+            if col == 'intervention_status':
                 if val == '0': val = "False"
                 elif val == '1': val = "True"
                 
@@ -586,6 +590,8 @@ def execute_advanced_search(f_dict):
         if val and val != "All":
             applied_criteria_summary.append(f"  • {display_name}: '{val}'")
             if key == 'relevance_index':
+                val = 1 if val in ("True", "1") else 0
+            if key == 'intervention_status':
                 val = 1 if val in ("True", "1") else 0
             p_name = f"param_{key}"
             where_clauses.append(f"{column_sql} = :{p_name}")
