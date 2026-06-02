@@ -1318,6 +1318,9 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
         # 16. Target of Intervention (targ.target_description)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
 
+col1, col2, col3 = st.columns([2, 2, 3])
+
+with col1:
     if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
         form_payload = {
             'text': f_text,
@@ -1329,7 +1332,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             'province_name': f_prov,
             'number_of_inscriptions': f_num_ins,
             'person_id': f_person_id,
-            'person_operator': "AND" if "AND" in f_person_operator else "OR", # Safely passing the operator
+            'person_operator': "AND" if "AND" in f_person_operator else "OR",
             'virorum_distributio': f_vir_dist,
             'status_designation': f_status,
             'position_description': f_pos,
@@ -1340,6 +1343,10 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
             'target_description': f_interv_tgt
         }
         execute_advanced_search(form_payload)
+
+with col2:
+    if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
+        generate_active_map()
 
 # Interactive Map Inline Viewport Component 
 if st.session_state.trigger_map_html:
