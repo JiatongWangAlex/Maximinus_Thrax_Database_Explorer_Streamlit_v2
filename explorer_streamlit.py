@@ -941,9 +941,11 @@ def generate_active_map():
                 
             ref_link = f'<a href="https://edcs.hist.uzh.ch/en/search?edcs-id={ref_text}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             
-            # 4. Inject your new structural line into the base metadata popup layout block
+            # 4. Inject structural line into the base metadata popup layout block
+            report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
+
             popup_content = (
-                f"<b>Inscription ID:</b> {f_id} | <b>Ref:</b> {ref_link}<br>"
+                f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
                 f"<b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
                 f"<b>Province:</b> {province}<br>"
                 f"<b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
