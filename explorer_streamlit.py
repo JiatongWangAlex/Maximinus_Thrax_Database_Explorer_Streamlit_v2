@@ -1480,8 +1480,12 @@ with st.container(height=520, border=True):
     blocks = clean_text.split("\n\n")
     
     for block in blocks:
-        # If the block contains your problem inscription text (e.g., has 'RIGHT:')
-        if "RIGHT:" in block or "------ /" in block:
+        # Check if the block is the Inscription Text or contains any lines starting with 3+ dashes
+        lines = block.strip().split("\n")
+        has_dangerous_dashes = any(line.strip().startswith("---") for line in lines)
+        
+        # We also keep your original checks just to be completely safe
+        if "RIGHT:" in block or "------ /" in block or has_dangerous_dashes:
             # Swap newlines inside just this block to HTML breaks
             html_block = block.replace("\n", "<br>")
             # Force it to display at normal size, keeping your dashes intact and tight
