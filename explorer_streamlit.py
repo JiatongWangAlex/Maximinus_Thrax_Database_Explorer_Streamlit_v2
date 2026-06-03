@@ -161,7 +161,11 @@ def run_standard_search(user_input):
             SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            -- Adding an empty line containing a non-breaking space (char(160)) forces Markdown
+            -- to safely isolate the following dashes so they print as normal characters.
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, 
+                   char(160) || char(10) || replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl 
+            FROM Metadata_Joined
         ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
@@ -896,7 +900,11 @@ def execute_advanced_search(f_dict):
             SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            -- Adding an empty line containing a non-breaking space (char(160)) forces Markdown
+            -- to safely isolate the following dashes so they print as normal characters.
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, 
+                   char(160) || char(10) || replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl 
+            FROM Metadata_Joined
         ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
@@ -1012,7 +1020,11 @@ def fetch_metadata_by_id(inscription_id):
             SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
         ),
         Sec0_Text_Body AS (
-            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl FROM Metadata_Joined
+            -- Adding an empty line containing a non-breaking space (char(160)) forces Markdown
+            -- to safely isolate the following dashes so they print as normal characters.
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, 
+                   char(160) || char(10) || replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)) || '  ' || char(10) || char(10) AS tl 
+            FROM Metadata_Joined
         ),
         Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
         Sec1_Header AS (SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, '### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
