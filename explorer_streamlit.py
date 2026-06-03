@@ -107,7 +107,14 @@ def run_standard_search(user_input):
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id,
-                   st.status_tituli_name -- <--- Added conservation status field here
+                   st.status_tituli_name,
+                   -- Subquery to pull and build comma-separated Markdown hyperlinks for all TM Numbers linked to this Inscription
+                   COALESCE(
+                       (SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ')
+                        FROM "inscriptions_and_TM_numbers" itm 
+                        WHERE itm.inscription_id = mt.inscription_id), 
+                       'N/A'
+                   ) AS tm_hyperlinks
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
@@ -116,12 +123,12 @@ def run_standard_search(user_input):
             LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
-            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '**Record Number:** ' || 
+                   '**Quick Reference:** ' || 
                    CASE 
                        WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
                        ELSE '' 
@@ -132,6 +139,7 @@ def run_standard_search(user_input):
                        WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
                        ELSE ''
                    END || 
+                   ' | **TM Number:** ' || tm_hyperlinks ||
                    ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Nonstandard Spellings:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -140,7 +148,6 @@ def run_standard_search(user_input):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
-            -- Physically moved right below Material in the code layout:
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
@@ -835,7 +842,14 @@ def execute_advanced_search(f_dict):
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id,
-                   st.status_tituli_name -- <--- Added conservation status field here
+                   st.status_tituli_name,
+                   -- Subquery to pull and build comma-separated Markdown hyperlinks for all TM Numbers linked to this Inscription
+                   COALESCE(
+                       (SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ')
+                        FROM "inscriptions_and_TM_numbers" itm 
+                        WHERE itm.inscription_id = mt.inscription_id), 
+                       'N/A'
+                   ) AS tm_hyperlinks
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
@@ -844,12 +858,12 @@ def execute_advanced_search(f_dict):
             LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
-            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '**Record Number:** ' || 
+                   '**Quick Reference:** ' || 
                    CASE 
                        WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
                        ELSE '' 
@@ -860,6 +874,7 @@ def execute_advanced_search(f_dict):
                        WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
                        ELSE ''
                    END || 
+                   ' | **TM Number:** ' || tm_hyperlinks ||
                    ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Nonstandard Spellings:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -868,7 +883,6 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
-            -- Physically moved right below Material in the code layout:
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
@@ -944,7 +958,14 @@ def fetch_metadata_by_id(inscription_id):
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id,
-                   st.status_tituli_name -- <--- Added conservation status field here
+                   st.status_tituli_name,
+                   -- Subquery to pull and build comma-separated Markdown hyperlinks for all TM Numbers linked to this Inscription
+                   COALESCE(
+                       (SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ')
+                        FROM "inscriptions_and_TM_numbers" itm 
+                        WHERE itm.inscription_id = mt.inscription_id), 
+                       'N/A'
+                   ) AS tm_hyperlinks
             FROM "Max_Thrax" mt CROSS JOIN TargetInscription
             LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
             LEFT JOIN "support" s                ON mt.support_id = s.support_id
@@ -953,12 +974,12 @@ def fetch_metadata_by_id(inscription_id):
             LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
             LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
             LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
-            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id -- <--- Added Join
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
             WHERE mt.inscription_id = TargetInscription.selected_id
         ),
         Sec0_Metadata AS (
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '**Record Number:** ' || 
+                   '**Quick Reference:** ' || 
                    CASE 
                        WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
                        ELSE '' 
@@ -969,6 +990,7 @@ def fetch_metadata_by_id(inscription_id):
                        WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
                        ELSE ''
                    END || 
+                   ' | **TM Number:** ' || tm_hyperlinks ||
                    ' | **Inscription ID:** ' || inscription_id || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Nonstandard Spellings:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -977,7 +999,6 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
-            -- Physically moved right below Material in the code layout:
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
