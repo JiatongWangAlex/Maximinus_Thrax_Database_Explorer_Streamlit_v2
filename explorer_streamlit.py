@@ -1509,38 +1509,43 @@ with st.container(height=520, border=True):
     process_this_block = False
 
     for block in blocks:
+        cleaned_block = block.strip()
+        
         # Check if the block contains any lines starting with 3+ dashes
-        lines = block.strip().split("\n")
+        lines = cleaned_block.split("\n")
         has_dangerous_dashes = any(
             line.strip().startswith("---") for line in lines
         )
 
-        # 1. KILL switch: Turn processing OFF if we hit any subsequent metadata field or spelling section
-        # (This prevents edh-bolding from breaking formatting downstream)
-        if any(header in block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:"]):
+        # 1. KILL switch: Turn processing OFF if we hit any downstream metadata or spelling section
+        if any(header in cleaned_block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:", "Persons:"]):
             process_this_block = False
 
-        # 2. Run the formatting ONLY on the inscription lines that live between the headers
+        # 2. Run the formatting ONLY on the inner epigraphic text blocks
         if process_this_block:
             block = convert_markdown_bold_to_edh(block)
       
-        # 3. START switch: Turn processing ON for the NEXT block *after* the header block passes
-        if "Inscription Text:" in block:
+        # 3. START switch: Turn processing ON for the NEXT loop iteration
+        if "Inscription Text:" in cleaned_block:
             process_this_block = True
 
-        # Render the block to the UI
-        if (
-            "RIGHT:" in block
-            or "------ /" in block
+        # 4. EXPLICIT INTERCEPTION: Is this block JUST the header itself?
+        if cleaned_block == "**Inscription Text:**":
+            # Force standard markdown rendering so the asterisks naturally bold!
+            st.markdown(cleaned_block)
+            
+        # 5. Handle all other epigraphic display blocks
+        elif (
+            "RIGHT:" in cleaned_block
+            or "------ /" in cleaned_block
             or has_dangerous_dashes
-            or "Inscription Text:" in block
+            or process_this_block  # This catches the raw text lines cleanly
         ):
             html_block = block.replace("\n", "<br>")
-           
             st.markdown(
                 f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
                 unsafe_allow_html=True,
             )
         else:
-            # For everything else, keep regular Markdown active
+            # For everything else (Context, Material, etc.), keep regular Markdown active
             st.markdown(block)
