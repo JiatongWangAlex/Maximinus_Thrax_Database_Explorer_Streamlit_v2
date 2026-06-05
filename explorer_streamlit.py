@@ -1495,6 +1495,7 @@ if st.session_state.trigger_map_html:
     with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=500, scrolling=True)
 
+# Search Results
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
 
@@ -1514,19 +1515,19 @@ with st.container(height=520, border=True):
             line.strip().startswith("---") for line in lines
         )
 
-        # 1. Check for the turning-off trigger FIRST so this block is excluded
+        # 1. If we see "Nonstandard Spellings:", turn the switch OFF immediately
         if "Nonstandard Spellings:" in block:
             process_this_block = False
 
-        # 2. Run the formatting ONLY on the blocks strictly between them
+        # 2. This only triggers on the blocks AFTER the header block
         if process_this_block:
             block = convert_markdown_bold_to_edh(block)
-
-        # 3. Check for the turning-on trigger LAST so this block is excluded from the current loop iteration
+      
+        # 3. MOVE THIS TO THE BOTTOM: Turn the switch ON for the NEXT blocks
         if "Inscription Text:" in block:
             process_this_block = True
 
-        # Render the block to the UI
+        # Render the block exactly how you had it
         if (
             "RIGHT:" in block
             or "------ /" in block
