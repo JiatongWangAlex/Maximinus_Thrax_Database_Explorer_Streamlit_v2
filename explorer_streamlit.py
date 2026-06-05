@@ -1528,11 +1528,12 @@ with st.container(height=520, border=True):
 
     # 1. Clean standard line breaks
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
-    
-    clean_text = convert_markdown_bold_to_edh(clean_text)
 
     # 2. Break the results apart by double-newlines to isolate the text blocks
     blocks = clean_text.split("\n\n")
+
+    # This is our light switch. It starts turned OFF.
+    process_this_block = False
 
     for block in blocks:
         # Check if the block is the Inscription Text or contains any lines starting with 3+ dashes
@@ -1541,24 +1542,36 @@ with st.container(height=520, border=True):
             line.strip().startswith("---") for line in lines
         )
 
-        block = highlight_search_terms(
-            block, st.session_state.get("user_search_input", "")
-        )
+        if "Inscription Text:" in block:
+            process_this_block = True
+            st.markdown(block)  # Print the header normally and move to next block
+            continue
 
-        # We also keep your original checks just to be completely safe
+        if "Nonstandard Spellings:" in block:
+            process_this_block = False
+
+        if process_this_block:
+            # 1. Convert **gaius** to gaius(!) only for the text blob
+            block = convert_markdown_bold_to_edh(block)
+
+            # 2. Dynamic search bolding only for the text blob
+            block = highlight_search_terms(
+                block, st.session_state.get("user_search_input", "")
+            )
+
         if (
             "RIGHT:" in block
             or "------ /" in block
             or has_dangerous_dashes
+            or process_this_block
         ):
-            # Swap newlines inside just this block to HTML breaks
+        
             html_block = block.replace("\n", "<br>")
-            # Force it to display at normal size, keeping your dashes intact and tight
+        
             st.markdown(
                 f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
                 unsafe_allow_html=True,
             )
         else:
             # For everything else (Context, Material, etc.), keep regular Markdown active
-            # Changed to unsafe_allow_html=True so it renders the search-bolding HTML tags!
-            st.markdown(block, unsafe_allow_html=True)
+            st.markdown(block)
