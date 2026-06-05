@@ -5,6 +5,7 @@ import textwrap
 import streamlit as st
 import folium
 import json
+import re
 
 st.set_page_config(page_title="Maximinus Thrax Database Explorer", layout="wide")
 
@@ -39,6 +40,61 @@ LATIN_LEMMA_MAP = {
     "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptavit": "coopto", "cooptati": "coopto", "coopto": "coopto"
 }
 
+
+def convert_markdown_bold_to_edh(text):
+    """Tracks asterisks across lines exactly like a Markdown parser,
+
+    converting **text** into text(!), even if it straddles lines.
+    """
+    output = []
+    i = 0
+    n = len(text)
+    in_bold = False
+
+    while i < n:
+        if i < n - 1 and text[i] == "*" and text[i + 1] == "*":
+            if not in_bold:
+                in_bold = True
+            else:
+                output.append("(!)")
+                in_bold = False
+            i += 2
+        else:
+            output.append(text[i])
+            i += 1
+    if in_bold:
+        output.append("(!)")
+    return "".join(output)
+
+
+def highlight_search_terms(text, original_input):
+    """Dynamically bolds matched search terms using HTML <b> tags."""
+    if not original_input or not original_input.strip():
+        return text
+
+    terms_to_bold = set()
+    terms_to_bold.add(original_input.strip())
+
+    for word in re.findall(r"\w+", original_input):
+        if len(word) > 1:
+            terms_to_bold.add(word)
+
+    clean_term = original_input.replace(" ", "")
+    clean_term = re.sub(
+        r"[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]", "", clean_term
+    )
+    if len(clean_term) > 2:
+        terms_to_bold.add(clean_term)
+
+    sorted_terms = sorted(list(terms_to_bold), key=len, reverse=True)
+    regex_pattern = "|".join(re.escape(t) for t in sorted_terms if t)
+
+    if not regex_pattern:
+        return text
+
+    pattern = re.compile(f"({regex_pattern})", re.IGNORECASE)
+    return pattern.sub(r"<b>\1</b>", text)
+    
 def lemmatize_query(text):
     if not text: return ""
     words = text.lower().split()
@@ -1467,29 +1523,42 @@ if st.session_state.trigger_map_html:
     with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=500, scrolling=True)
 
-# Search Results
-st.markdown("### Search Results")
-
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
-    
+
     # 1. Clean standard line breaks
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
     
+    clean_text = convert_markdown_bold_to_edh(clean_text)
+
     # 2. Break the results apart by double-newlines to isolate the text blocks
     blocks = clean_text.split("\n\n")
-    
+
     for block in blocks:
         # Check if the block is the Inscription Text or contains any lines starting with 3+ dashes
         lines = block.strip().split("\n")
-        has_dangerous_dashes = any(line.strip().startswith("---") for line in lines)
-        
+        has_dangerous_dashes = any(
+            line.strip().startswith("---") for line in lines
+        )
+
+        block = highlight_search_terms(
+            block, st.session_state.get("user_search_input", "")
+        )
+
         # We also keep your original checks just to be completely safe
-        if "RIGHT:" in block or "------ /" in block or has_dangerous_dashes:
+        if (
+            "RIGHT:" in block
+            or "------ /" in block
+            or has_dangerous_dashes
+        ):
             # Swap newlines inside just this block to HTML breaks
             html_block = block.replace("\n", "<br>")
             # Force it to display at normal size, keeping your dashes intact and tight
-            st.markdown(f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
+                unsafe_allow_html=True,
+            )
         else:
             # For everything else (Context, Material, etc.), keep regular Markdown active
-            st.markdown(block)
+            # Changed to unsafe_allow_html=True so it renders the search-bolding HTML tags!
+            st.markdown(block, unsafe_allow_html=True)
