@@ -67,34 +67,6 @@ def convert_markdown_bold_to_edh(text):
     return "".join(output)
 
 
-def highlight_search_terms(text, original_input):
-    """Dynamically bolds matched search terms using HTML <b> tags."""
-    if not original_input or not original_input.strip():
-        return text
-
-    terms_to_bold = set()
-    terms_to_bold.add(original_input.strip())
-
-    for word in re.findall(r"\w+", original_input):
-        if len(word) > 1:
-            terms_to_bold.add(word)
-
-    clean_term = original_input.replace(" ", "")
-    clean_term = re.sub(
-        r"[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]", "", clean_term
-    )
-    if len(clean_term) > 2:
-        terms_to_bold.add(clean_term)
-
-    sorted_terms = sorted(list(terms_to_bold), key=len, reverse=True)
-    regex_pattern = "|".join(re.escape(t) for t in sorted_terms if t)
-
-    if not regex_pattern:
-        return text
-
-    pattern = re.compile(f"({regex_pattern})", re.IGNORECASE)
-    return pattern.sub(r"<b>\1</b>", text)
-    
 def lemmatize_query(text):
     if not text: return ""
     words = text.lower().split()
@@ -1552,10 +1524,6 @@ with st.container(height=520, border=True):
         if process_this_block:
             block = convert_markdown_bold_to_edh(block)
       
-            block = highlight_search_terms(
-                block, st.session_state.get("user_search_input", "")
-            )
-
         if "Nonstandard Spellings:" in block:
             process_this_block = False
 
