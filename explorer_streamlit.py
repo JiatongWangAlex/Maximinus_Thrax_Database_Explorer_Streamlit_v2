@@ -1515,19 +1515,20 @@ with st.container(height=520, border=True):
             line.strip().startswith("---") for line in lines
         )
 
-        # 1. If we see "Nonstandard Spellings:", turn the switch OFF immediately
-        if "Nonstandard Spellings:" in block:
+        # 1. KILL switch: Turn processing OFF if we hit any subsequent metadata field or spelling section
+        # (This prevents edh-bolding from breaking formatting downstream)
+        if any(header in block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:"]):
             process_this_block = False
 
-        # 2. This only triggers on the blocks AFTER the header block
+        # 2. Run the formatting ONLY on the inscription lines that live between the headers
         if process_this_block:
             block = convert_markdown_bold_to_edh(block)
       
-        # 3. MOVE THIS TO THE BOTTOM: Turn the switch ON for the NEXT blocks
+        # 3. START switch: Turn processing ON for the NEXT block *after* the header block passes
         if "Inscription Text:" in block:
             process_this_block = True
 
-        # Render the block exactly how you had it
+        # Render the block to the UI
         if (
             "RIGHT:" in block
             or "------ /" in block
@@ -1541,5 +1542,5 @@ with st.container(height=520, border=True):
                 unsafe_allow_html=True,
             )
         else:
-            # For everything else (Context, Material, etc.), keep regular Markdown active
+            # For everything else, keep regular Markdown active
             st.markdown(block)
