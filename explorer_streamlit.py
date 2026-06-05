@@ -1514,26 +1514,25 @@ with st.container(height=520, border=True):
             line.strip().startswith("---") for line in lines
         )
 
-      
-        # Turn the search bolding switch ON if this block contains "Inscription Text:"
-        if "Inscription Text:" in block:
-            process_this_block = True
-
-        # Search bolding triggered
-        
-        if process_this_block:
-            block = convert_markdown_bold_to_edh(block)
-      
+        # 1. Check for the turning-off trigger FIRST so this block is excluded
         if "Nonstandard Spellings:" in block:
             process_this_block = False
 
+        # 2. Run the formatting ONLY on the blocks strictly between them
+        if process_this_block:
+            block = convert_markdown_bold_to_edh(block)
+
+        # 3. Check for the turning-on trigger LAST so this block is excluded from the current loop iteration
+        if "Inscription Text:" in block:
+            process_this_block = True
+
+        # Render the block to the UI
         if (
             "RIGHT:" in block
             or "------ /" in block
             or has_dangerous_dashes
             or "Inscription Text:" in block
         ):
-          
             html_block = block.replace("\n", "<br>")
            
             st.markdown(
