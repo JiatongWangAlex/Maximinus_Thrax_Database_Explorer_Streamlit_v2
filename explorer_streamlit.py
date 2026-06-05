@@ -1536,38 +1536,38 @@ with st.container(height=520, border=True):
     process_this_block = False
 
     for block in blocks:
-        # Check if the block is the Inscription Text or contains any lines starting with 3+ dashes
+        # Check if the block contains any lines starting with 3+ dashes
         lines = block.strip().split("\n")
         has_dangerous_dashes = any(
             line.strip().startswith("---") for line in lines
         )
 
+      
+        # Turn the search bolding switch ON if this block contains "Inscription Text:"
         if "Inscription Text:" in block:
             process_this_block = True
-            st.markdown(block)  # Print the header normally and move to next block
-            continue
 
-        if "Nonstandard Spellings:" in block:
-            process_this_block = False
-
+        # Search bolding triggered
+        
         if process_this_block:
-            # 1. Convert **gaius** to gaius(!) only for the text blob
             block = convert_markdown_bold_to_edh(block)
-
-            # 2. Dynamic search bolding only for the text blob
+      
             block = highlight_search_terms(
                 block, st.session_state.get("user_search_input", "")
             )
+
+        if "Nonstandard Spellings:" in block:
+            process_this_block = False
 
         if (
             "RIGHT:" in block
             or "------ /" in block
             or has_dangerous_dashes
-            or process_this_block
+            or "Inscription Text:" in block
         ):
-        
+          
             html_block = block.replace("\n", "<br>")
-        
+           
             st.markdown(
                 f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
                 unsafe_allow_html=True,
