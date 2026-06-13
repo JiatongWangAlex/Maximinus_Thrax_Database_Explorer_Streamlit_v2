@@ -1156,7 +1156,18 @@ def generate_active_map():
         st.info("None of the active entries contain geographic coordinates in the database.")
         return
 
-    mymap = folium.Map(location=[matched_points[0][1], matched_points[0][2]], zoom_start=6, tiles=None)
+    # Seed map with the first available valid coordinates
+    valid_center = None
+    for row in matched_points:
+        if row[1] is not None and row[2] is not None:
+            valid_center = [row[1], row[2]]
+            break
+
+    if not valid_center:
+        st.info("Active entries contain coordinates, but they evaluate as empty or null.")
+        return
+
+    mymap = folium.Map(location=valid_center, zoom_start=6, tiles=None)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
    
@@ -1181,66 +1192,139 @@ def generate_active_map():
             }
         ).add_to(mymap)
     # -------------------------------------------------------------
-    # -------------------------------------------------------------
 
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
+    # -------------------------------------------------------------
+    # CLUSTER ENTRIES BY COORD PAIR TO DETECT OVERLAPS
+    # -------------------------------------------------------------
+    coord_buckets = {}
     for row in matched_points:
-        f_id, lat, lon, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
-        province_name = row[9] if len(row) > 9 else "N/A"
-        place_name_val = row[10] if len(row) > 10 else None
-        pleiades_id_val = row[11] if len(row) > 11 else None
+        lat, lon = row[1], row[2]
+        if lat is not None and lon is not None:
+            coord_key = (float(lat), float(lon))
+            if coord_key not in coord_buckets:
+                coord_buckets[coord_key] = []
+            coord_buckets[coord_key].append(row)
 
-        if lat and lon:
+    # Process and build markers from grouped coordinate buckets
+    for (lat, lon), rows in coord_buckets.items():
+        overlap_count = len(rows)
+        popup_html = ""
+        
+        # Add visual contextual banner inside popups displaying multiple records
+        if overlap_count > 1:
+            popup_html += f"<div style='background-color:#f0f4ff; color:#001140; padding:5px; margin-bottom:8px; border:1px solid #d0daff; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>ℹ️ {overlap_count} Inscriptions at this Location</div>"
+        
+        for idx, row in enumerate(rows, 1):
+            f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
+            province_name = row[9] if len(row) > 9 else "N/A"
+            place_name_val = row[10] if len(row) > 10 else None
+            pleiades_id_val = row[11] if len(row) > 11 else None
+
             ins_count = num_ins if num_ins is not None else "N/A"
             sequence = seq_id if seq_id is not None else "N/A"
             province = province_name if province_name is not None else "N/A"
-            
             place = place_name_val if place_name_val is not None else "N/A"
             
             if pleiades_id_val and str(pleiades_id_val).strip():
-                # Cast to string and strip spaces to keep the URL perfectly clean
                 clean_pleiades_id = str(pleiades_id_val).strip()
                 pleiades_link = f'<a href="https://pleiades.stoa.org/places/{clean_pleiades_id}" target="_blank">{clean_pleiades_id}</a>'
             else:
                 pleiades_link = 'N/A'
                 
             ref_link = f'<a href="https://edcs.hist.uzh.ch/en/search?edcs-id={ref_text}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
-            
-            # 4. Inject structural line into the base metadata popup layout block
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
-            popup_content = (
+            # Distinct styling lines for embedded records inside stacked locations
+            if overlap_count > 1:
+                popup_html += f"<div style='border-left: 3px solid #001140; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'>"
+                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span><br>"
+
+            popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
                 f"<b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
                 f"<b>Province:</b> {province}<br>"
                 f"<b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
             )
             
-            # 5. The rest of your milestone/road calculations remain completely untouched:
             if support_id in (1, 2):
-                popup_content += "<br><b>Milestone</b>"
+                popup_html += "<br><b>Milestone</b>"
                 info = road_links_dict.get(f_id, {'roads': []})
                 if info['roads']:
                     road_name = ", ".join(list(set(r[0] for r in info['roads'] if r[0])))
-                    popup_content += f"<br><b>road segment:</b> {road_name if road_name else 'N/A'}"
+                    popup_html += f"<br><b>road segment:</b> {road_name if road_name else 'N/A'}"
                     links = [f'<a href="https://itiner-e.org/?id={r[1]}" target="_blank">itiner-e.org/?id={r[1]}</a>' for r in info['roads'] if r[1]]
-                    popup_content += f"<br><b>itiner-e link to road:</b> {', '.join(links) if links else 'N/A'}"
+                    popup_html += f"<br><b>itiner-e link to road:</b> {', '.join(links) if links else 'N/A'}"
                 else:
-                    popup_content += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road:</b> N/A"
+                    popup_html += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road:</b> N/A"
             else:
-                popup_content += f"<br><b>distributio titulorum:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
-            folium.CircleMarker(
-                location=[lat, lon], radius=7, color="#002fa7", fill=True, fill_color="#33b5e5", fill_opacity=0.9,
-                popup=folium.Popup(popup_content, min_width=320, max_width=480), tooltip=f"ID: {f_id}"
-            ).add_to(inscriptions_layer)
+                popup_html += f"<br><b>distributio titulorum:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
+            
+            if overlap_count > 1:
+                popup_html += "</div>"
+
+        # Tooltip display definition
+        tooltip_label = f"{overlap_count} inscriptions at this coordinate" if overlap_count > 1 else f"ID: {rows[0][0]}"
+
+        # -------------------------------------------------------------
+        # DYNAMIC COLOR AND LOGICAL TEXT BADGING ASSIGNMENTS
+        # -------------------------------------------------------------
+        if overlap_count > 1:
+            border_color = "#001140"  # Dark navy border
+            fill_color = "#1a53ff"    # Darker steel blue fill
+            size = 22                 # Scale icon footprint up for readability
+            
+            icon_html = f"""
+                <div style="
+                    background-color: {fill_color};
+                    border: 2px solid {border_color};
+                    color: #ffffff;
+                    border-radius: 50%;
+                    width: {size}px;
+                    height: {size}px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+                ">
+                    {overlap_count}
+                </div>
+            """
+        else:
+            border_color = "#002fa7"  # Original classic blue border
+            fill_color = "#33b5e5"    # Original sky blue fill
+            size = 14                 # Original point footprint
+            
+            icon_html = f"""
+                <div style="
+                    background-color: {fill_color};
+                    border: 2px solid {border_color};
+                    border-radius: 50%;
+                    width: {size}px;
+                    height: {size}px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                "></div>
+            """
+
+        # Generate structural HTML Pin using DivIcon
+        folium.Marker(
+            location=[lat, lon],
+            icon=folium.DivIcon(
+                icon_size=(size, size),
+                icon_anchor=(size // 2, size // 2),
+                html=icon_html
+            ),
+            popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
+            tooltip=tooltip_label
+        ).add_to(inscriptions_layer)
 
     inscriptions_layer.add_to(mymap)
 
-    
     folium.LayerControl(collapsed=False).add_to(mymap)
     st.session_state.trigger_map_html = mymap._repr_html_()
-
 # =========================================================
 # APPLICATION CORE GRAPHICAL INTERFACE
 # =========================================================
