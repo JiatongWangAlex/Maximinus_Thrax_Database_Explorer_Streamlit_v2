@@ -1342,7 +1342,8 @@ elif "person_id" in query_params:
     if url_per_id.isdigit():
         st.query_params.clear() 
         generate_person_report(url_per_id)
-
+        
+st.markdown("### Maximinus Thrax Database Interface")
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
@@ -1452,6 +1453,8 @@ with col_s4:
 # =========================================================
 # ADVANCED SEARCH WRAPPER
 # =========================================================
+
+
 with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
