@@ -1,5 +1,4 @@
 import sqlite3
-import re
 import os
 import textwrap
 import streamlit as st
@@ -9,15 +8,19 @@ import re
 
 st.set_page_config(page_title="Maximinus Thrax Database Explorer", layout="wide")
 
+# This calculates the folder your app is running out of (both on your PC and on GitHub)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
 db_path = os.path.join(BASE_DIR, "version_58.db")
+
+# Path configs for your GitHub repository files
+optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
+provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
 def get_db_connection():
     if not os.path.exists(db_path):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
         st.stop()
     return sqlite3.connect(db_path)
-
 # =========================================================
 # LATIN LEMMATIZATION / STEMMING DICTIONARY
 # =========================================================
