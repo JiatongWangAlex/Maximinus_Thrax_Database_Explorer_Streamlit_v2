@@ -1197,7 +1197,7 @@ def generate_active_map():
     # -------------------------------------------------------------
     # PROVINCES OVERLAY
     # -------------------------------------------------------------
-    provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json")
+    
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
@@ -1205,14 +1205,14 @@ def generate_active_map():
         folium.GeoJson(
             provinces_data,
             name="Provinces",
-            show=True,       # Set to False if you want it off by default in the LayerControl
+            show=False,       
             overlay=True,
             control=True,
             style_function=lambda feature: {
-                "color": "#1a53ff",       # Blue border line for provinces
-                "weight": 1.5,            # Thinner line than your roads
-                "fillColor": "#1a53ff",   # Soft transparent fill color
-                "fillOpacity": 0.1,       # Keeps it readable behind markers
+                "color": "#1a53ff",
+                "weight": 1.5,
+                "fillColor": "#1a53ff",
+                "fillOpacity": 0.05,
             }
         ).add_to(mymap)
         
