@@ -1250,23 +1250,19 @@ def generate_active_map():
         
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-        # Global Warning Banner for approximate coordinates
+       # Global Warning Banner for approximate coordinates
         if is_bucket_approximate:
             popup_html += """
-            <div style="
+            <h3 style="
                 color: #000000; 
-                padding: 5px; 
-                margin-bottom: 10px; 
-                border: 1px solid #000000; 
-                border-radius: 4px; 
+                margin: 0 0 10px 0; 
                 font-weight: bold; 
                 text-align: center; 
                 font-size: 13px;
             ">
                 WARNING: APPROXIMATE FINDSPOT
-            </div>
+            </h3>
             """
-        
         if overlap_count > 1:
             bg_color = "#f2f4f4" if is_bucket_approximate else "#f0f4ff"
             text_color = "#2c3e50" if is_bucket_approximate else "#001140"
