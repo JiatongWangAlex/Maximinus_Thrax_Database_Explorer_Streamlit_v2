@@ -1303,7 +1303,7 @@ def generate_active_map():
                 popup_html += "<br>"
 
             if overlap_count == 1 and is_approx == 1:
-                popup_html += "<span style='font-size: 11px; color: #000000; font-weight: bold;'>Coordinates represent a calculated regional or milestone center point.</span><br><br>"
+                popup_html += "<span style='font-size: 11px; color: #000000; font-weight: bold;'>Coordinates represent the geometric center of the area in which the findspot is located </span><br><br>"
 
             popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
