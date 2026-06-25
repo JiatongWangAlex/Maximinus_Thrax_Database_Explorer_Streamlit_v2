@@ -1193,7 +1193,7 @@ def generate_active_map():
             control=True,
             style_function=lambda feature: {
                 "color": "#ff33a1",
-                "weight": 2.2,
+                "weight": 1.0,
                 "opacity": 0.8,
             }
         ).add_to(mymap)
@@ -1212,7 +1212,7 @@ def generate_active_map():
             control=True,
             style_function=lambda feature: {
                 "color": "#1a53ff",
-                "weight": 1.5,
+                "weight": 2,
                 "fillColor": "#1a53ff",
                 "fillOpacity": 0.05,
             },
