@@ -1207,7 +1207,7 @@ def generate_active_map():
         folium.GeoJson(
             provinces_data,
             name="Provinces",
-            show=False,       
+            show=True,       
             overlay=True,
             control=True,
             style_function=lambda feature: {
