@@ -1213,7 +1213,7 @@ def generate_active_map():
             style_function=lambda feature: {
                 "color": "#1a53ff",
                 "weight": 2,
-                "fillColor": "#1a53ff",
+                "fillColor": "#000000",
                 "fillOpacity": 0.05,
             },
             tooltip=folium.GeoJsonTooltip(
