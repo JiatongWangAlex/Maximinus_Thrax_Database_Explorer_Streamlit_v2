@@ -1213,7 +1213,13 @@ def generate_active_map():
                 "weight": 1.5,
                 "fillColor": "#1a53ff",
                 "fillOpacity": 0.05,
-            }
+            },
+            # This will pull "Sardinia" dynamically from your JSON
+            tooltip=folium.GeoJsonTooltip(
+                fields=["Name"], 
+                aliases=["Province:"],
+                localize=True
+            )
         ).add_to(mymap)
         
     # -------------------------------------------------------------
