@@ -1211,7 +1211,7 @@ def generate_active_map():
             overlay=True,
             control=True,
             style_function=lambda feature: {
-                "color": "#708090",
+                "color": "#544CA4",
                 "weight": 2,
                 "fillColor": "#1a53ff",
                 "fillOpacity": 0.05,
