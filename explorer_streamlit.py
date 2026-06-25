@@ -1200,7 +1200,7 @@ def generate_active_map():
     # 🛠️ THE SEPARATE CORE FUNCTIONAL LAYERS
     # -------------------------------------------------------------
     # Layer 1: OFF BY DEFAULT (show=False) for the GeoJSON shapes
-    range_layer = folium.FeatureGroup(name="Show Approximate Findspot Range", show=False)
+    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
     
     # Layer 2: ON BY DEFAULT (show=True) for the standard pins
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
@@ -1263,7 +1263,7 @@ def generate_active_map():
                 text-align: center; 
                 font-size: 13px;
             ">
-                WARNING: APPROXIMATE FINDSPOT LOCATION
+                WARNING: APPROXIMATE FINDSPOT
             </div>
             """
         
