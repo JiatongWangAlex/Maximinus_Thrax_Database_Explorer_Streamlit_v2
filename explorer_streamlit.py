@@ -1241,22 +1241,37 @@ def generate_active_map():
                 ).add_to(range_layer)
             except Exception:
                 pass
-
-    # -------------------------------------------------------------
+# -------------------------------------------------------------
     # PASS 2: GENERATE THE PINS FOR THE INSCRIPTION LAYER
     # -------------------------------------------------------------
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
         
-        # Determine the color of this bucket: if ANY record in this pin stack is approximate, make the stack gray
         is_bucket_approximate = any(row[12] == 1 for row in rows)
+        
+        # Global Warning Banner for approximate coordinates
+        if is_bucket_approximate:
+            popup_html += """
+            <div style="
+                color: #000000; 
+                padding: 5px; 
+                margin-bottom: 10px; 
+                border: 1px solid #000000; 
+                border-radius: 4px; 
+                font-weight: bold; 
+                text-align: center; 
+                font-size: 13px;
+            ">
+                WARNING: APPROXIMATE FINDSPOT LOCATION
+            </div>
+            """
         
         if overlap_count > 1:
             bg_color = "#f2f4f4" if is_bucket_approximate else "#f0f4ff"
             text_color = "#2c3e50" if is_bucket_approximate else "#001140"
             border_color = "#bdc3c7" if is_bucket_approximate else "#d0daff"
-            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>ℹ️ {overlap_count} Inscriptions at this Location</div>"
+            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
         
         for idx, row in enumerate(rows, 1):
             f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
@@ -1280,12 +1295,15 @@ def generate_active_map():
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
             if overlap_count > 1:
-                item_border = "#34495e" if is_approx == 1 else "#001140"
+                item_border = "#7f8c8d" if is_approx == 1 else "#001140"
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
                 popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
                 if is_approx == 1:
-                    popup_html += " <span style='font-size:10px; color:#7f8c8d; font-weight:bold;'>(Approximate Location)</span>"
+                    popup_html += " <span style='font-size:10px; color:#000000; font-weight:bold;'>(APPROXIMATE)</span>"
                 popup_html += "<br>"
+
+            if overlap_count == 1 and is_approx == 1:
+                popup_html += "<span style='font-size: 11px; color: #000000; font-weight: bold;'>Coordinates represent a calculated regional or milestone center point.</span><br><br>"
 
             popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
