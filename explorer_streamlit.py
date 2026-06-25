@@ -1163,8 +1163,11 @@ def generate_active_map():
     valid_center = None
     for row in matched_points:
         if row[1] is not None and row[2] is not None:
-            valid_center = [row[1], row[2]]
-            break
+            try:
+                valid_center = [float(row[1]), float(row[2])]
+                break
+            except (ValueError, TypeError):
+                continue
 
     if not valid_center:
         st.info("Active entries contain coordinates, but they evaluate as empty or null.")
@@ -1195,9 +1198,8 @@ def generate_active_map():
             }
         ).add_to(mymap)
     # -------------------------------------------------------------
-    # PROVINCES OVERLAY
+    # PROVINCES OVERLAY WITH NAME HOVER
     # -------------------------------------------------------------
-    
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
@@ -1214,9 +1216,8 @@ def generate_active_map():
                 "fillColor": "#1a53ff",
                 "fillOpacity": 0.05,
             },
-            # This will pull "Sardinia" dynamically from your JSON
             tooltip=folium.GeoJsonTooltip(
-                fields=["Name"], 
+                fields=["Name"],
                 aliases=["Province:"],
                 localize=True
             )
@@ -1225,7 +1226,6 @@ def generate_active_map():
     # -------------------------------------------------------------
     # INSCRIPTIONS
     # -------------------------------------------------------------
-
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
     # -------------------------------------------------------------
@@ -1235,10 +1235,14 @@ def generate_active_map():
     for row in matched_points:
         lat, lon = row[1], row[2]
         if lat is not None and lon is not None:
-            coord_key = (float(lat), float(lon))
-            if coord_key not in coord_buckets:
-                coord_buckets[coord_key] = []
-            coord_buckets[coord_key].append(row)
+            try:
+                # FIXED: Protected against ValueError/TypeError (e.g., empty strings or bad characters)
+                coord_key = (float(lat), float(lon))
+                if coord_key not in coord_buckets:
+                    coord_buckets[coord_key] = []
+                coord_buckets[coord_key].append(row)
+            except (ValueError, TypeError):
+                continue # Safely skip malformed database coordinates
 
     # Process and build markers from grouped coordinate buckets
     for (lat, lon), rows in coord_buckets.items():
