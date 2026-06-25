@@ -1123,10 +1123,12 @@ def generate_active_map():
         conn = get_db_connection()
         cursor = conn.cursor()
         placeholders = ",".join("?" for _ in ids_to_map)
+        
+        # Select all normal inscription and place attributes, including our custom flags
         query = f"""
             SELECT m.inscription_id, p.latitude, p.longitude, m.inscription_ref, m.sequence_id, 
                    m.support_id, s.support_name, dt.distributio_titulorum, o.number_of_inscriptions, pr.province_name,
-                   p.place_name, p.pleiades_id
+                   p.place_name, p.pleiades_id, p.approximate_location, p.approximate_area
             FROM "Max_Thrax" m
             INNER JOIN "places" p ON m.place_id = p.place_id
             LEFT JOIN "support" s ON m.support_id = s.support_id
@@ -1159,7 +1161,7 @@ def generate_active_map():
         st.info("None of the active entries contain geographic coordinates in the database.")
         return
 
-    # Seed map with the first available valid coordinates
+    # Seed map center
     valid_center = None
     for row in matched_points:
         if row[1] is not None and row[2] is not None:
@@ -1178,86 +1180,90 @@ def generate_active_map():
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
    
     # -------------------------------------------------------------
-    # NEW COMPRESSED ROADS JSON OVERLAY
+    # BASE ROADS & PROVINCES OVERLAYS
     # -------------------------------------------------------------
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
             roads_data = json.load(f)
-            
-        folium.GeoJson(
-            roads_data,
-            name="Itinere Land Roads",
-            show=True,
-            overlay=True,
-            control=True,
-            style_function=lambda feature: {
-                "color": "#ff33a1",
-                "weight": 1.0,
-                "opacity": 0.8,
-            }
-        ).add_to(mymap)
-    # -------------------------------------------------------------
-    # PROVINCES OVERLAY WITH NAME HOVER
-    # -------------------------------------------------------------
+        folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
+                       style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
+        
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
-            
-        folium.GeoJson(
-            provinces_data,
-            name="Provinces",
-            show=True,       
-            overlay=True,
-            control=True,
-            style_function=lambda feature: {
-                "color": "#544CA4",
-                "weight": 2,
-                "fillColor": "#1a53ff",
-                "fillOpacity": 0.05,
-            },
-            tooltip=folium.GeoJsonTooltip(
-                fields=["Name"],
-                aliases=["Province:"],
-                localize=True
-            )
-        ).add_to(mymap)
+        folium.GeoJson(provinces_data, name="Provinces", show=True, overlay=True, control=True,
+                       style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
+                       tooltip=folium.GeoJsonTooltip(fields=["Name"], aliases=["Province:"], localize=True)).add_to(mymap)
         
     # -------------------------------------------------------------
-    # INSCRIPTIONS
+    # 🛠️ THE SEPARATE CORE FUNCTIONAL LAYERS
     # -------------------------------------------------------------
+    # Layer 1: OFF BY DEFAULT (show=False) for the GeoJSON shapes
+    range_layer = folium.FeatureGroup(name="Show Approximate Findspot Range", show=False)
+    
+    # Layer 2: ON BY DEFAULT (show=True) for the standard pins
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
     # -------------------------------------------------------------
-    # CLUSTER ENTRIES BY COORD PAIR TO DETECT OVERLAPS
+    # CLUSTER & POPULATE COORD BUCKETS FOR PINS
     # -------------------------------------------------------------
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
         if lat is not None and lon is not None:
             try:
-                # FIXED: Protected against ValueError/TypeError (e.g., empty strings or bad characters)
                 coord_key = (float(lat), float(lon))
                 if coord_key not in coord_buckets:
                     coord_buckets[coord_key] = []
                 coord_buckets[coord_key].append(row)
             except (ValueError, TypeError):
-                continue # Safely skip malformed database coordinates
+                continue 
 
-    # Process and build markers from grouped coordinate buckets
+        # -------------------------------------------------------------
+        # PASS 1: POPULATE THE INDEPENDENT RANGE LAYER (IF GEOJSON EXISTS)
+        # -------------------------------------------------------------
+        geo_json_str = row[13]
+        f_id = row[0]
+        if geo_json_str:
+            try:
+                polygon_geometry = json.loads(geo_json_str)
+                folium.GeoJson(
+                    polygon_geometry,
+                    style_function=lambda feature: {
+                        "color": "#7f8c8d",       # Muted slate gray border
+                        "weight": 2,
+                        "dashArray": "6, 6",      # Clear dashes to signify uncertainty bounds
+                        "fillColor": "#95a5a6",   # Soft transparent center fill
+                        "fillOpacity": 0.15,
+                    },
+                    tooltip=f"Uncertainty Bounds for Inscription ID: {f_id}"
+                ).add_to(range_layer)
+            except Exception:
+                pass
+
+    # -------------------------------------------------------------
+    # PASS 2: GENERATE THE PINS FOR THE INSCRIPTION LAYER
+    # -------------------------------------------------------------
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
         
-        # Add visual contextual banner inside popups displaying multiple records
+        # Determine the color of this bucket: if ANY record in this pin stack is approximate, make the stack gray
+        is_bucket_approximate = any(row[12] == 1 for row in rows)
+        
         if overlap_count > 1:
-            popup_html += f"<div style='background-color:#f0f4ff; color:#001140; padding:5px; margin-bottom:8px; border:1px solid #d0daff; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>ℹ️ {overlap_count} Inscriptions at this Location</div>"
+            bg_color = "#f2f4f4" if is_bucket_approximate else "#f0f4ff"
+            text_color = "#2c3e50" if is_bucket_approximate else "#001140"
+            border_color = "#bdc3c7" if is_bucket_approximate else "#d0daff"
+            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>ℹ️ {overlap_count} Inscriptions at this Location</div>"
         
         for idx, row in enumerate(rows, 1):
             f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
             province_name = row[9] if len(row) > 9 else "N/A"
             place_name_val = row[10] if len(row) > 10 else None
             pleiades_id_val = row[11] if len(row) > 11 else None
+            is_approx = row[12]
 
             ins_count = num_ins if num_ins is not None else "N/A"
             sequence = seq_id if seq_id is not None else "N/A"
@@ -1273,10 +1279,13 @@ def generate_active_map():
             ref_link = f'<a href="https://edcs.hist.uzh.ch/en/search?edcs-id={ref_text}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
-            # Distinct styling lines for embedded records inside stacked locations
             if overlap_count > 1:
-                popup_html += f"<div style='border-left: 3px solid #001140; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'>"
-                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span><br>"
+                item_border = "#34495e" if is_approx == 1 else "#001140"
+                popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
+                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
+                if is_approx == 1:
+                    popup_html += " <span style='font-size:10px; color:#7f8c8d; font-weight:bold;'>(Approximate Location)</span>"
+                popup_html += "<br>"
 
             popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
@@ -1301,67 +1310,52 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
 
-        # Tooltip display definition
-        tooltip_label = f"{overlap_count} inscriptions at this coordinate" if overlap_count > 1 else f"ID: {rows[0][0]}"
+        # Tooltip tracking label
+        if overlap_count > 1:
+            tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
+        else:
+            tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         # -------------------------------------------------------------
-        # DYNAMIC COLOR AND LOGICAL TEXT BADGING ASSIGNMENTS
+        # COLOR ASSIGNMENT (Grey vs Classic Blue Pins based on approximate_location)
         # -------------------------------------------------------------
         if overlap_count > 1:
-            border_color = "#001140"  # Dark navy border
-            fill_color = "#1a53ff"    # Darker steel blue fill
-            size = 22                 # Scale icon footprint up for readability
+            size = 22
+            border_color = "#2c3e50" if is_bucket_approximate else "#001140"
+            fill_color = "#7f8c8d" if is_bucket_approximate else "#1a53ff"
             
             icon_html = f"""
-                <div style="
-                    background-color: {fill_color};
-                    border: 2px solid {border_color};
-                    color: #ffffff;
-                    border-radius: 50%;
-                    width: {size}px;
-                    height: {size}px;
-                    font-size: 11px;
-                    font-weight: bold;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-                ">
+                <div style="background-color: {fill_color}; border: 2px solid {border_color}; color: #ffffff; 
+                            border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; 
+                            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">
                     {overlap_count}
                 </div>
             """
         else:
-            border_color = "#002fa7"  # Original classic blue border
-            fill_color = "#33b5e5"    # Original sky blue fill
-            size = 14                 # Original point footprint
+            size = 14
+            border_color = "#34495e" if is_bucket_approximate else "#002fa7"
+            fill_color = "#95a5a6" if is_bucket_approximate else "#33b5e5"
             
             icon_html = f"""
-                <div style="
-                    background-color: {fill_color};
-                    border: 2px solid {border_color};
-                    border-radius: 50%;
-                    width: {size}px;
-                    height: {size}px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-                "></div>
+                <div style="background-color: {fill_color}; border: 2px solid {border_color}; 
+                            border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
             """
 
-        # Generate structural HTML Pin using DivIcon
         folium.Marker(
             location=[lat, lon],
-            icon=folium.DivIcon(
-                icon_size=(size, size),
-                icon_anchor=(size // 2, size // 2),
-                html=icon_html
-            ),
+            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=icon_html),
             popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
             tooltip=tooltip_label
         ).add_to(inscriptions_layer)
 
+    # Add both layers separately to the map canvas
+    range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
+    # Render Layer Control Panel
     folium.LayerControl(collapsed=False).add_to(mymap)
     st.session_state.trigger_map_html = mymap._repr_html_()
+    
 # =========================================================
 # APPLICATION CORE GRAPHICAL INTERFACE
 # =========================================================
