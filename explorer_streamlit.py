@@ -34,16 +34,18 @@ def generate_bulk_search_csv(cursor):
     where_str = ""
     params = {}
     
-    # 1. Check for Advanced Search Mode first
-    if st.session_state.get("active_search_has_run"):
+    # Check exactly which search type ran LAST
+    current_mode = st.session_state.get("csv_mode", "ids")
+    
+    if current_mode == "advanced" and st.session_state.get("active_search_where_clauses"):
         clauses = st.session_state.get("active_search_where_clauses", [])
         params = st.session_state.get("active_search_query_params", {})
         if clauses:
             where_str = " AND " + " AND ".join(clauses)
-        
-        # 2. Fallback to Direct ID List Cache Mode if no advanced clauses are present
-        elif st.session_state.get("active_inscription_ids"):
-            active_ids = st.session_state.get("active_inscription_ids", [])
+    else:
+        # Fallback for Text, Person, Ref, and ID searches
+        active_ids = st.session_state.get("active_inscription_ids", [])
+        if active_ids:
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
@@ -127,7 +129,11 @@ def generate_bulk_search_csv(cursor):
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
-    if st.session_state.get("active_search_has_run"):
+    params = {}
+    
+    current_mode = st.session_state.get("csv_mode", "ids")
+    
+    if current_mode == "advanced" and st.session_state.get("active_search_where_clauses"):
         clauses = st.session_state.get("active_search_where_clauses", [])
         params = st.session_state.get("active_search_query_params", {})
         
@@ -141,8 +147,9 @@ def generate_bulk_search_sql():
             
         if processed_clauses:
             where_str = " AND " + " AND ".join(processed_clauses)
-        elif st.session_state.get("active_inscription_ids"):
-            active_ids = st.session_state.get("active_inscription_ids", [])
+    else:
+        active_ids = st.session_state.get("active_inscription_ids", [])
+        if active_ids:
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
@@ -1866,9 +1873,7 @@ with col_text1:
     )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
-        st.session_state["active_search_has_run"] = False
-        st.session_state["active_search_where_clauses"] = []
-        st.session_state["active_search_query_params"] = {}
+        st.session_state["csv_mode"] = "ids"
         run_standard_search(text_input_var)
         
 with col_text3:
@@ -1882,14 +1887,13 @@ with col_s1:
     ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input")
     if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
+            st.session_state["csv_mode"] = "ids"
             # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
 with col_s2:
     id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
-        st.session_state["active_search_has_run"] = False
-        st.session_state["active_search_where_clauses"] = []
-        st.session_state["active_search_query_params"] = {}
+        st.session_state["csv_mode"] = "ids"
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
@@ -1904,9 +1908,7 @@ with col_s4:
         selected_option = st.selectbox("Select Person:", options_list)
         
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
-            st.session_state["active_search_has_run"] = False
-            st.session_state["active_search_where_clauses"] = []
-            st.session_state["active_search_query_params"] = {}
+            st.session_state["csv_mode"] = "ids"
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
     else:
@@ -2040,6 +2042,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
 
     with col_btn1:
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
+            st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
             form_payload = {
                 'text': f_text,
