@@ -125,7 +125,6 @@ def generate_bulk_search_csv(cursor):
             
     return csv_buffer.getvalue()
 
-
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
@@ -174,6 +173,12 @@ SELECT DISTINCT
     mt.object_id AS [Object ID],
     COALESCE(o.number_of_inscriptions, 0) AS [Number of Inscriptions on Object],
     COALESCE(
+        (SELECT GROUP_CONCAT(mt_sub.inscription_id, ', ') 
+         FROM "Max_Thrax" mt_sub 
+         WHERE mt_sub.object_id = mt.object_id AND mt_sub.inscription_id <> mt.inscription_id), 
+        'None'
+    ) AS [Other Inscriptions on Object ID],
+    COALESCE(
         (SELECT GROUP_CONCAT(i.intervention_id, ', ') 
          FROM "interventions_and_inscriptions" i 
          WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1), 
@@ -191,7 +196,8 @@ LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
 LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
-    
+
+
 def get_db_connection():
     if not os.path.exists(db_path):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
