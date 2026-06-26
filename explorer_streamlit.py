@@ -2104,22 +2104,10 @@ if st.session_state.trigger_map_html:
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
 
 # =========================================================
-# DIAGNOSTIC MONITOR
-# =========================================================
-st.write("### 🔍 Exporter Diagnostic Debugger")
-st.json({
-    "active_search_has_run value": st.session_state.get("active_search_has_run"),
-    "active_search_has_run type": str(type(st.session_state.get("active_search_has_run"))),
-    "active_inscription_ids": st.session_state.get("active_inscription_ids"),
-    "search_results_length": len(str(st.session_state.get("search_results", ""))),
-    "current_where_clauses": st.session_state.get("active_search_where_clauses")
-})
-# =========================================================
-
-# =========================================================
 # UNIVERSAL CSV EXPORT
 # =========================================================
-if st.session_state.get("active_search_has_run"):
+# Instead of checking "has_run", we just check: "Are there any active search IDs cached?"
+if st.session_state.get("active_inscription_ids"):
     col_exp_left, col_exp_right = st.columns([1.5, 3])
     with col_exp_left:
         try:
