@@ -2199,7 +2199,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                     key="btn_advanced_csv_disabled",
                     use_container_width=True,
                     disabled=True,
-                    help="Execute the search filters first to unlock dataset export options."
+                    help="Make a search first to unlock CSV export."
                 )
             with sub_col2:
                 st.button(
@@ -2207,7 +2207,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                     key="btn_advanced_sql_disabled",
                     use_container_width=True,
                     disabled=True,
-                    help="Execute the search filters first to unlock SQL compilation parameters."
+                    help="Make a search first to unlock SQL query generation."
                 )
 
 # =========================================================
@@ -2221,10 +2221,11 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 # =========================================================
 # UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
 # =========================================================
+# Created 3 structural columns to map them horizontally beside each other
+col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
+
 # Instead of checking "has_run", we just check: "Are there any active search IDs cached?"
 if st.session_state.get("active_inscription_ids"):
-    # Created 3 structural columns to map them horizontally beside each other
-    col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
     
     with col_exp_left:
         try:
@@ -2245,10 +2246,29 @@ if st.session_state.get("active_inscription_ids"):
         )
         
     with col_exp_mid:
-        # Relocated Generate Map button context setup here
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             generate_active_map()
             st.rerun()
+
+else:
+    # Locked layout state when no active search exists yet
+    with col_exp_left:
+        st.button(
+            label="Export Results to CSV",
+            key="global_csv_disabled_footer",
+            use_container_width=True,
+            disabled=True,
+            help="Make a search first to unlock CSV export."
+        )
+        
+    with col_exp_mid:
+        st.button(
+            label="Generate Map",
+            key="global_map_disabled_footer",
+            use_container_width=True,
+            disabled=True,
+            help="Make a search first to unlock map generation."
+        )
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
