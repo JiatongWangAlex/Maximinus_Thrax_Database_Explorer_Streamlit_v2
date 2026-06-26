@@ -647,6 +647,9 @@ def run_ref_search(ref_query):
         # Securely lock the IDs into the session tracking layer while rows is alive
         st.session_state.active_inscription_ids = [row[0] for row in rows]
         
+        # --- SET EXPORT MODE FOR THE CSV BUTTON ---
+        st.session_state["csv_mode"] = "ids"
+        
         out_str = [f"Found {len(rows)} matching inscription reference records:\n", "="*70 + "\n\n"]
         for idx, row in enumerate(rows, 1):
             ins_id, ins_text, ins_ref, line_ref, further_bib = row
