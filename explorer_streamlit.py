@@ -1066,21 +1066,23 @@ def execute_advanced_search(f_dict):
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
    ]
 
-    # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
-    # ... (Keep your person logic exactly as it is here) ...
-
-    # --- COLLECTIVE FILTER LOGIC (HANDLES AND vs OR) ---
-    # ... (Keep your collective logic exactly as it is here) ...
-
    # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
-        # FIX: Check if relevance filter is explicitly set, targeting the correct database column
+        # FIX 1: Relevance Check (0 vs 1)
         if key == 'relevance_index' and f_dict.get('relevance_active'):
             applied_criteria_summary.append(f"  • {display_name}: {'Relevant' if val == 1 else 'Not Relevant'}")
             p_name = f"param_{key}"
-            where_clauses.append(f"mt.relevance_index = :{p_name}")  # Fixed to matching schema column
+            where_clauses.append(f"mt.relevance_index = :{p_name}")
+            query_params[p_name] = val
+            continue
+
+        # FIX 2: Intervention Status Check (0 vs 1)
+        if key == 'intervention_status' and f_dict.get('intervention_status_active'):
+            applied_criteria_summary.append(f"  • {display_name}: {'Intervention present' if val == 1 else 'No later intervention'}")
+            p_name = f"param_{key}"
+            where_clauses.append(f"mt.intervention_status = :{p_name}")
             query_params[p_name] = val
             continue
             
@@ -2111,7 +2113,13 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         st.markdown("#### Based on Later Modifications / Reuse")
         
         # 1. Intervention Status
-        f_interv_stat = st.selectbox("Intervention Status:", get_filter_options("Max_Thrax", "intervention_status"))
+        # New clean phrasing for Intervention Status
+        intervention_options = [
+            "All inscriptions regardless of presence of later intervention",
+            "Intervention present",
+            "No later intervention"
+        ]
+        f_inter_status = st.selectbox("Intervention Status:", intervention_options)
         
         # 2. Method of Intervention
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"])
@@ -2152,7 +2160,12 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                 'virorum_distributio': f_vir_dist,
                 'status_designation': f_status,
                 'position_description': f_pos,
-                'intervention_status': f_interv_stat,
+                'intervention_status': (
+                    "All" if f_inter_status == "All inscriptions regardless of presence of later intervention"
+                    else 1 if f_inter_status == "Intervention present"
+                    else 0
+                ),
+                'intervention_status_active': False if f_inter_status == "All inscriptions regardless of presence of later intervention" else True,
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
                 'target_description': f_interv_tgt,
