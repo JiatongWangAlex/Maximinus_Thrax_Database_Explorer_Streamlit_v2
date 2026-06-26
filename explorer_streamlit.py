@@ -215,16 +215,41 @@ def run_standard_search(user_input):
             WHERE mt.object_id = TargetObject.selected_obj_id
         ),
         
-        Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        Sec1_List AS (
+            SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, 
+                   '* ' || mt.sequence_id || '. ' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec1_Spacer AS (SELECT 1 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
-        Sec2_Summary AS (SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '**' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' :** ' || CASE WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 THEN '_no interventions_' ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        
+        Sec2_Summary AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '**' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item inside the summary header
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' :** ' || 
+                   CASE 
+                       WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 
+                       THEN '_no interventions_' 
+                       ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' 
+                   END || char(10) || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         
         Sec3_Inscription_Headers AS (
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
@@ -1007,16 +1032,41 @@ def execute_advanced_search(f_dict):
             WHERE mt.object_id = TargetObject.selected_obj_id
         ),
         
-        Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        Sec1_List AS (
+            SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, 
+                   '* ' || mt.sequence_id || '. ' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec1_Spacer AS (SELECT 1 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
-        Sec2_Summary AS (SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '**' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' :** ' || CASE WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 THEN '_no interventions_' ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        
+        Sec2_Summary AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '**' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item inside the summary header
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' :** ' || 
+                   CASE 
+                       WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 
+                       THEN '_no interventions_' 
+                       ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' 
+                   END || char(10) || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         
         Sec3_Inscription_Headers AS (
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
@@ -1155,16 +1205,41 @@ def fetch_metadata_by_id(inscription_id):
             WHERE mt.object_id = TargetObject.selected_obj_id
         ),
         
-        Sec1_List AS (SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, '* ' || mt.sequence_id || '. ' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        Sec1_List AS (
+            SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, 
+                   '* ' || mt.sequence_id || '. ' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec1_Spacer AS (SELECT 1 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
-        Sec2_Summary AS (SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, '**' || mt.inscription_ref || CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || ' :** ' || CASE WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 THEN '_no interventions_' ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' END || char(10) || char(10) AS tl FROM "Max_Thrax" mt CROSS JOIN TargetObject WHERE mt.object_id = TargetObject.selected_obj_id),
+        
+        Sec2_Summary AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '**' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   -- FIXED: Check if this row is the current inscription item inside the summary header
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' :** ' || 
+                   CASE 
+                       WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 
+                       THEN '_no interventions_' 
+                       ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' interventions' 
+                   END || char(10) || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
         Sec2_Spacer AS (SELECT 2 AS sg, 999999 AS seq_id, 2 AS inner_lo, '' AS tl UNION ALL SELECT 2 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
         
         Sec3_Inscription_Headers AS (
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
