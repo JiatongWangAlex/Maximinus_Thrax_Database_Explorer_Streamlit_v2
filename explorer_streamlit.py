@@ -2542,7 +2542,7 @@ else:
     with col_exp_left:
         st.button(
             label="Export Results to CSV",
-            key="global_csv_disabled_footer",
+            key="global_csv_disabled_footer_csv",
             use_container_width=True,
             disabled=True,
             help="Please click the appropriate search/report button above to process your live changes before exporting."
@@ -2551,7 +2551,7 @@ else:
     with col_exp_mid:
         st.button(
             label="Generate Map",
-            key="global_map_disabled_footer",
+            key="global_map_disabled_footer_map",
             use_container_width=True,
             disabled=True,
             help="Please click the appropriate search/report button above to process your live changes before mapping."
