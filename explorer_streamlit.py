@@ -2107,14 +2107,16 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
     # =========================================================================
-    # ACTION BUTTONS ROW (Kept perfectly original inside Advanced Search Expander)
+    # ACTION BUTTONS ROW (Streamlined: Execution & Standalone SQL Compilation)
     # =========================================================================
-    col_btn1, col_btn2, col_btn3 = st.columns([2, 2, 3])
+    col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
             st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
+            st.session_state["trigger_map_html"] = None  # Instantly wipe previous global map
+            
             form_payload = {
                 'text': f_text,
                 'relevance_index': (
@@ -2150,65 +2152,24 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             execute_advanced_search(form_payload)
 
     with col_btn2:
-        # Check if the search has completed and criteria haven't been touched since
         if st.session_state.get("active_search_has_run"):
-            if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
-                generate_active_map()
-                st.rerun()  # Forces the page to immediately load the HTML layer on the first click
+            dynamic_sql_query = generate_bulk_search_sql()
+            st.download_button(
+                label="Download SQL Query",
+                data=dynamic_sql_query,
+                file_name="search_results_compiled_query.sql",
+                mime="text/plain",
+                use_container_width=True,
+                key="btn_download_raw_sql_query"
+            )
         else:
-            # Displays a disabled fallback button so users know they need to search first
-            st.button("Generate Map", key="btn_advanced_map_disabled", use_container_width=True, disabled=True, help="Make a search first to unlock map generation")
-    with col_btn3:
-        if st.session_state.get("active_search_has_run"):
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                csv_data_string = generate_bulk_search_csv(cursor)
-                conn.close()
-            except Exception as e:
-                csv_data_string = f"Error compiling dataset: {str(e)}"
-                
-            sub_col1, sub_col2 = st.columns(2)
-            
-            with sub_col1:
-                st.download_button(
-                    label="Export Results to CSV",
-                    data=csv_data_string,
-                    file_name="search_results_export_flat.csv",
-                    mime="text/csv",
-                    use_container_width=True,
-                    key="btn_advanced_csv_export"
-                )
-                
-            with sub_col2:
-                dynamic_sql_query = generate_bulk_search_sql()
-                st.download_button(
-                    label="Download SQL Query",
-                    data=dynamic_sql_query,
-                    file_name="search_results_compiled_query.sql",
-                    mime="text/plain",
-                    use_container_width=True,
-                    key="btn_download_raw_sql_query"
-                )
-        else:
-            # Replaced st.info with structured, disabled buttons to maintain clean row alignment
-            sub_col1, sub_col2 = st.columns(2)
-            with sub_col1:
-                st.button(
-                    label="Export Results to CSV",
-                    key="btn_advanced_csv_disabled",
-                    use_container_width=True,
-                    disabled=True,
-                    help="Make a search first to unlock CSV export."
-                )
-            with sub_col2:
-                st.button(
-                    label="Download SQL Query",
-                    key="btn_advanced_sql_disabled",
-                    use_container_width=True,
-                    disabled=True,
-                    help="Make a search first to unlock SQL query generation."
-                )
+            st.button(
+                label="Download SQL Query",
+                key="btn_advanced_sql_disabled",
+                use_container_width=True,
+                disabled=True,
+                help="Make a search first to unlock SQL query generation."
+            )
 
 # =========================================================
 # MAP VIEWER (Always Visible)
