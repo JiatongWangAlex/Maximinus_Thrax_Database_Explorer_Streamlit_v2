@@ -1472,7 +1472,9 @@ The advanced search suite offers the following filters:
 
 > **Note on the "Relevance?" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
 """)
-# Main Word/Phrase Search Row with Generate Map
+# =========================================================
+# MAIN SEARCH FUNCTIONS AND GENERATE MAP
+# =========================================================
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2, col_text3 = st.columns([2, 1, 1])
 with col_text1:    
@@ -1522,10 +1524,8 @@ with col_s4:
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
             generate_person_report(pid_input_var)
 # =========================================================
-# ADVANCED SEARCH WRAPPER
+# ADVANCED SEARCH
 # =========================================================
-
-
 with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
@@ -1533,93 +1533,118 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     f_text = st.text_input("Advanced Text Search (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
     
     st.markdown("---")
-    st.markdown("### Filters")
     
-    # --- DYNAMIC PERSON DATABASE LOOKUP ---
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
-        db_persons = cursor.fetchall()
-        conn.close()
-        person_options = {row[0]: row[1] for row in db_persons}
-    except Exception:
-        person_options = {}
-
     col1, col2, col3 = st.columns(3)
+    
+    # =========================================================================
+    # COLUMN 1: Inscription Metadata
+    # =========================================================================
     with col1:
-        # 1. Relevance (mt.relevance_index)
-        f_rel = st.selectbox("Relevance:", get_filter_options("Max_Thrax", "relevance_index"))
+        st.markdown("### Based on Inscription Metadata")
         
-        # 2. Distributio Titulorum (dt.distributio_titulorum)
+        # 1. Relevance
+        f_rel = st.selectbox("Relevant to Maximinus Thrax:", get_filter_options("Max_Thrax", "relevance_index"))
+        
+        # 2. Province
+        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
+        
+        # 3. Distributio Titulorum
         f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
         
-        # 3. Material (m.material_name)
-        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
-        
-        # 4. Support Type (s.support_name) -> UNTOUCHED, sits in its original natural position
+        # 4. Support Type
         f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
         
-        # 5. Context Type (ct.context_name)
+        # 5. Context Type
         f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"])
         
-        # 6. Province (pr.province_name)
-        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
-
-    with col2:
-        # 7. Inscriptions on Object (o.number_of_inscriptions)
-        f_num_ins = st.multiselect("Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
+        # 6. Material
+        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
         
-        # 8. Person (ip_f.person_id)
+        # 7. Status Tituli
+        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"])
+        
+        # 8. Inscriptions on Object
+        f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
+
+    # =========================================================================
+    # COLUMN 2: People and Institutions
+    # =========================================================================
+    with col2:
+        st.markdown("### Based on People and Institutions")
+        
+        # --- DYNAMIC PERSON DATABASE LOOKUP (Kept local to this block scope) ---
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
+            db_persons = cursor.fetchall()
+            conn.close()
+            person_options = {row[0]: row[1] for row in db_persons}
+        except Exception:
+            person_options = {}
+
+        # 1. Collective / Military Unit + Brand New Logic Toggle
+        f_unit = st.multiselect("Collective/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        f_unit_operator = st.radio(
+            "Match selected units using:",
+            options=["OR (Any of these units)", "AND (All of these units)"],
+            horizontal=True,
+            index=0,
+            label_visibility="collapsed",
+            key="rad_collective_op"
+        )
+        
+        # Spacer for neat tracking between blocks
+        st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+        
+        # 2. Person + Existing Logic Toggle
         f_person_id = st.multiselect(
             "Person:",
             options=list(person_options.keys()),
             format_func=lambda x: person_options[x]
         )
-        
-        # Radio toggle underneath Person
         f_person_operator = st.radio(
             "Match selected people using:",
             options=["OR (Any of these people)", "AND (All of these people)"],
             horizontal=True,
             index=0,
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="rad_person_op"
         )
         
-        # --- VISUAL ALIGNMENT INJECTOR ---
-    
-        st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
-        
-        # 9. Distributio Virorum (vd.virorum_distributio) -> NOW ALIGNED
+        # 3. Distributio Virorum
         f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
         
-        # 10. Status Designation (sd.status_designation)
-        f_status = st.multiselect("Status Designation:", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
+        # 4. Status Designation (With customized note warning out Imperial Titulature)
+        f_status = st.multiselect("Attested Status/Title (EXCLUDING emperors, see Imperial Titulature Search):", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
         
-        # 11. Office/Military Role (pos.position_description)
-        f_pos = st.multiselect("Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
-        
+        # 5. Office/Military Role
+        f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
+
+    # =========================================================================
+    # COLUMN 3: Later Modifications / Reuse
+    # =========================================================================
     with col3:
-        # 12. Collective/Military Unit (col.collective_name)
-        f_unit = st.multiselect("Collective/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        st.markdown("### Based on Later Modifications / Reuse")
         
-        # 13. Intervention Status (mt.intervention_status)
+        # 1. Intervention Status
         f_interv_stat = st.selectbox("Intervention Status:", get_filter_options("Max_Thrax", "intervention_status"))
         
-        # 14. Method of Intervention (meth.method_description)
+        # 2. Method of Intervention
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"])
         
-        # 15. Extent of Intervention (ext.extent_description)
+        # 3. Extent of Intervention
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"])
         
-        # 16. Target of Intervention (targ.target_description)
+        # 4. Target of Intervention
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
-        
-        # 17. Status Tituli (st.status_tituli_name)
-        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"])
-    col1, col2, col3 = st.columns([2, 2, 3])
 
-    with col1:
+    # =========================================================================
+    # ACTION BUTTONS ROW
+    # =========================================================================
+    col_btn1, col_btn2, col_btn3 = st.columns([2, 2, 3])
+
+    with col_btn1:
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
             form_payload = {
                 'text': f_text,
@@ -1632,10 +1657,11 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                 'number_of_inscriptions': f_num_ins,
                 'person_id': f_person_id,
                 'person_operator': "AND" if "AND" in f_person_operator else "OR",
+                'collective_name': f_unit,
+                'collective_operator': "AND" if "AND" in f_unit_operator else "OR", # New mapping payload injected safely here
                 'virorum_distributio': f_vir_dist,
                 'status_designation': f_status,
                 'position_description': f_pos,
-                'collective_name': f_unit,
                 'intervention_status': f_interv_stat,
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
@@ -1644,16 +1670,20 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             }
             execute_advanced_search(form_payload)
 
-    with col2:
+    with col_btn2:
         if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
             generate_active_map()
-
-# Interactive Map Inline Viewport Component 
+            
+# =========================================================
+# MAP VIEWER
+# =========================================================
 if st.session_state.trigger_map_html:
     with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
 
-# Search Results
+# =========================================================
+# SEARCH RESULTS
+# =========================================================
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
 
