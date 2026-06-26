@@ -229,7 +229,7 @@ def run_standard_search(user_input):
         
         Sec2_Header AS (
             SELECT 2 AS sg, 0 AS seq_id, 0 AS inner_lo,
-                   '### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
+                   '#### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
         ),
         
         Sec2_Summary AS (
@@ -1060,7 +1060,7 @@ def execute_advanced_search(f_dict):
         
         Sec2_Header AS (
             SELECT 2 AS sg, 0 AS seq_id, 0 AS inner_lo,
-                   '### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
+                   '#### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
         ),
         
         Sec2_Summary AS (
@@ -1247,7 +1247,7 @@ def fetch_metadata_by_id(inscription_id):
         
         Sec2_Header AS (
             SELECT 2 AS sg, 0 AS seq_id, 0 AS inner_lo,
-                   '### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
+                   '#### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
         ),
         
         Sec2_Summary AS (
