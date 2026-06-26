@@ -2094,28 +2094,32 @@ The advanced search suite offers the following filters:
 # MAIN SEARCH FUNCTIONS AND GENERATE MAP
 # =========================================================
 st.markdown("### Key Word or Phrase Search")
-col_text1, col_text2 = st.columns([3, 1])  # Changed column widths since map button moved downstream
-with col_text1:    
-    # 1. Check if the value actually changed from the last run right inline
-    if "main_text_input" in st.session_state:
-        # If the text in the widget doesn't match what was last searched, run the reset
-        if st.session_state.get("last_searched_text") != st.session_state["main_text_input"]:
-            st.session_state["active_search_has_run"] = False
-            st.session_state["trigger_map_html"] = None
+col_text1, col_text2 = st.columns([3, 1])
 
+with col_text1:    
     text_input_var = st.text_input(
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
         key="main_text_input", 
-        label_visibility="collapsed",
-        on_change=reset_map_and_search_flags
+        label_visibility="collapsed"
     )
+    
+    # Check if what's currently in the text box matches what we last searched
+    # If it doesn't match, we override the flag to False right here before rendering the downstream buttons
+    if st.session_state.get("last_searched_text", "") != text_input_var:
+        st.session_state["active_search_has_run"] = False
+        st.session_state["trigger_map_html"] = None
+
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
+        # Update our tracking anchor so the condition above becomes False
+        st.session_state["last_searched_text"] = text_input_var
+        
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
         run_standard_search(text_input_var)
+        st.rerun()
         
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Inscription Report and Person Report Generator")
