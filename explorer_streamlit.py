@@ -1533,6 +1533,8 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     f_text = st.text_input("Advanced Text Search (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
     
     st.markdown("---")
+    st.markdown("### Filters")
+    st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
@@ -1540,7 +1542,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     # COLUMN 1: Inscription Metadata
     # =========================================================================
     with col1:
-        st.markdown("### Based on Inscription Metadata")
+        st.markdown("## Based on Inscription Metadata")
         
         # 1. Relevance
         f_rel = st.selectbox("Relevant to Maximinus Thrax:", get_filter_options("Max_Thrax", "relevance_index"))
@@ -1570,7 +1572,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     # COLUMN 2: People and Institutions
     # =========================================================================
     with col2:
-        st.markdown("### Based on People and Institutions")
+        st.markdown("## Based on People and Institutions")
         
         # --- DYNAMIC PERSON DATABASE LOOKUP (Kept local to this block scope) ---
         try:
@@ -1625,7 +1627,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     # COLUMN 3: Later Modifications / Reuse
     # =========================================================================
     with col3:
-        st.markdown("### Based on Later Modifications / Reuse")
+        st.markdown("## Based on Later Modifications / Reuse")
         
         # 1. Intervention Status
         f_interv_stat = st.selectbox("Intervention Status:", get_filter_options("Max_Thrax", "intervention_status"))
