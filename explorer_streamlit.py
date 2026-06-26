@@ -33,11 +33,19 @@ def generate_bulk_search_csv(cursor):
     
     where_str = ""
     params = {}
+    
+    # 1. Check for Advanced Search Mode first
     if st.session_state.get("active_search_has_run"):
         clauses = st.session_state.get("active_search_where_clauses", [])
         params = st.session_state.get("active_search_query_params", {})
         if clauses:
             where_str = " AND " + " AND ".join(clauses)
+        
+        # 2. Fallback to Direct ID List Cache Mode if no advanced clauses are present
+        elif st.session_state.get("active_inscription_ids"):
+            active_ids = st.session_state.get("active_inscription_ids", [])
+            id_string = ", ".join(map(str, active_ids))
+            where_str = f" AND mt.inscription_id IN ({id_string})"
 
     robust_export_query = f"""
         SELECT DISTINCT
@@ -115,6 +123,7 @@ def generate_bulk_search_csv(cursor):
             
     return csv_buffer.getvalue()
 
+
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
@@ -129,8 +138,13 @@ def generate_bulk_search_sql():
                 if target_placeholder in c:
                     c = c.replace(target_placeholder, f"'{v}'" if isinstance(v, str) else str(v))
             processed_clauses.append(c)
+            
         if processed_clauses:
             where_str = " AND " + " AND ".join(processed_clauses)
+        elif st.session_state.get("active_inscription_ids"):
+            active_ids = st.session_state.get("active_inscription_ids", [])
+            id_string = ", ".join(map(str, active_ids))
+            where_str = f" AND mt.inscription_id IN ({id_string})"
 
     return f"""-- Copy and execute this query directly in your database platform to verify results
 SELECT DISTINCT
@@ -543,6 +557,9 @@ def run_standard_search(user_input):
                 
         st.session_state.active_inscription_ids = list(seen_text_ids.union(seen_fallback_ids))
         all_matched_ids = st.session_state.active_inscription_ids
+
+        st.session_state["active_search_where_clauses"] = []  # Tells exporter: Mode 2 Active
+        st.session_state["active_search_has_run"] = True      # Lights up the button
         
         if not all_matched_ids:
             st.session_state.search_results = f'No inscriptions found matching string "{user_input}"'
@@ -666,7 +683,10 @@ def generate_person_report(p_id):
             WHERE ip.person_id = ?;
         """, (int(p_id),))
         st.session_state.active_inscription_ids = [r[0] for r in cursor.fetchall()]
-
+        
+        st.session_state["active_search_where_clauses"] = []  # Tells exporter: Mode 2 Active
+        st.session_state["active_search_has_run"] = True      # Lights up the button globally
+        
         sql = """
         WITH TargetPerson AS (
             SELECT ? AS selected_person_id
@@ -1484,7 +1504,13 @@ def fetch_metadata_by_id(inscription_id):
         rows = cursor.fetchall()
         conn.close()
         if not rows:
+            
+            st.session_state.active_inscription_ids = [int(inscription_id.strip())]
+            st.session_state["active_search_where_clauses"] = []  # Mode 2 explicit ID handling
+            st.session_state["active_search_has_run"] = True      # Displays the button
+
             st.session_state.search_results = f"No metadata entries discovered for ID: {inscription_id}"
+            
         else:
             st.session_state.search_results = "\n".join([row[0] for row in rows if row[0] is not None])
     except Exception as e:
@@ -1998,7 +2024,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
 
     # =========================================================================
-    # ACTION BUTTONS ROW
+    # ACTION BUTTONS ROW (Kept perfectly original inside Advanced Search Expander)
     # =========================================================================
     col_btn1, col_btn2, col_btn3 = st.columns([2, 2, 3])
 
@@ -2037,7 +2063,6 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             generate_active_map()
     with col_btn3:
         if st.session_state.get("active_search_has_run"):
-            # This calls the background logic we are updating
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
@@ -2050,7 +2075,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             
             with sub_col1:
                 st.download_button(
-                    label="Export Flat CSV",
+                    label="Export Results to CSV",
                     data=csv_data_string,
                     file_name="search_results_export_flat.csv",
                     mime="text/csv",
@@ -2070,15 +2095,38 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                 )
         else:
             st.info("Execute a search to unlock dataset export options.")
+
 # =========================================================
 # MAP VIEWER
 # =========================================================
 if st.session_state.trigger_map_html:
     with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+# =========================================================
+# UNIVERSAL CSV EXPORT
+# =========================================================
+if st.session_state.get("active_search_has_run"):
+    col_exp_left, col_exp_right = st.columns([1.5, 3])
+    with col_exp_left:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            global_csv_string = generate_bulk_search_csv(cursor)
+            conn.close()
+        except Exception as e:
+            global_csv_string = f"Error compiling dataset: {str(e)}"
+
+        st.download_button(
+            label="Export Results to CSV",
+            data=global_csv_string,
+            file_name="search_results_export.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="btn_global_results_csv_export"
+        )
 
 # =========================================================
-# SEARCH RESULTS
+# SEARCH RESULTS LIGHTBOX CONTAINER
 # =========================================================
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
@@ -2129,7 +2177,7 @@ with st.container(height=520, border=True):
             st.markdown(
                 f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
                 unsafe_allow_html=True,
-            )
+                )
         else:
             # For everything else (Context, Material, etc.), keep regular Markdown active
             st.markdown(block)
