@@ -26,6 +26,12 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
+def reset_map_and_search_flags():
+    """Hides the generate map button and clears the map frame immediately when a filter changes."""
+    st.session_state["active_search_has_run"] = False
+    st.session_state["trigger_map_html"] = None
+
+
 def generate_bulk_search_csv(cursor):
     """Generates a multi-row CSV text string matching all current search filters safely without using external variables."""
     import io
@@ -2026,8 +2032,12 @@ with col_s4:
 with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
-    # Text search assigned to its own private, isolated row context
-    f_text = st.text_input("Advanced Text Search (Boolean Logic Operators Allowed):", placeholder="e.g. Maximinus AND legatus")
+   # Text search assigned to its own private, isolated row context
+    f_text = st.text_input(
+        "Advanced Text Search (Boolean Logic Operators Allowed):", 
+        placeholder="e.g. Maximinus AND legatus",
+        on_change=reset_map_and_search_flags
+    )
     
     st.markdown("---")
     st.markdown("### Filters")
@@ -2047,33 +2057,33 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             "Relevant",
             "Not Relevant"
         ]
-        f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options)
+        f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
         
         # 2. Province
-        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
+        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 3. Distributio Titulorum
-        f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"])
+        f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 4. Support Type
-        f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"])
+        f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 5. Context Type
-        f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"])
+        f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 6. Material
-        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"])
+        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 7. Status Tituli
-        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"])
+        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
         
         # 8. Inscriptions on Object
-        f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"])
+        f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
 
     # =========================================================================
     # COLUMN 2: People and Institutions
     # =========================================================================
-    with col2:
+with col2:
         st.markdown("#### Based on People and Institutions")
         
         # --- DYNAMIC PERSON DATABASE LOOKUP (Kept local to this block scope) ---
@@ -2088,21 +2098,27 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             person_options = {}
 
         # 1. Collective / Military Unit + Brand New Logic Toggle
-        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        f_unit = st.multiselect(
+            "Institution/Group/Military Unit:", 
+            [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
         f_unit_operator = st.radio(
             "Match selected units using:",
             options=["OR (Any of these units)", "AND (All of these units)"],
             horizontal=True,
             index=0,
             label_visibility="collapsed",
-            key="rad_collective_op"
+            key="rad_collective_op",
+            on_change=reset_map_and_search_flags
         )
         
         # 2. Person + Existing Logic Toggle
         f_person_id = st.multiselect(
             "Person:",
             options=list(person_options.keys()),
-            format_func=lambda x: person_options[x]
+            format_func=lambda x: person_options[x],
+            on_change=reset_map_and_search_flags
         )
         f_person_operator = st.radio(
             "Match selected people using:",
@@ -2110,19 +2126,31 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             horizontal=True,
             index=0,
             label_visibility="collapsed",
-            key="rad_person_op"
+            key="rad_person_op",
+            on_change=reset_map_and_search_flags
         )
         
         # 3. Distributio Virorum
-        f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
+        f_vir_dist = st.multiselect(
+            "Distributio Virorum | Type of Persons:", 
+            [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
         
-        # 4. Status Designation (With customized note warning out Imperial Titulature)
-        f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
+        # 4. Status Designation 
+        f_status = st.multiselect(
+            "Attested Status Title", 
+            [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
         
         # 5. Office/Military Role
-        f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
-
-    # =========================================================================
+        f_pos = st.multiselect(
+            "Attested Office/Military Role:", 
+            [opt for opt in get_filter_options("positions", "position_description") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
+  # =========================================================================
     # COLUMN 3: Later Modifications / Reuse
     # =========================================================================
     with col3:
@@ -2135,17 +2163,33 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             "Intervention present",
             "No later intervention"
         ]
-        f_inter_status = st.selectbox("Intervention Status:", intervention_options)
+        f_inter_status = st.selectbox(
+            "Intervention Status:", 
+            intervention_options,
+            on_change=reset_map_and_search_flags
+        )
         
         # 2. Method of Intervention
-        f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"])
+        f_interv_meth = st.multiselect(
+            "Method of Intervention:", 
+            [opt for opt in get_filter_options("methods", "method_description") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
         
         # 3. Extent of Intervention
-        f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"])
+        f_interv_ext = st.multiselect(
+            "Extent of Intervention:", 
+            [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
         
         # 4. Target of Intervention
-        f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"])
-
+        f_interv_tgt = st.multiselect(
+            "Target of Intervention:", 
+            [opt for opt in get_filter_options("targets", "target_description") if opt != "All"],
+            on_change=reset_map_and_search_flags
+        )
+        
     # =========================================================================
     # ACTION BUTTONS ROW (Kept perfectly original inside Advanced Search Expander)
     # =========================================================================
