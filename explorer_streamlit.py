@@ -711,7 +711,7 @@ def run_ref_search(ref_query):
                 f"**Province:** {province}",
                 f"**Place:** {place}",
                 f"**Associated Roman Road (Itinere):** {road}",
-                f"**Bibliography:**\n* " + replace(COALESCE(biblio, 'N/A'), '\n', '\n* ') if biblio else "**Bibliography:** N/A",
+                f"**Bibliography:**\n* " + str(biblio).replace('\n', '\n* ') if biblio else "**Bibliography:** N/A",
                 "\n" + "-"*70 + "\n"
             ]
             out_str.append("\n".join(block))
