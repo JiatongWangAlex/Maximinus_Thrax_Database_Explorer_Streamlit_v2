@@ -1866,7 +1866,11 @@ with col_text1:
     )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
+        st.session_state["active_search_has_run"] = False
+        st.session_state["active_search_where_clauses"] = []
+        st.session_state["active_search_query_params"] = {}
         run_standard_search(text_input_var)
+        
 with col_text3:
     if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
         generate_active_map()
@@ -1883,6 +1887,9 @@ with col_s1:
 with col_s2:
     id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
+        st.session_state["active_search_has_run"] = False
+        st.session_state["active_search_where_clauses"] = []
+        st.session_state["active_search_query_params"] = {}
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
@@ -1897,6 +1904,9 @@ with col_s4:
         selected_option = st.selectbox("Select Person:", options_list)
         
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
+            st.session_state["active_search_has_run"] = False
+            st.session_state["active_search_where_clauses"] = []
+            st.session_state["active_search_query_params"] = {}
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
     else:
@@ -2030,6 +2040,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
 
     with col_btn1:
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
+            st.session_state["active_inscription_ids"] = []
             form_payload = {
                 'text': f_text,
                 'relevance_index': (
