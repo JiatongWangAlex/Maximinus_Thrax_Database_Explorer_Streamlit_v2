@@ -8,6 +8,12 @@ import re
 import csv
 import io
 
+if "active_search_has_run" not in st.session_state:
+    st.session_state["active_search_has_run"] = False
+if "active_search_where_clauses" not in st.session_state:
+    st.session_state["active_search_where_clauses"] = []
+if "active_search_query_params" not in st.session_state:
+    st.session_state["active_search_query_params"] = {}
 
 
 st.set_page_config(page_title="Maximinus Thrax Database Explorer", layout="wide")
@@ -698,6 +704,10 @@ def execute_advanced_search(f_dict):
     applied_criteria_summary = []
     where_clauses = []
     query_params = {}
+    
+    st.session_state["active_search_where_clauses"] = where_clauses
+    st.session_state["active_search_query_params"] = query_params
+    st.session_state["active_search_has_run"] = True
 
     # 1. Search Filters
     base_sql = """
@@ -1917,159 +1927,39 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
             generate_active_map()
     with col_btn3:
-        # --- 1. DOWNLOAD THE CSV ---
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            csv_data_string = generate_flat_csv_string(cursor, target_id)
-            conn.close()
-        except Exception as e:
-            csv_data_string = f"Error during data collection: {str(e)}"
-            
-        if csv_data_string:
+        # Check if the execution criteria has run yet
+        if st.session_state.get("active_search_has_run"):
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                csv_data_string = generate_bulk_search_csv(cursor)
+                conn.close()
+            except Exception as e:
+                csv_data_string = f"Error compiling dataset: {str(e)}"
+                
             st.download_button(
                 label="Export Flat CSV",
                 data=csv_data_string,
-                file_name=f"inscription_{target_id}_flat.csv",
+                file_name="search_results_export_flat.csv",
                 mime="text/csv",
                 use_container_width=True,
                 key="btn_advanced_csv_export"
             )
             
-        st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
-            
-        # --- 2. AUTOMATICALLY GENERATE THE COMPANION SQL QUERY ---
-        # This replaces the Python loop with a native SQLite subquery string
-        # and plugs the active target_id straight into the script dynamically.
-        
-        dynamic_sql_query = f"""WITH TargetInscription AS (SELECT {target_id} AS selected_id),
-TargetObject AS (
-    SELECT object_id AS selected_obj_id 
-    FROM "Max_Thrax" 
-    WHERE inscription_id = (SELECT selected_id FROM TargetInscription)
-),
-Metadata_Joined AS (
-    SELECT 
-        mt.inscription_id, 
-        mt.inscription_ref, 
-        mt.line_ref, 
-        mt.inscription_text_formatted, 
-        mt.corrected_lemmas, 
-        mt.dating, 
-        mt.expanded_bibliography,
-        ct.context_name, 
-        s.support_name, 
-        m.material_name, 
-        pr.province_name, 
-        pl.place_name, 
-        pl.pleiades_id,
-        r_roads.road_name, 
-        r_roads.itinere_id,
-        st.status_tituli_name,
-        COALESCE(
-            (SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ')
-             FROM "inscriptions_and_TM_numbers" itm 
-             WHERE itm.inscription_id = mt.inscription_id), 
-            'N/A'
-        ) AS tm_hyperlinks
-    FROM "Max_Thrax" mt 
-    CROSS JOIN TargetInscription
-    LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
-    LEFT JOIN "support" s                ON mt.support_id = s.support_id
-    LEFT JOIN "materials" m              ON mt.material_id = m.material_id
-    LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
-    LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
-    LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
-    LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
-    LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
-    WHERE mt.inscription_id = TargetInscription.selected_id
-)
-SELECT 
-    m_j.inscription_id AS [Inscription ID],
-    m_j.inscription_ref AS [Inscription Reference],
-    m_j.line_ref AS [Line Reference],
-    m_j.tm_hyperlinks AS [TM Numbers Links],
-    m_j.inscription_text_formatted AS [Inscription Text],
-    COALESCE(m_j.corrected_lemmas, 'N/A') AS [Nonstandard Spellings],
-    COALESCE(m_j.context_name, 'N/A') AS [Context],
-    COALESCE(m_j.support_name, 'N/A') AS [Support],
-    COALESCE(m_j.dating, 'N/A') AS [Dating],
-    COALESCE(m_j.material_name, 'N/A') AS [Material],
-    COALESCE(m_j.status_tituli_name, 'N/A') AS [Status Tituli],
-    COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = m_j.inscription_id), 'N/A') AS [Associated Persons],
-    COALESCE(m_j.province_name, 'N/A') AS [Province],
-    CASE WHEN m_j.pleiades_id IS NOT NULL THEN '[' || m_j.place_name || '](https://pleiades.stoa.org/places/' || m_j.pleiades_id || ')' ELSE COALESCE(m_j.place_name, 'N/A') END AS [Place],
-    CASE WHEN m_j.itinere_id IS NOT NULL THEN '[' || COALESCE(m_j.road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || m_j.itinere_id || ')' ELSE 'N/A' END AS [Associated Roman Road],
-    (
-        SELECT GROUP_CONCAT('* ' || alt.sequence_id || '. ' || alt.inscription_ref || COALESCE(' ' || alt.line_ref, '') || CASE WHEN alt.inscription_id = m_j.inscription_id THEN ' [current inscription]' ELSE '' END || ' (id: ' || alt.inscription_id || ')', char(10))
-        FROM "Max_Thrax" alt
-        CROSS JOIN TargetObject
-        WHERE alt.object_id = TargetObject.selected_obj_id
-    ) AS [Objects and Inscriptions],
-    
-    -- =========================================================================
-    -- PURE NATIVE SQL STITCHED SECTIONS 2 & 3 GENERATION BLOCK
-    -- =========================================================================
-    (
-        SELECT GROUP_CONCAT(
-            alt.inscription_ref || COALESCE(' ' || alt.line_ref, '') || 
-            CASE WHEN alt.inscription_id = m_j.inscription_id THEN ' [current inscription]' ELSE '' END || ' : ' ||
-            CASE 
-                WHEN (
-                    SELECT COUNT(DISTINCT i2.intervention_id) 
-                    FROM "interventions_and_inscriptions" i2 
-                    JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id 
-                    WHERE i2.inscription_id = alt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1
-                ) = 0 THEN 'no interventions'
-                ELSE (
-                    SELECT COUNT(DISTINCT i2.intervention_id) 
-                    FROM "interventions_and_inscriptions" i2 
-                    JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id 
-                    WHERE i2.inscription_id = alt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1
-                ) || ' intervention(s)' || char(10) ||
-                (
-                    SELECT GROUP_CONCAT(
-                        'intervention ' || sub_idx.row_num || ' : ' || 
-                        CASE 
-                            WHEN iam.method_id = 2 THEN 
-                                COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || 
-                                (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id)
-                            WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '')
-                            WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '')
-                            ELSE ''
-                        END,
-                        char(10)
-                    )
-                    FROM (
-                        SELECT intervention_id, ROW_NUMBER() OVER (ORDER BY intervention_id ASC) as row_num 
-                        FROM "interventions_and_inscriptions" 
-                        WHERE inscription_id = alt.inscription_id AND role_id = 1
-                    ) sub_idx
-                    JOIN "interventions_and_inscriptions" i ON sub_idx.intervention_id = i.intervention_id
-                    JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
-                    LEFT JOIN "extent" e ON iam.extent_id = e.extent_id
-                    LEFT JOIN "methods" m ON iam.method_id = m.method_id
-                    WHERE i.inscription_id = alt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
-                )
-            END,
-            char(10)
-        )
-        FROM "Max_Thrax" alt
-        WHERE alt.object_id = (SELECT object_id FROM "Max_Thrax" WHERE inscription_id = m_j.inscription_id)
-        ORDER BY alt.sequence_id ASC
-    ) AS [Interventions(Later modifications/reuse)],
-    
-    COALESCE(m_j.expanded_bibliography, 'N/A') AS [Bibliography]
-FROM Metadata_Joined m_j;"""
+            st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
+                
+            dynamic_sql_query = generate_bulk_search_sql()
 
-        st.download_button(
-            label="Download SQL Query Script",
-            data=dynamic_sql_query,
-            file_name=f"generate_inscription_{target_id}_query.sql",
-            mime="text/plain",
-            use_container_width=True,
-            key="btn_download_raw_sql_query"
-        )
+            st.download_button(
+                label="Download SQL Query Script",
+                data=dynamic_sql_query,
+                file_name="search_results_compiled_query.sql",
+                mime="text/plain",
+                use_container_width=True,
+                key="btn_download_raw_sql_query"
+            )
+        else:
+            st.info("Execute a search to unlock dataset export options.")
             
 # =========================================================
 # MAP VIEWER
