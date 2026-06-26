@@ -153,8 +153,8 @@ def generate_bulk_search_sql():
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
-    return f"""-- Copy and execute this query directly in your database platform to verify results
-SELECT DISTINCT
+    # CRITICAL FIX: All tables needed by any advanced filters are safely left-joined here!
+    raw_sql = f"""SELECT DISTINCT
     mt.inscription_id AS [Inscription ID],
     mt.inscription_ref AS [Quick Citation],
     mt.line_ref AS [Line Citation],
@@ -201,9 +201,13 @@ LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
 LEFT JOIN "objects" o ON mt.object_id = o.object_id
 LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
 LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
+LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
+LEFT JOIN "person_roles" pr_role ON ip_f.role_id = pr_role.role_id
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
+    return raw_sql
+    
 def get_db_connection():
     if not os.path.exists(db_path):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
