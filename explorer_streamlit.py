@@ -26,7 +26,7 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
-def Search Text():
+def reset_map_and_search_flags():
     """Hides the generate map button and clears the map frame immediately when a filter changes."""
     st.session_state["active_search_has_run"] = False
     st.session_state["trigger_map_html"] = None
