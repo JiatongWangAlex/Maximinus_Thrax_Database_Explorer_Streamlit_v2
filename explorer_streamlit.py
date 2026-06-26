@@ -430,8 +430,16 @@ def run_standard_search(user_input):
         ),
         
         Sec2_Intervention_Nested_Details AS (
-            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, 
-                   '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || 
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || (
+                       SELECT COUNT(*) 
+                       FROM "interventions_and_inscriptions" i_sub 
+                       JOIN "interventions" iam_sub ON i_sub.intervention_id = iam_sub.intervention_id
+                       WHERE i_sub.inscription_id = i.inscription_id 
+                         AND i_sub.role_id = 1 
+                         AND iam_sub.method_id <> 1
+                         AND i_sub.intervention_id <= i.intervention_id
+                   ) || ' :_ ' || 
                    CASE 
                        WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
                        WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
@@ -1275,9 +1283,17 @@ def execute_advanced_search(f_dict):
             WHERE mt.object_id = TargetObject.selected_obj_id
         ),
         
-        Sec2_Intervention_Nested_Details AS (
-            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, 
-                   '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || 
+       Sec2_Intervention_Nested_Details AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || (
+                       SELECT COUNT(*) 
+                       FROM "interventions_and_inscriptions" i_sub 
+                       JOIN "interventions" iam_sub ON i_sub.intervention_id = iam_sub.intervention_id
+                       WHERE i_sub.inscription_id = i.inscription_id 
+                         AND i_sub.role_id = 1 
+                         AND iam_sub.method_id <> 1
+                         AND i_sub.intervention_id <= i.intervention_id
+                   ) || ' :_ ' || 
                    CASE 
                        WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
                        WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
