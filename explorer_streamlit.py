@@ -633,50 +633,93 @@ def run_ref_search(ref_query):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT inscription_id, inscription_text, inscription_ref, line_ref, further_bibliography FROM "Max_Thrax" WHERE inscription_ref LIKE ?;', (f"%{ref_query.strip()}%",))
-        rows = cursor.fetchall()
         
-        # --- DO NOT CLOSE THE CONNECTION YET ---
-
+        # Comprehensive query pulling all related metadata matching the Reference search string
+        sql = """
+        SELECT DISTINCT
+            mt.inscription_id,
+            mt.inscription_ref,
+            mt.line_ref,
+            mt.inscription_text_formatted,
+            COALESCE(mt.corrected_lemmas, 'N/A'),
+            COALESCE(ct.context_name, 'N/A'),
+            COALESCE(s.support_name, 'N/A'),
+            COALESCE(mt.dating, 'N/A'),
+            COALESCE(m.material_name, 'N/A'),
+            COALESCE(st.status_tituli_name, 'N/A'),
+            COALESCE(pr.province_name, 'N/A'),
+            COALESCE(pl.place_name, 'N/A'),
+            COALESCE(r_roads.road_name, 'N/A'),
+            COALESCE(mt.expanded_bibliography, 'N/A'),
+            -- Linked Trismegistos Numbers Links
+            COALESCE(
+                (SELECT GROUP_CONCAT(itm.TM_number, ', ') 
+                 FROM "inscriptions_and_TM_numbers" itm 
+                 WHERE itm.inscription_id = mt.inscription_id), 
+                'N/A'
+            ) AS tm_links,
+            -- Associated Persons names and IDs
+            COALESCE(
+                (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
+                 FROM persons p 
+                 JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
+                 WHERE ip.inscription_id = mt.inscription_id),
+                'N/A'
+            ) AS linked_persons
+        FROM "Max_Thrax" mt
+        LEFT JOIN "context_types" ct         ON mt.context_id = ct.context_id
+        LEFT JOIN "support" s                ON mt.support_id = s.support_id
+        LEFT JOIN "materials" m              ON mt.material_id = m.material_id
+        LEFT JOIN "provinces" pr             ON mt.province_id = pr.province_id
+        LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
+        LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
+        LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+        LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
+        WHERE mt.inscription_ref LIKE ?
+        ORDER BY mt.inscription_id DESC;
+        """
+        
+        cursor.execute(sql, (f"%{ref_query.strip()}%",))
+        rows = cursor.fetchall()
+        conn.close()
+        
         if not rows:
             st.session_state.search_results = f"No inscriptions found matching reference: {ref_query}"
-            st.session_state.active_inscription_ids = [] # Explicitly clear old map markers out
-            conn.close() # Safe to close on an empty exit branch
+            st.session_state.active_inscription_ids = []
             return
 
-        # Securely lock the IDs into the session tracking layer while rows is alive
+        # Securely lock found IDs into tracking state & update CSV target mode instantly
         st.session_state.active_inscription_ids = [row[0] for row in rows]
-        
-        # --- SET EXPORT MODE FOR THE CSV BUTTON ---
         st.session_state["csv_mode"] = "ids"
         
+        # Build out clean formatting structure mirroring your metadata presentation loops
         out_str = [f"Found {len(rows)} matching inscription reference records:\n", "="*70 + "\n\n"]
         for idx, row in enumerate(rows, 1):
-            ins_id, ins_text, ins_ref, line_ref, further_bib = row
-            out_str.append(f"[{idx}] {ins_ref} {line_ref if line_ref else ''} | ID: {ins_id}\n\nText:\n{ins_text}\n\nBibliography:\n{further_bib}\n" + "-"*70 + "\n\n")
+            (ins_id, ins_ref, line_ref, text_fmt, lemmas, context, support, dating, 
+             material, status_tit, province, place, road, biblio, tm_links, persons) = row
+            
+            block = [
+                f"[{idx}] **Quick Reference:** {ins_ref} {line_ref if line_ref else ''} | **TM Number:** {tm_links} | **Inscription ID:** {ins_id}\n",
+                f"**Inscription Text:**\n{text_fmt if text_fmt else 'N/A'}\n",
+                f"**Nonstandard Spellings:** {lemmas}",
+                f"**Context:** {context}",
+                f"**Support:** {support}",
+                f"**Dating:** {dating}",
+                f"**Material:** {material}",
+                f"**Status Tituli:** {status_tit}",
+                f"**Persons:** {persons}",
+                f"**Province:** {province}",
+                f"**Place:** {place}",
+                f"**Associated Roman Road (Itinere):** {road}",
+                f"**Bibliography:**\n* " + replace(COALESCE(biblio, 'N/A'), '\n', '\n* ') if biblio else "**Bibliography:** N/A",
+                "\n" + "-"*70 + "\n"
+            ]
+            out_str.append("\n".join(block))
+            
         st.session_state.search_results = "".join(out_str)
-        
-        # --- CLOSE CONNECTION SAFELY HERE ---
-        conn.close()
         
     except Exception as e:
         st.session_state.search_results = f"Reference Search Error: {e}"
-        
-def lookup_person_options(name_query):
-    if not name_query.strip():
-        st.warning("Please enter a name to match.")
-        return
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT person_id, person_name FROM "persons" WHERE person_name LIKE ? ORDER BY person_name ASC;', (f"%{name_query.strip()}%",))
-        st.session_state.person_matches = cursor.fetchall()
-        conn.close()
-        if not st.session_state.person_matches:
-            st.session_state.search_results = "No individuals matching that name found in database records."
-    except Exception as e:
-        st.error(f"Person parsing failure: {e}")
-
 def generate_person_report(p_id):
     if not str(p_id).strip().isdigit():
         st.session_state.search_results = "Please enter a valid numerical Person ID."
