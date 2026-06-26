@@ -224,11 +224,11 @@ def run_standard_search(user_input):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   CASE WHEN mt.inscription_id = ti.selected_id THEN ' (current inscription)' ELSE '' END ||
+                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
-            CROSS JOIN TargetInscription ti
             WHERE mt.object_id = TargetObject.selected_obj_id 
               AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)
         ),
@@ -1016,11 +1016,11 @@ def execute_advanced_search(f_dict):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   CASE WHEN mt.inscription_id = ti.selected_id THEN ' (current inscription)' ELSE '' END ||
+                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
-            CROSS JOIN TargetInscription ti
             WHERE mt.object_id = TargetObject.selected_obj_id 
               AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)
         ),
@@ -1164,11 +1164,11 @@ def fetch_metadata_by_id(inscription_id):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   CASE WHEN mt.inscription_id = ti.selected_id THEN ' (current inscription)' ELSE '' END ||
+                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
-            CROSS JOIN TargetInscription ti
             WHERE mt.object_id = TargetObject.selected_obj_id 
               AND EXISTS (SELECT 1 FROM "interventions_and_inscriptions" i3 JOIN "interventions" iam3 ON i3.intervention_id = iam3.intervention_id WHERE i3.inscription_id = mt.inscription_id AND i3.role_id = 1 AND iam3.method_id <> 1)
         ),
