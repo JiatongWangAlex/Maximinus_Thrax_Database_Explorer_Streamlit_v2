@@ -177,7 +177,7 @@ SELECT DISTINCT
          FROM "Max_Thrax" mt_sub 
          WHERE mt_sub.object_id = mt.object_id AND mt_sub.inscription_id <> mt.inscription_id), 
         'None'
-    ) AS [Other Inscriptions on Object ID],
+    ) AS [Other Inscriptions on the same Object],
     COALESCE(
         (SELECT GROUP_CONCAT(i.intervention_id, ', ') 
          FROM "interventions_and_inscriptions" i 
