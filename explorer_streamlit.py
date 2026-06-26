@@ -109,7 +109,7 @@ def generate_bulk_search_csv(cursor):
         return "No matching search results found to export."
 
     headers = [
-        "Inscription ID", "Quick Citation", "Line Citation", "TM Numbers Links", 
+        "Inscription ID", "Quick Citation", "Line Citation", "Trismegistos Number", 
         "Inscription Text", "Nonstandard Spellings", "Context", "Support", 
         "Dating", "Material", "Status Tituli", "Associated Persons", 
         "Province", "Place", "Associated Roman Road", "Number of Inscriptions on Object", 
@@ -158,7 +158,7 @@ SELECT DISTINCT
     mt.inscription_id AS [Inscription ID],
     mt.inscription_ref AS [Quick Citation],
     mt.line_ref AS [Line Citation],
-    COALESCE((SELECT GROUP_CONCAT(itm.TM_number, ', ') FROM "inscriptions_and_TM_numbers" itm WHERE itm.inscription_id = mt.inscription_id), 'N/A') AS [TM Numbers Links],
+    COALESCE((SELECT GROUP_CONCAT(itm.TM_number, ', ') FROM "inscriptions_and_TM_numbers" itm WHERE itm.inscription_id = mt.inscription_id), 'N/A') AS [Trismegistos Number],
     mt.inscription_text AS [Inscription Text],
     COALESCE(mt.corrected_lemmas, 'N/A') AS [Nonstandard Spellings],
     COALESCE(ct.context_name, 'N/A') AS [Context],
