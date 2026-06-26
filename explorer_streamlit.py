@@ -448,6 +448,7 @@ def run_standard_search(user_input):
               AND i.role_id = 1 
               AND iam.method_id <> 1
         ),
+        
         Sec2_Spacer AS (
             SELECT 2 AS sg, mt.sequence_id AS seq_id, 999998 AS inner_lo, char(10) AS tl 
             FROM "Max_Thrax" mt 
@@ -1293,6 +1294,7 @@ def execute_advanced_search(f_dict):
               AND i.role_id = 1 
               AND iam.method_id <> 1
         ),
+        
         Sec2_Spacer AS (
             SELECT 2 AS sg, mt.sequence_id AS seq_id, 999998 AS inner_lo, char(10) AS tl 
             FROM "Max_Thrax" mt 
