@@ -717,6 +717,22 @@ def run_ref_search(ref_query):
         
     except Exception as e:
         st.session_state.search_results = f"Reference Search Error: {e}"
+        
+def lookup_person_options(name_query):
+    if not name_query.strip():
+        st.warning("Please enter a name to match.")
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT person_id, person_name FROM "persons" WHERE person_name LIKE ? ORDER BY person_name ASC;', (f"%{name_query.strip()}%",))
+        st.session_state.person_matches = cursor.fetchall()
+        conn.close()
+        if not st.session_state.person_matches:
+            st.session_state.search_results = "No individuals matching that name found in database records."
+    except Exception as e:
+        st.error(f"Person parsing failure: {e}")
+
 def generate_person_report(p_id):
     if not str(p_id).strip().isdigit():
         st.session_state.search_results = "Please enter a valid numerical Person ID."
