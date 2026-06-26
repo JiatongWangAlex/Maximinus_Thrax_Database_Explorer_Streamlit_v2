@@ -601,7 +601,8 @@ def run_standard_search(user_input):
         out_str = []
         
         # 1. Create the header for the entire search results
-        header = f"## Search Results\nFound {len(text_rows)} direct matches and {len(unique_fallback_rows)} indirect matches!\n"
+        header = f"## Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} indirect match(es)!\n"
+        header += f"**Key Word:** {user_input}\n\n"
         header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects:\n\n"
         out_str.append(header)
         
