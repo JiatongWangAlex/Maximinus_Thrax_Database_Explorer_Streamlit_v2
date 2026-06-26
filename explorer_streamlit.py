@@ -26,8 +26,6 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
-
-
 def generate_bulk_search_csv(cursor):
     """Generates a multi-row CSV text string matching all current search filters safely without using external variables."""
     import io
@@ -41,7 +39,6 @@ def generate_bulk_search_csv(cursor):
         if clauses:
             where_str = " AND " + " AND ".join(clauses)
 
-    # Reconstruct a robust layout map built directly from your actual advanced search fields
     robust_export_query = f"""
         SELECT DISTINCT
             mt.inscription_id,
@@ -61,12 +58,18 @@ def generate_bulk_search_csv(cursor):
             COALESCE(pr.province_name, 'N/A'),
             COALESCE((SELECT pl.place_name FROM "places" pl WHERE pl.place_id = mt.place_id), 'N/A') AS place_name,
             COALESCE((SELECT r_roads.road_name FROM "inscription_and_road" iar JOIN "itiner_e_roads" r_roads ON iar.itiner_e_road_id = r_roads.itiner_e_road_id WHERE iar.inscription_id = mt.inscription_id), 'N/A') AS road_name,
-            COALESCE(o.number_of_inscriptions, 'N/A'),
+            COALESCE(o.number_of_inscriptions, 0) AS num_inscriptions,
+            (
+                SELECT GROUP_CONCAT(mt_sub.sequence_id || '. ' || mt_sub.inscription_ref || CASE WHEN mt_sub.line_ref IS NOT NULL AND mt_sub.line_ref <> '' THEN ' ' || mt_sub.line_ref ELSE '' END || ' (id: ' || mt_sub.inscription_id || ')', '; ')
+                FROM "Max_Thrax" mt_sub
+                WHERE mt_sub.object_id = mt.object_id
+                ORDER BY mt_sub.sequence_id ASC
+            ) AS inscriptions_list,
             (
                 SELECT GROUP_CONCAT(
                     'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
                 )
-                FROM (SELECT intervention_id, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
+                FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
                 JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
                 LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
                 LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
@@ -96,8 +99,8 @@ def generate_bulk_search_csv(cursor):
         "Inscription ID", "Quick Citation", "Line Citation", "TM Numbers Links", 
         "Inscription Text", "Nonstandard Spellings", "Context", "Support", 
         "Dating", "Material", "Status Tituli", "Associated Persons", 
-        "Province", "Place", "Associated Roman Road", "Objects and Inscriptions", 
-        "Interventions(Later modifications/reuse)", "Bibliography"
+        "Province", "Place", "Associated Roman Road", "Number of Inscriptions on Object", 
+        "Inscriptions on Object", "Interventions(Later modifications/reuse)", "Bibliography"
     ]
     
     csv_buffer = io.StringIO()
@@ -109,9 +112,8 @@ def generate_bulk_search_csv(cursor):
             
     return csv_buffer.getvalue()
 
-
 def generate_bulk_search_sql():
-    """Generates a clean, runnable raw SQL script matching active search parameters."""
+    """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
     if st.session_state.get("active_search_has_run"):
         clauses = st.session_state.get("active_search_where_clauses", [])
@@ -119,7 +121,6 @@ def generate_bulk_search_sql():
         
         processed_clauses = []
         for c in clauses:
-            # Replace named parameters with raw values so it copies cleanly into external DB environments
             for k, v in params.items():
                 target_placeholder = f":{k}"
                 if target_placeholder in c:
@@ -130,11 +131,41 @@ def generate_bulk_search_sql():
 
     return f"""-- Copy and execute this query directly in your database platform to verify results
 SELECT DISTINCT
-    mt.inscription_id, 
-    mt.inscription_text, 
-    mt.inscription_ref, 
-    mt.line_ref, 
-    mt.further_bibliography
+    mt.inscription_id AS [Inscription ID],
+    mt.inscription_ref AS [Quick Citation],
+    mt.line_ref AS [Line Citation],
+    COALESCE((SELECT GROUP_CONCAT(itm.TM_number, ', ') FROM "inscriptions_and_TM_numbers" itm WHERE itm.inscription_id = mt.inscription_id), 'N/A') AS [TM Numbers Links],
+    mt.inscription_text AS [Inscription Text],
+    COALESCE(mt.corrected_lemmas, 'N/A') AS [Nonstandard Spellings],
+    COALESCE(ct.context_name, 'N/A') AS [Context],
+    COALESCE(s.support_name, 'N/A') AS [Support],
+    COALESCE(mt.dating, 'N/A') AS [Dating],
+    COALESCE(m.material_name, 'N/A') AS [Material],
+    COALESCE(st.status_tituli_name, 'N/A') AS [Status Tituli],
+    (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
+     FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
+     WHERE ip.inscription_id = mt.inscription_id) AS [Associated Persons],
+    COALESCE(pr.province_name, 'N/A') AS [Province],
+    COALESCE((SELECT pl.place_name FROM "places" pl WHERE pl.place_id = mt.place_id), 'N/A') AS [Place],
+    COALESCE((SELECT r_roads.road_name FROM "inscription_and_road" iar JOIN "itiner_e_roads" r_roads ON iar.itiner_e_road_id = r_roads.itiner_e_road_id WHERE iar.inscription_id = mt.inscription_id), 'N/A') AS [Associated Roman Road],
+    COALESCE(o.number_of_inscriptions, 0) AS [Number of Inscriptions on Object],
+    (
+        SELECT GROUP_CONCAT(mt_sub.sequence_id || '. ' || mt_sub.inscription_ref || CASE WHEN mt_sub.line_ref IS NOT NULL AND mt_sub.line_ref <> '' THEN ' ' || mt_sub.line_ref ELSE '' END || ' (id: ' || mt_sub.inscription_id || ')', '; ')
+        FROM "Max_Thrax" mt_sub
+        WHERE mt_sub.object_id = mt.object_id
+        ORDER BY mt_sub.sequence_id ASC
+    ) AS [Inscriptions on Object],
+    (
+        SELECT GROUP_CONCAT(
+            'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(inter.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(inter.note, '') ELSE '' END, '; '
+        )
+        FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") inter
+        JOIN "interventions" iam ON inter.intervention_id = iam.intervention_id
+        LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
+        LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
+        WHERE inter.inscription_id = mt.inscription_id AND inter.role_id = 1 AND iam.method_id <> 1
+    ) AS [Interventions(Later modifications/reuse)],
+    mt.further_bibliography AS [Bibliography]
 FROM "Max_Thrax" mt
 LEFT JOIN "materials" m ON mt.material_id = m.material_id
 LEFT JOIN "support" s ON mt.support_id = s.support_id
@@ -145,7 +176,6 @@ LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscriptio
 LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
-
 
 def get_db_connection():
     if not os.path.exists(db_path):
