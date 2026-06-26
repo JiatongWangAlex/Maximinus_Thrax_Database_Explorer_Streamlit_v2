@@ -1979,6 +1979,7 @@ with col_text1:
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
         st.session_state["csv_mode"] = "ids"
+        st.session_state["trigger_map_html"] = None
         run_standard_search(text_input_var)
         
 # Full Reports Panel Layout Execution Shell
@@ -1990,12 +1991,14 @@ with col_s1:
     if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
             st.session_state["csv_mode"] = "ids"
+            st.session_state["trigger_map_html"] = None
             # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
 with col_s2:
     id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
         st.session_state["csv_mode"] = "ids"
+        st.session_state["trigger_map_html"] = None
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
