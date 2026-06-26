@@ -224,7 +224,7 @@ def run_standard_search(user_input):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
@@ -1016,7 +1016,7 @@ def execute_advanced_search(f_dict):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
@@ -1164,7 +1164,7 @@ def fetch_metadata_by_id(inscription_id):
             SELECT 3 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
                    '#### ' || mt.inscription_ref || 
                    CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
-                   -- This subquery cleanly extracts the anchor id from the top CTE without breaking scoping
+                   -- Uses the top target select block directly to seamlessly extract the current anchor tag
                    CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN ' (current inscription)' ELSE '' END ||
                    char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
