@@ -2097,12 +2097,16 @@ st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])
 
 with col_text1:    
-    # Removed the hardcoded key so it behaves exactly like col_s2!
     text_input_var = st.text_input(
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
         label_visibility="collapsed",
-        on_change=reset_map_and_search_flags
+        # Force BOTH the running flag to False AND clear out the old query data cache
+        on_change=lambda: st.session_state.update({
+            "active_search_has_run": False,
+            "active_inscription_ids": [],
+            "trigger_map_html": None
+        })
     )
 
 with col_text2:
