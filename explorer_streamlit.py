@@ -2150,8 +2150,14 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             execute_advanced_search(form_payload)
 
     with col_btn2:
-        if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
-            generate_active_map()
+        # Check if the search has completed and criteria haven't been touched since
+        if st.session_state.get("active_search_has_run"):
+            if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
+                generate_active_map()
+                st.rerun()  # Forces the page to immediately load the HTML layer on the first click
+        else:
+            # Displays a disabled fallback button so users know they need to search first
+            st.button("Generate Map", key="btn_advanced_map_disabled", use_container_width=True, disabled=True, help="Execute the search filters first to unlock this map layer context.")
     with col_btn3:
         if st.session_state.get("active_search_has_run"):
             try:
