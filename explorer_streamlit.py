@@ -755,7 +755,6 @@ def execute_advanced_search(f_dict):
         ('context_name', 'ct.context_name', 'Context Type'),
         ('province_name', 'pr.province_name', 'Province'),
         ('number_of_inscriptions', 'o.number_of_inscriptions', 'Inscriptions on Object'),
-        # Note: 'person_id' is skipped here and intercepted with custom operator logic below
         ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'),
         ('status_designation', 'sd.status_designation', 'Status Designation'),
         ('position_description', 'pos.position_description', 'Office/Military Role'),
@@ -1545,8 +1544,11 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         st.markdown("#### Based on Inscription Metadata")
         
         # 1. Relevance
-        relevance_options = get_filter_options("Max_Thrax", "relevance_index")
-        relevance_options = ["All inscriptions regardless of relevance" if opt == "All" else opt for opt in relevance_options]
+        relevance_options = [
+            "All inscriptions regardless of relevance",
+            "Relevant",
+            "Not Relevant"
+        ]
         f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options)
         
         # 2. Province
@@ -1652,7 +1654,11 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
             form_payload = {
                 'text': f_text,
-                'relevance_index': "All" if f_rel == "All Inscriptions regardless of Relevance" else f_rel,
+                'relevance_index': (
+                "All" if f_rel == "All inscriptions regardless of relevance" 
+                else "True" if f_rel == "Relevant" 
+                else "False"
+                )
                 'distributio_titulorum': f_dist_tit,
                 'material_name': f_obj_mat,
                 'support_name': f_sup_name,
