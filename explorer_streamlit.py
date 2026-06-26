@@ -2079,7 +2079,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             with sub_col1:
                 # 1. Download Button for the filtered spreadsheet
                 st.download_button(
-                    label="Export Flat CSV",
+                    label="Export as CSV",
                     data=csv_data_string,
                     file_name="search_results_export_flat.csv",
                     mime="text/csv",
