@@ -26,7 +26,7 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
-def reset_map_and_search_flags():
+def Search Text():
     """Hides the generate map button and clears the map frame immediately when a filter changes."""
     st.session_state["active_search_has_run"] = False
     st.session_state["trigger_map_html"] = None
@@ -2100,11 +2100,13 @@ with col_text1:
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
         key="main_text_input", 
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        on_change=Search Text
     )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
         st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
         run_standard_search(text_input_var)
         
@@ -2113,39 +2115,61 @@ st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
 with col_s1:
-    ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input")
+    ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input", on_change=Search Text)
     if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
             st.session_state["csv_mode"] = "ids"
+            st.session_state["active_search_has_run"] = True
             st.session_state["trigger_map_html"] = None
             # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
 with col_s2:
-    id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24")
+    id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24", on_change=Search Text)
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
         st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
         if id_input_var.strip():
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
         fetch_metadata_by_id(id_input_var)
 with col_s3:
-    pname_input_var = st.text_input("Lookup Person ID by Name:", placeholder="e.g. Maximinus")
+    pname_input_var = st.text_input("Lookup Person ID by Name:", placeholder="e.g. Maximinus", on_change=reset_map_and_search_flags)
     if st.button("Find Person", use_container_width=True):
         lookup_person_options(pname_input_var)
 
 with col_s4:
     if st.session_state.person_matches:
         options_list = [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
-        selected_option = st.selectbox("Select Person:", options_list)
+        # Added callback here
+        selected_option = st.selectbox(
+            "Select Person:", 
+            options_list, 
+            on_change=reset_map_and_search_flags
+        )
         
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
             st.session_state["csv_mode"] = "ids"
+            st.session_state["active_search_has_run"] = True
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
+            
+            # Re-enable the flags once the fresh report data finishes running
+            st.session_state["active_search_has_run"] = True
+            st.rerun()
     else:
-        pid_input_var = st.text_input("Person Selector:", placeholder="Select from the list")
+        # Added callback here
+        pid_input_var = st.text_input(
+            "Person Selector:", 
+            placeholder="Select from the list", 
+            on_change=reset_map_and_search_flags
+        )
+        
         if st.button("Generate Person Report", use_container_width=True, type="primary"):
             generate_person_report(pid_input_var)
+            
+            # Re-enable the flags once the fresh report data finishes running
+            st.session_state["active_search_has_run"] = True
+            st.rerun()
 # =========================================================
 # ADVANCED SEARCH
 # =========================================================
@@ -2305,8 +2329,8 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 # Created 3 structural columns to map them horizontally beside each other
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
-# Instead of checking "has_run", we just check: "Are there any active search IDs cached?"
-if st.session_state.get("active_inscription_ids"):
+# Gated by both active data cache AND the search state execution flag
+if st.session_state.get("active_inscription_ids") and st.session_state.get("active_search_has_run"):
     
     with col_exp_left:
         try:
@@ -2332,14 +2356,14 @@ if st.session_state.get("active_inscription_ids"):
             st.rerun()
 
 else:
-    # Locked layout state when no active search exists yet
+    # Locked layout state when no active search exists or when a filter change has occurred
     with col_exp_left:
         st.button(
             label="Export Results to CSV",
             key="global_csv_disabled_footer",
             use_container_width=True,
             disabled=True,
-            help="Make a search first to unlock CSV export."
+            help="Run a fresh search to unlock CSV export."
         )
         
     with col_exp_mid:
@@ -2348,9 +2372,9 @@ else:
             key="global_map_disabled_footer",
             use_container_width=True,
             disabled=True,
-            help="Make a search first to unlock map generation."
+            help="Run a fresh search to unlock map generation."
         )
-
+        
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
 # =========================================================
