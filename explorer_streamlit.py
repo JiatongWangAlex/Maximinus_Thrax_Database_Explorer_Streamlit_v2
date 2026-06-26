@@ -8,6 +8,8 @@ import re
 import csv
 import io
 
+if "text_input_version" not in st.session_state:
+    st.session_state["text_input_version"] = 0
 if "active_search_has_run" not in st.session_state:
     st.session_state["active_search_has_run"] = False
 if "active_search_where_clauses" not in st.session_state:
@@ -27,11 +29,13 @@ optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json"
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
 
 def reset_map_and_search_flags():
-    """Hides the generate map button and clears the map frame immediately when a filter changes."""
+    """Wipes search flags and forces the text widget to clear its internal state."""
     st.session_state["active_search_has_run"] = False
     st.session_state["trigger_map_html"] = None
-
-
+    
+    # Force Streamlit to drop the old text input value entirely
+    st.session_state["text_input_version"] += 1
+    
 def generate_bulk_search_csv(cursor):
     """Generates a multi-row CSV text string matching all current search filters safely without using external variables."""
     import io
@@ -2096,18 +2100,13 @@ The advanced search suite offers the following filters:
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])  # Changed column widths since map button moved downstream
 with col_text1:    
-    # 1. Check if the value actually changed from the last run right inline
-    if "main_text_input" in st.session_state:
-        # If the text in the widget doesn't match what was last searched, run the reset
-        if st.session_state.get("last_searched_text") != st.session_state["main_text_input"]:
-            st.session_state["active_search_has_run"] = False
-            st.session_state["trigger_map_html"] = None
-
     text_input_var = st.text_input(
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
-        key="main_text_input", 
-        label_visibility="collapsed"
+        # Changing the key dynamically forces a clean reset when the counter changes
+        key=f"main_text_input_v{st.session_state['text_input_version']}", 
+        label_visibility="collapsed",
+        on_change=reset_map_and_search_flags
     )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
