@@ -2157,7 +2157,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 st.rerun()  # Forces the page to immediately load the HTML layer on the first click
         else:
             # Displays a disabled fallback button so users know they need to search first
-            st.button("Generate Map", key="btn_advanced_map_disabled", use_container_width=True, disabled=True, help="Execute the search filters first to unlock this map layer context.")
+            st.button("Generate Map", key="btn_advanced_map_disabled", use_container_width=True, disabled=True, help="Make a search first to unlock map generation")
     with col_btn3:
         if st.session_state.get("active_search_has_run"):
             try:
