@@ -25,7 +25,143 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 # Path configs for your GitHub repository files
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
+def generate_bulk_search_sql():
+    """Generates a complete, runnable SQL script mapping all active search criteria."""
+    where_str = ""
+    if st.session_state.get("active_search_has_run"):
+        clauses = st.session_state.get("active_search_where_clauses", [])
+        params = st.session_state.get("active_search_query_params", {})
+        # Format params directly into the text file so it's instantly copy-pasteable
+        processed_clauses = []
+        for c in clauses:
+            for k, v in params.items():
+                if f":{k}" in c or f"?{k}" in c: 
+                    c = c.replace(f":{k}", f"'{v}'" if isinstance(v, str) else str(v))
+            processed_clauses.append(c)
+        if processed_clauses:
+            where_str = " AND " + " AND ".join(processed_clauses)
 
+    return f"""-- Copy and execute this query to reproduce your advanced search results dataset
+WITH TargetInscriptions AS (
+    SELECT DISTINCT mt.inscription_id 
+    FROM "Max_Thrax" mt
+    -- Dynamic filters injected below:
+    WHERE 1=1 {where_str}
+),
+Metadata_Joined AS (
+    SELECT 
+        mt.inscription_id, mt.inscription_ref, mt.line_ref, mt.inscription_text_formatted, 
+        mt.corrected_lemmas, mt.dating, mt.expanded_bibliography, ct.context_name, 
+        s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
+        r_roads.road_name, r_roads.itinere_id, st.status_tituli_name,
+        COALESCE((SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ') FROM "inscriptions_and_TM_numbers" itm WHERE itm.inscription_id = mt.inscription_id), 'N/A') AS tm_hyperlinks
+    FROM "Max_Thrax" mt 
+    JOIN TargetInscriptions ti ON mt.inscription_id = ti.inscription_id
+    LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
+    LEFT JOIN "support" s                ON mt.support_id = s.support_id
+    LEFT JOIN "materials" m              ON mt.material_id = m.material_id
+    LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
+    LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
+    LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
+    LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+    LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
+)
+SELECT 
+    m_j.inscription_id AS [Inscription ID],
+    m_j.inscription_ref AS [Inscription Reference],
+    m_j.line_ref AS [Line Reference],
+    m_j.tm_hyperlinks AS [TM Numbers Links],
+    m_j.inscription_text_formatted AS [Inscription Text],
+    COALESCE(m_j.corrected_lemmas, 'N/A') AS [Nonstandard Spellings],
+    COALESCE(m_j.context_name, 'N/A') AS [Context],
+    COALESCE(m_j.support_name, 'N/A') AS [Support],
+    COALESCE(m_j.dating, 'N/A') AS [Dating],
+    COALESCE(m_j.material_name, 'N/A') AS [Material],
+    COALESCE(m_j.status_tituli_name, 'N/A') AS [Status Tituli],
+    COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = m_j.inscription_id), 'N/A') AS [Associated Persons],
+    COALESCE(m_j.province_name, 'N/A') AS [Province],
+    CASE WHEN m_j.pleiades_id IS NOT NULL THEN '[' || m_j.place_name || '](https://pleiades.stoa.org/places/' || m_j.pleiades_id || ')' ELSE COALESCE(m_j.place_name, 'N/A') END AS [Place],
+    CASE WHEN m_j.itinere_id IS NOT NULL THEN '[' || COALESCE(m_j.road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || m_j.itinere_id || ')' ELSE 'N/A' END AS [Associated Roman Road],
+    (
+        SELECT GROUP_CONCAT('* ' || alt.sequence_id || '. ' || alt.inscription_ref || COALESCE(' ' || alt.line_ref, '') || CASE WHEN alt.inscription_id = m_j.inscription_id THEN ' [current inscription]' ELSE '' END || ' (id: ' || alt.inscription_id || ')', char(10))
+        FROM "Max_Thrax" alt
+        WHERE alt.object_id = (SELECT object_id FROM "Max_Thrax" WHERE inscription_id = m_j.inscription_id)
+    ) AS [Objects and Inscriptions],
+    (
+        SELECT GROUP_CONCAT(
+            alt.inscription_ref || COALESCE(' ' || alt.line_ref, '') || 
+            CASE WHEN alt.inscription_id = m_j.inscription_id THEN ' [current inscription]' ELSE '' END || ' : ' ||
+            CASE 
+                WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = alt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 THEN 'no interventions'
+                ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = alt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' intervention(s)' || char(10) ||
+                (
+                    SELECT GROUP_CONCAT('intervention ' || sub_idx.row_num || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, char(10))
+                    FROM (SELECT intervention_id, ROW_NUMBER() OVER (ORDER BY intervention_id ASC) as row_num FROM "interventions_and_inscriptions" WHERE inscription_id = alt.inscription_id AND role_id = 1) sub_idx
+                    JOIN "interventions_and_inscriptions" i ON sub_idx.intervention_id = i.intervention_id
+                    JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
+                    LEFT JOIN "extent" e ON iam.extent_id = e.extent_id
+                    LEFT JOIN "methods" m ON iam.method_id = m.method_id
+                    WHERE i.inscription_id = alt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
+                )
+            END, char(10)
+        )
+        FROM "Max_Thrax" alt
+        WHERE alt.object_id = (SELECT object_id FROM "Max_Thrax" WHERE inscription_id = m_j.inscription_id)
+        ORDER BY alt.sequence_id ASC
+    ) AS [Interventions(Later modifications/reuse)],
+    COALESCE(m_j.expanded_bibliography, 'N/A') AS [Bibliography]
+FROM Metadata_Joined m_j;"""
+
+
+def generate_bulk_search_csv(cursor):
+    """Generates a multi-row CSV text string matching all current search filters."""
+    import io
+    where_str = ""
+    params = {}
+    if st.session_state.get("active_search_has_run"):
+        clauses = st.session_state.get("active_search_where_clauses", [])
+        params = st.session_state.get("active_search_query_params", {})
+        if clauses:
+            where_str = " AND " + " AND ".join(clauses)
+
+    search_ids_query = f'SELECT DISTINCT mt.inscription_id FROM "Max_Thrax" mt WHERE 1=1 {where_str}'
+    cursor.execute(search_ids_query, params)
+    matching_ids = [row[0] for row in cursor.fetchall()]
+    
+    if not matching_ids:
+        return "No matching search results found to export."
+
+    headers = [
+        "Inscription ID", "Quick Citation", "Line Citation", "TM Numbers Links", 
+        "Inscription Text", "Nonstandard Spellings", "Context", "Support", 
+        "Dating", "Material", "Status Tituli", "Associated Persons", 
+        "Province", "Place", "Associated Roman Road", "Objects and Inscriptions", 
+        "Interventions(Later modifications/reuse)", "Bibliography"
+    ]
+    
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer, quoting=csv.QUOTE_ALL)
+    writer.writerow(headers)
+    
+    for target_id in matching_ids:
+        cursor.execute(sql_multi_column, (target_id,))
+        row = cursor.fetchone()
+        if row:
+            (ins_id, ins_ref, line_ref, tm_links, text, nonstandard, 
+             context, support, dating, material, status_tituli, 
+             persons, province, place, road, section_1, bibliography) = row
+            
+            section_2_3_stitched = generate_stitched_interventions_cell(cursor, target_id)
+            
+            writer.writerow([
+                ins_id, ins_ref, line_ref, tm_links, text, nonstandard,
+                context, support, dating, material, status_tituli,
+                persons, province, place, road, section_1, section_2_3_stitched,
+                bibliography
+            ])
+            
+    return csv_buffer.getvalue()
+    
 def generate_flat_csv_string(cursor, target_id):
     # Fetch flat metadata columns
     cursor.execute(sql_multi_column, (target_id,))
