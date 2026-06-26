@@ -2000,40 +2000,40 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         if st.button("Generate Map", key="btn_advanced_map_generation", use_container_width=True):
             generate_active_map()
     with col_btn3:
-    if st.session_state.get("active_search_has_run"):
-        # This calls the background logic we are updating
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            csv_data_string = generate_bulk_search_csv(cursor)
-            conn.close()
-        except Exception as e:
-            csv_data_string = f"Error compiling dataset: {str(e)}"
+        if st.session_state.get("active_search_has_run"):
+            # This calls the background logic we are updating
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                csv_data_string = generate_bulk_search_csv(cursor)
+                conn.close()
+            except Exception as e:
+                csv_data_string = f"Error compiling dataset: {str(e)}"
+                
+            sub_col1, sub_col2 = st.columns(2)
             
-        sub_col1, sub_col2 = st.columns(2)
-        
-        with sub_col1:
-            st.download_button(
-                label="Export Flat CSV",
-                data=csv_data_string,
-                file_name="search_results_export_flat.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="btn_advanced_csv_export"
-            )
-            
-        with sub_col2:
-            dynamic_sql_query = generate_bulk_search_sql()
-            st.download_button(
-                label="Download SQL Query Script",
-                data=dynamic_sql_query,
-                file_name="search_results_compiled_query.sql",
-                mime="text/plain",
-                use_container_width=True,
-                key="btn_download_raw_sql_query"
-            )
-    else:
-        st.info("Execute a search to unlock dataset export options.")
+            with sub_col1:
+                st.download_button(
+                    label="Export Flat CSV",
+                    data=csv_data_string,
+                    file_name="search_results_export_flat.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key="btn_advanced_csv_export"
+                )
+                
+            with sub_col2:
+                dynamic_sql_query = generate_bulk_search_sql()
+                st.download_button(
+                    label="Download SQL Query Script",
+                    data=dynamic_sql_query,
+                    file_name="search_results_compiled_query.sql",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key="btn_download_raw_sql_query"
+                )
+        else:
+            st.info("Execute a search to unlock dataset export options.")
 # =========================================================
 # MAP VIEWER
 # =========================================================
