@@ -1600,9 +1600,6 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             key="rad_collective_op"
         )
         
-        # Spacer for neat tracking between blocks
-        st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
-        
         # 2. Person + Existing Logic Toggle
         f_person_id = st.multiselect(
             "Person:",
