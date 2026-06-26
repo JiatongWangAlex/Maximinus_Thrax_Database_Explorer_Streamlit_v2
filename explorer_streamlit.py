@@ -1625,7 +1625,7 @@ with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=Fal
 # Interactive Map Inline Viewport Component 
 if st.session_state.trigger_map_html:
     with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
-        st.components.v1.html(st.session_state.trigger_map_html, height=500, scrolling=True)
+        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
 
 # Search Results
 with st.container(height=520, border=True):
