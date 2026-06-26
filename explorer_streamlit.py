@@ -693,7 +693,10 @@ def run_ref_search(ref_query):
         st.session_state["csv_mode"] = "ids"
         
         # Build out clean formatting structure mirroring your metadata presentation loops
-        out_str = [f"Found {len(rows)} matching inscription reference records:\n", "="*70 + "\n\n"]
+        out_str = [
+            f'<span style="font-size: 12px; color: #666;">Found {len(rows)} matching inscription(s):</span>\n', 
+            f'<span style="font-size: 10px; color: #aaa;">{"="*70}</span>\n\n'
+        ]
         for idx, row in enumerate(rows, 1):
             (ins_id, ins_ref, line_ref, text_fmt, lemmas, context, support, dating, 
              material, status_tit, province, place, road, biblio, tm_links, persons) = row
