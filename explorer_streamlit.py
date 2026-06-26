@@ -2234,7 +2234,7 @@ with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expand
     if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
-        st.info("No active map coordinates loaded. Click 'Generate Map' above to visualize the inscription points on this layer.")
+        st.info("No map generated yet. Click 'Generate Map' above to visualize the inscriptions on a map.")
 # =========================================================
 # UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
 # =========================================================
