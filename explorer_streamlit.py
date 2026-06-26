@@ -1959,7 +1959,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                 key="btn_download_raw_sql_query"
             )
         else:
-            st.info("Execute a search to unlock dataset export options.")
+            st.info("Execute a search to unlock data export options.")
             
 # =========================================================
 # MAP VIEWER
