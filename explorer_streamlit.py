@@ -88,6 +88,7 @@ def generate_bulk_search_csv(cursor):
         LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
         LEFT JOIN "collectives" col ON mt.inscription_id = col.collective_id
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
+        LEFT JOIN "distributio_titulorum" dt ON mt.inscription_id = dt.inscription_id
         WHERE 1=1 {where_str}
         ORDER BY mt.inscription_id DESC
     """
@@ -114,7 +115,6 @@ def generate_bulk_search_csv(cursor):
         writer.writerow(list(row))
             
     return csv_buffer.getvalue()
-
 
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
@@ -181,6 +181,7 @@ LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
 LEFT JOIN "objects" o ON mt.object_id = o.object_id
 LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
 LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
+LEFT JOIN "distributio_titulorum" dt ON mt.inscription_id = dt.inscription_id
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
