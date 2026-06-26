@@ -2097,24 +2097,16 @@ st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])
 
 with col_text1:    
+    # Removed the hardcoded key so it behaves exactly like col_s2!
     text_input_var = st.text_input(
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
-        key="main_text_input", 
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        on_change=reset_map_and_search_flags
     )
-    
-    # Check if what's currently in the text box matches what we last searched
-    # If it doesn't match, we override the flag to False right here before rendering the downstream buttons
-    if st.session_state.get("last_searched_text", "") != text_input_var:
-        st.session_state["active_search_has_run"] = False
-        st.session_state["trigger_map_html"] = None
 
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
-        # Update our tracking anchor so the condition above becomes False
-        st.session_state["last_searched_text"] = text_input_var
-        
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
