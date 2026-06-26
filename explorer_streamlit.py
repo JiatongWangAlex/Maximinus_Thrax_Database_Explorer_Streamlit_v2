@@ -1590,7 +1590,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             person_options = {}
 
         # 1. Collective / Military Unit + Brand New Logic Toggle
-        f_unit = st.multiselect("Institution/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
+        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"])
         f_unit_operator = st.radio(
             "Match selected units using:",
             options=["OR (Any of these units)", "AND (All of these units)"],
