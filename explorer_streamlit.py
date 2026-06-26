@@ -68,17 +68,17 @@ def generate_bulk_search_csv(cursor):
             COALESCE(
                 (
                     SELECT GROUP_CONCAT(
-                        'Intervention ' || idx || ': ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END ELSE '' END, char(10)
+                        'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
                     )
                     FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
                     JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
                     LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
                     LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
                     WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
-                ), 
+                ),
                 'no interventions'
             ) AS interventions,
-            COALESCE(mt.expanded_bibliography, 'N/A')
+            mt.further_bibliography
         FROM "Max_Thrax" mt
         LEFT JOIN "materials" m ON mt.material_id = m.material_id
         LEFT JOIN "support" s ON mt.support_id = s.support_id
@@ -88,7 +88,6 @@ def generate_bulk_search_csv(cursor):
         LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
         LEFT JOIN "collectives" col ON mt.inscription_id = col.collective_id
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
-        LEFT JOIN "distributio_titulorum" dt ON mt.inscription_id = dt.inscription_id
         WHERE 1=1 {where_str}
         ORDER BY mt.inscription_id DESC
     """
@@ -162,17 +161,17 @@ SELECT DISTINCT
     COALESCE(
         (
             SELECT GROUP_CONCAT(
-                'Intervention ' || idx || ': ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN inter.note IS NOT NULL AND inter.note <> '' THEN ' ' || inter.note ELSE '' END WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN inter.note IS NOT NULL AND inter.note <> '' THEN ' ' || inter.note ELSE '' END ELSE '' END, char(10)
+                'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
             )
-            FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") inter
-            JOIN "interventions" iam ON inter.intervention_id = iam.intervention_id
+            FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
+            JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
             LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
             LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
-            WHERE inter.inscription_id = mt.inscription_id AND inter.role_id = 1 AND iam.method_id <> 1
+            WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
         ),
         'no interventions'
     ) AS [Interventions(Later modifications/reuse)],
-    COALESCE(mt.expanded_bibliography, 'N/A') AS [Bibliography]
+    mt.further_bibliography AS [Bibliography]
 FROM "Max_Thrax" mt
 LEFT JOIN "materials" m ON mt.material_id = m.material_id
 LEFT JOIN "support" s ON mt.support_id = s.support_id
@@ -181,7 +180,6 @@ LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
 LEFT JOIN "objects" o ON mt.object_id = o.object_id
 LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
 LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
-LEFT JOIN "distributio_titulorum" dt ON mt.inscription_id = dt.inscription_id
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
