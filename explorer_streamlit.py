@@ -694,7 +694,7 @@ def run_ref_search(ref_query):
         
         # Build out clean formatting structure mirroring your metadata presentation loops
         out_str = [
-            f"#### Found {len(rows)} matching inscription reference records:\n", 
+            f"#### Found {len(rows)} matching record(s):\n", 
             "_" * 70 + "\n\n"
         ]
         for idx, row in enumerate(rows, 1):
