@@ -2428,7 +2428,7 @@ else:
             key="global_csv_disabled_footer_csv",
             use_container_width=True,
             disabled=True,
-            help="Please click the appropriate search/report button above to process your live changes before exporting."
+            help="Make a search before exporting search results."
         )
         
     with col_exp_mid:
@@ -2437,7 +2437,7 @@ else:
             key="global_map_disabled_footer_map",
             use_container_width=True,
             disabled=True,
-            help="Please click the appropriate search/report button above to process your live changes before mapping."
+            help="Make a search before mappinp search results."
         )
 
 
