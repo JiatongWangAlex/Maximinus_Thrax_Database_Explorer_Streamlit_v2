@@ -1048,7 +1048,7 @@ def execute_advanced_search(f_dict):
             )
 
    # 3. Mapping Configuration
-   mapping = [
+    mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'),
         ('distributio_titulorum', 'dt.distributio_titulorum', 'Distributio Titulorum'),
         ('material_name', 'm.material_name', 'Material'),
