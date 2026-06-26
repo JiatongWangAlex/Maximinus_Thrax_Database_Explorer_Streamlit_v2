@@ -1968,7 +1968,7 @@ The advanced search suite offers the following filters:
 # MAIN SEARCH FUNCTIONS AND GENERATE MAP
 # =========================================================
 st.markdown("### Key Word or Phrase Search")
-col_text1, col_text2, col_text3 = st.columns([2, 1, 1])
+col_text1, col_text2 = st.columns([3, 1])  # Changed column widths since map button moved downstream
 with col_text1:    
     text_input_var = st.text_input(
         "Enter search text:", 
@@ -1981,9 +1981,6 @@ with col_text2:
         st.session_state["csv_mode"] = "ids"
         run_standard_search(text_input_var)
         
-with col_text3:
-    if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
-        generate_active_map()
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
@@ -2235,11 +2232,13 @@ if st.session_state.trigger_map_html:
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
 
 # =========================================================
-# UNIVERSAL CSV EXPORT
+# UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
 # =========================================================
 # Instead of checking "has_run", we just check: "Are there any active search IDs cached?"
 if st.session_state.get("active_inscription_ids"):
-    col_exp_left, col_exp_right = st.columns([1.5, 3])
+    # Created 3 structural columns to map them horizontally beside each other
+    col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
+    
     with col_exp_left:
         try:
             conn = get_db_connection()
@@ -2257,6 +2256,11 @@ if st.session_state.get("active_inscription_ids"):
             use_container_width=True,
             key="btn_global_results_csv_export"
         )
+        
+    with col_exp_mid:
+        # Relocated Generate Map button context setup here
+        if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
+            generate_active_map()
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
