@@ -2262,6 +2262,7 @@ if st.session_state.get("active_inscription_ids"):
         # Relocated Generate Map button context setup here
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             generate_active_map()
+            st.rerun()
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
