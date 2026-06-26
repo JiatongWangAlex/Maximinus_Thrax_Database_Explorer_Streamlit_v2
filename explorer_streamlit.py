@@ -759,7 +759,6 @@ def execute_advanced_search(f_dict):
         ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'),
         ('status_designation', 'sd.status_designation', 'Status Designation'),
         ('position_description', 'pos.position_description', 'Office/Military Role'),
-        ('collective_name', 'col.collective_name', 'Collective/Military Unit'),
         ('intervention_status', 'mt.intervention_status', 'Intervention Status'),
         ('method_description', 'meth.method_description', 'Method of Intervention'),
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
@@ -792,6 +791,33 @@ def execute_advanced_search(f_dict):
         else:
             # Traditional OR mapping logic using simple inclusion matching
             where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
+
+    # --- COLLECTIVE FILTER LOGIC (HANDLES AND vs OR) ---
+    collective_names = f_dict.get('collective_name', [])
+    collective_op = f_dict.get('collective_operator', 'OR')
+
+    if collective_names and collective_names != "All" and collective_names != ["All"]:
+        applied_criteria_summary.append(f"  • Collective/Military Unit ({collective_op}): {', '.join(map(str, collective_names))}")
+        
+        # Create dedicated parameters for the selected collectives
+        collective_params = []
+        for idx, col_name in enumerate(collective_names):
+            c_param_name = f"param_collective_name_{idx}"
+            query_params[c_param_name] = col_name
+            collective_params.append(f":{c_param_name}")
+
+        if collective_op == "AND":
+            # Requires a sub-query checking that the count of matched collective names matches the total selected
+            where_clauses.append(f"""
+                (SELECT COUNT(DISTINCT col_sub.collective_name) 
+                 FROM "inscriptions_and_collectives" ic_sub
+                 JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                 WHERE ic_sub.inscription_id = mt.inscription_id 
+                 AND col_sub.collective_name IN ({', '.join(collective_params)})) = {len(collective_names)}
+            """)
+        else:
+            # Traditional OR mapping logic using simple inclusion matching
+            where_clauses.append(f"col.collective_name IN ({', '.join(collective_params)})")
 
     # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
     for key, column_sql, display_name in mapping:
