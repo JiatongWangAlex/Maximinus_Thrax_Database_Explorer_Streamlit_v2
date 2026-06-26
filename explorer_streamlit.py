@@ -2101,7 +2101,7 @@ with col_text1:
         placeholder="e.g., Quintus Decius",
         key="main_text_input", 
         label_visibility="collapsed",
-        on_change=Search Text
+        on_change=reset_map_and_search_flags
     )
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
@@ -2115,7 +2115,7 @@ st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
 with col_s1:
-    ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input", on_change=Search Text)
+    ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input", on_change=reset_map_and_search_flags)
     if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
             st.session_state["csv_mode"] = "ids"
@@ -2124,7 +2124,7 @@ with col_s1:
             # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
 with col_s2:
-    id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24", on_change=Search Text)
+    id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24", on_change=reset_map_and_search_flags)
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
