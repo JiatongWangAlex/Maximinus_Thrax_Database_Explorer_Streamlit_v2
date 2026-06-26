@@ -1500,7 +1500,7 @@ with col_s4:
 # =========================================================
 
 
-with st.expander("🔍 Click to Expand / Collapse Advanced Search", expanded=False):
+with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
     # Text search assigned to its own private, isolated row context
