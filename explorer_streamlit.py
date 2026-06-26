@@ -8,6 +8,8 @@ import re
 import csv
 import io
 
+if "inputs_are_dirty" not in st.session_state:
+    st.session_state["inputs_are_dirty"] = False
 if "active_search_has_run" not in st.session_state:
     st.session_state["active_search_has_run"] = False
 if "active_search_where_clauses" not in st.session_state:
@@ -2090,11 +2092,17 @@ The advanced search suite offers the following filters:
 
 > **Note on the "Relevance?" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
 """)
+
 # =========================================================
-# MAIN SEARCH FUNCTIONS AND GENERATE MAP
+# MAIN SEARCH FUNCTIONS
 # =========================================================
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])
+
+# Run an immediate evaluation pass at render time to catch text adjustments
+if "main_text_input" in st.session_state:
+    if st.session_state["main_text_input"].strip() != st.session_state.get("last_searched_text", ""):
+        st.session_state["inputs_are_dirty"] = True
 
 with col_text1:    
     text_input_var = st.text_input(
@@ -2111,12 +2119,21 @@ with col_text2:
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
+        st.session_state["inputs_are_dirty"] = False  # Clear the dirty flag!
         run_standard_search(text_input_var)
         st.rerun()
         
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+
+# Render pass validation checks to flip the trap flag if text keys don't match anchors
+if "edcs_report_input" in st.session_state and st.session_state["edcs_report_input"].strip() != st.session_state.get("last_searched_edcs", ""):
+    st.session_state["inputs_are_dirty"] = True
+if "id_report_input" in st.session_state and st.session_state["id_report_input"].strip() != st.session_state.get("last_searched_id", ""):
+    st.session_state["inputs_are_dirty"] = True
+if "person_lookup_input" in st.session_state and st.session_state["person_lookup_input"].strip() != st.session_state.get("last_searched_lookup", ""):
+    st.session_state["inputs_are_dirty"] = True
 
 with col_s1:
     ref_input_var = st.text_input(
@@ -2131,6 +2148,7 @@ with col_s1:
             st.session_state["csv_mode"] = "ids"
             st.session_state["active_search_has_run"] = True
             st.session_state["trigger_map_html"] = None
+            st.session_state["inputs_are_dirty"] = False
             run_ref_search(ref_input_var)
             st.rerun()
 
@@ -2147,6 +2165,7 @@ with col_s2:
             st.session_state["csv_mode"] = "ids"
             st.session_state["active_search_has_run"] = True
             st.session_state["trigger_map_html"] = None
+            st.session_state["inputs_are_dirty"] = False
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
             fetch_metadata_by_id(id_input_var)
             st.rerun()
@@ -2178,6 +2197,7 @@ with col_s4:
             st.session_state["last_searched_person"] = selected_option
             st.session_state["csv_mode"] = "ids"
             st.session_state["active_search_has_run"] = True
+            st.session_state["inputs_are_dirty"] = False
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
             st.rerun()
@@ -2193,8 +2213,10 @@ with col_s4:
             if pid_input_var.strip():
                 st.session_state["last_searched_person"] = pid_input_var.strip()
                 st.session_state["active_search_has_run"] = True
+                st.session_state["inputs_are_dirty"] = False
                 generate_person_report(pid_input_var)
                 st.rerun()
+                
 # =========================================================
 # ADVANCED SEARCH
 # =========================================================
@@ -2484,15 +2506,14 @@ for widget_key, anchor_key in tracked_fields.items():
             break
 
 # =========================================================
-# RENDER FINAL FOOTER BUTTONS
+# RENDER CSV AND MAP BUTTONS
 # =========================================================
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
-# Shield condition checking both query state and input cleanliness
 if (
     st.session_state.get("active_inscription_ids") 
     and st.session_state.get("active_search_has_run")
-    and not any_input_has_unsearched_changes
+    and not st.session_state.get("inputs_are_dirty", False)
 ):
     with col_exp_left:
         try:
@@ -2518,7 +2539,6 @@ if (
             st.rerun()
 
 else:
-    # LOCKED STATE: Renders if a search hasn't run OR if someone messed with a text input field
     with col_exp_left:
         st.button(
             label="Export Results to CSV",
