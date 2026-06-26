@@ -1545,7 +1545,9 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         st.markdown("#### Based on Inscription Metadata")
         
         # 1. Relevance
-        f_rel = st.selectbox("Relevant to Maximinus Thrax:", get_filter_options("Max_Thrax", "relevance_index"))
+        relevance_options = get_filter_options("Max_Thrax", "relevance_index")
+        relevance_options = ["All inscriptions regardless of relevance" if opt == "All" else opt for opt in relevance_options]
+        f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options)
         
         # 2. Province
         f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"])
@@ -1650,7 +1652,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
             form_payload = {
                 'text': f_text,
-                'relevance_index': f_rel,
+                'relevance_index': "All" if f_rel == "All Inscriptions regardless of Relevance" else f_rel,
                 'distributio_titulorum': f_dist_tit,
                 'material_name': f_obj_mat,
                 'support_name': f_sup_name,
@@ -1660,7 +1662,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                 'person_id': f_person_id,
                 'person_operator': "AND" if "AND" in f_person_operator else "OR",
                 'collective_name': f_unit,
-                'collective_operator': "AND" if "AND" in f_unit_operator else "OR", # New mapping payload injected safely here
+                'collective_operator': "AND" if "AND" in f_unit_operator else "OR",
                 'virorum_distributio': f_vir_dist,
                 'status_designation': f_status,
                 'position_description': f_pos,
