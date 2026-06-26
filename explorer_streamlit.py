@@ -1048,7 +1048,7 @@ def execute_advanced_search(f_dict):
             )
 
    # 3. Mapping Configuration
-    mapping = [
+   mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'),
         ('distributio_titulorum', 'dt.distributio_titulorum', 'Distributio Titulorum'),
         ('material_name', 'm.material_name', 'Material'),
@@ -1064,8 +1064,52 @@ def execute_advanced_search(f_dict):
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
         ('target_description', 'targ.target_description', 'Target of Intervention'),
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
-    ]
+   ]
 
+    # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
+    # ... (Keep your person logic exactly as it is here) ...
+
+    # --- COLLECTIVE FILTER LOGIC (HANDLES AND vs OR) ---
+    # ... (Keep your collective logic exactly as it is here) ...
+
+    # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
+    for key, column_sql, display_name in mapping:
+        val = f_dict.get(key, [])
+        
+        # FIX: Check if relevance filter is explicitly set to 0 or 1, bypassing the falsy check
+        if key == 'relevance_index' and f_dict.get('relevance_active'):
+            applied_criteria_summary.append(f"  • {display_name}: {'Relevant' if val == 1 else 'Not Relevant'}")
+            p_name = f"param_{key}"
+            where_clauses.append(f"mt.relevance = :{p_name}")  # Targets your true column
+            query_params[p_name] = val
+            continue
+            
+        if val == "All" or val == ["All"] or (not val and val != 0):
+            continue
+
+        if not isinstance(val, list):
+            val_str = str(val).strip()
+            if not val_str and val_str != "0":
+                continue
+                
+            applied_criteria_summary.append(f"  • {display_name}: '{val_str}'")
+            if key in ('relevance_index', 'intervention_status'):
+                val = 1 if val_str in ("True", "1") else 0
+                
+            p_name = f"param_{key}"
+            where_clauses.append(f"{column_sql} = :{p_name}")
+            query_params[p_name] = val
+        else:
+            applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
+            
+            param_names = []
+            for idx, item in enumerate(val):
+                p_name = f"param_{key}_{idx}"
+                param_names.append(f":{p_name}")
+                query_params[p_name] = item
+            
+            where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
+            
     # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
@@ -2094,6 +2138,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
                     else 1 if f_rel == "Relevant" 
                     else 0
                 ),
+                'relevance_active': False if f_rel == "All inscriptions regardless of relevance" else True,
                 'distributio_titulorum': f_dist_tit,
                 'material_name': f_obj_mat,
                 'support_name': f_sup_name,
