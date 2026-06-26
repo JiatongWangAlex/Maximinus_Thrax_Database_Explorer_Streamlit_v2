@@ -2191,7 +2191,24 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                     key="btn_download_raw_sql_query"
                 )
         else:
-            st.info("Execute a search to unlock dataset export options.")
+            # Replaced st.info with structured, disabled buttons to maintain clean row alignment
+            sub_col1, sub_col2 = st.columns(2)
+            with sub_col1:
+                st.button(
+                    label="Export Results to CSV",
+                    key="btn_advanced_csv_disabled",
+                    use_container_width=True,
+                    disabled=True,
+                    help="Execute the search filters first to unlock dataset export options."
+                )
+            with sub_col2:
+                st.button(
+                    label="Download SQL Query",
+                    key="btn_advanced_sql_disabled",
+                    use_container_width=True,
+                    disabled=True,
+                    help="Execute the search filters first to unlock SQL compilation parameters."
+                )
 
 # =========================================================
 # MAP VIEWER (Always Visible)
