@@ -209,7 +209,7 @@ def run_standard_search(user_input):
         
         Sec1_Header AS (
             SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '#### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl 
+                   '##### ' || COUNT(mt.inscription_id) || ' inscription(s) on object:' || char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
             WHERE mt.object_id = TargetObject.selected_obj_id
@@ -998,7 +998,7 @@ def execute_advanced_search(f_dict):
         
         Sec1_Header AS (
             SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '#### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl 
+                   '##### ' || COUNT(mt.inscription_id) || ' inscription(s) on object:' || char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
             WHERE mt.object_id = TargetObject.selected_obj_id
@@ -1143,7 +1143,7 @@ def fetch_metadata_by_id(inscription_id):
         
         Sec1_Header AS (
             SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, 
-                   '#### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl 
+                   '##### ' || COUNT(mt.inscription_id) || ' inscription(s) on object:' || char(10) || char(10) AS tl 
             FROM "Max_Thrax" mt 
             CROSS JOIN TargetObject 
             WHERE mt.object_id = TargetObject.selected_obj_id
