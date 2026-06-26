@@ -2023,7 +2023,7 @@ with col_s4:
 # =========================================================
 # ADVANCED SEARCH
 # =========================================================
-with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
+with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
     # Text search assigned to its own private, isolated row context
@@ -2230,7 +2230,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
 # =========================================================
 # MAP VIEWER (Always Visible)
 # =========================================================
-with st.expander("Close / Open Interactive Map", expanded=True):
+with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
