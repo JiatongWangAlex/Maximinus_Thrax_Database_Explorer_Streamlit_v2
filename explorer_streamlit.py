@@ -1072,15 +1072,15 @@ def execute_advanced_search(f_dict):
     # --- COLLECTIVE FILTER LOGIC (HANDLES AND vs OR) ---
     # ... (Keep your collective logic exactly as it is here) ...
 
-    # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
+   # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
-        # FIX: Check if relevance filter is explicitly set to 0 or 1, bypassing the falsy check
+        # FIX: Check if relevance filter is explicitly set, targeting the correct database column
         if key == 'relevance_index' and f_dict.get('relevance_active'):
             applied_criteria_summary.append(f"  • {display_name}: {'Relevant' if val == 1 else 'Not Relevant'}")
             p_name = f"param_{key}"
-            where_clauses.append(f"mt.relevance = :{p_name}")  # Targets your true column
+            where_clauses.append(f"mt.relevance_index = :{p_name}")  # Fixed to matching schema column
             query_params[p_name] = val
             continue
             
