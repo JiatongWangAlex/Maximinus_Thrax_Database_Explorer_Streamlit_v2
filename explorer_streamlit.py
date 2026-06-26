@@ -2051,42 +2051,26 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     with col1:
         st.markdown("#### Based on Inscription Metadata")
         
-        # 1. Relevance
         relevance_options = [
             "All inscriptions regardless of relevance",
             "Relevant",
             "Not Relevant"
         ]
         f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
-        
-        # 2. Province
         f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 3. Distributio Titulorum
         f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 4. Support Type
         f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 5. Context Type
         f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 6. Material
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 7. Status Tituli
         f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # 8. Inscriptions on Object
         f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
 
     # =========================================================================
     # COLUMN 2: People and Institutions
     # =========================================================================
-with col2:
+    with col2:
         st.markdown("#### Based on People and Institutions")
         
-        # --- DYNAMIC PERSON DATABASE LOOKUP (Kept local to this block scope) ---
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -2097,98 +2081,31 @@ with col2:
         except Exception:
             person_options = {}
 
-        # 1. Collective / Military Unit + Brand New Logic Toggle
-        f_unit = st.multiselect(
-            "Institution/Group/Military Unit:", 
-            [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        f_unit_operator = st.radio(
-            "Match selected units using:",
-            options=["OR (Any of these units)", "AND (All of these units)"],
-            horizontal=True,
-            index=0,
-            label_visibility="collapsed",
-            key="rad_collective_op",
-            on_change=reset_map_and_search_flags
-        )
+        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_unit_operator = st.radio("Match selected units using:", options=["OR (Any of these units)", "AND (All of these units)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_collective_op", on_change=reset_map_and_search_flags)
         
-        # 2. Person + Existing Logic Toggle
-        f_person_id = st.multiselect(
-            "Person:",
-            options=list(person_options.keys()),
-            format_func=lambda x: person_options[x],
-            on_change=reset_map_and_search_flags
-        )
-        f_person_operator = st.radio(
-            "Match selected people using:",
-            options=["OR (Any of these people)", "AND (All of these people)"],
-            horizontal=True,
-            index=0,
-            label_visibility="collapsed",
-            key="rad_person_op",
-            on_change=reset_map_and_search_flags
-        )
+        f_person_id = st.multiselect("Person:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags)
+        f_person_operator = st.radio("Match selected people using:", options=["OR (Any of these people)", "AND (All of these people)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_person_op", on_change=reset_map_and_search_flags)
         
-        # 3. Distributio Virorum
-        f_vir_dist = st.multiselect(
-            "Distributio Virorum | Type of Persons:", 
-            [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        
-        # 4. Status Designation 
-        f_status = st.multiselect(
-            "Attested Status Title", 
-            [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        
-        # 5. Office/Military Role
-        f_pos = st.multiselect(
-            "Attested Office/Military Role:", 
-            [opt for opt in get_filter_options("positions", "position_description") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
+        f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
+
     # =========================================================================
     # COLUMN 3: Later Modifications / Reuse
     # =========================================================================
     with col3:
         st.markdown("#### Based on Later Modifications / Reuse")
         
-        # 1. Intervention Status
         intervention_options = [
             "All inscriptions regardless of presence of later intervention",
             "Intervention present",
             "No later intervention"
         ]
-        f_inter_status = st.selectbox(
-            "Intervention Status:", 
-            intervention_options,
-            on_change=reset_map_and_search_flags
-        )
-        
-        # 2. Method of Intervention
-        f_interv_meth = st.multiselect(
-            "Method of Intervention:", 
-            [opt for opt in get_filter_options("methods", "method_description") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        
-        # 3. Extent of Intervention
-        f_interv_ext = st.multiselect(
-            "Extent of Intervention:", 
-            [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        
-        # 4. Target of Intervention
-        f_interv_tgt = st.multiselect(
-            "Target of Intervention:", 
-            [opt for opt in get_filter_options("targets", "target_description") if opt != "All"],
-            on_change=reset_map_and_search_flags
-        )
-        
+        f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
+        f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
     # =========================================================================
     # ACTION BUTTONS ROW (Kept perfectly original inside Advanced Search Expander)
     # =========================================================================
