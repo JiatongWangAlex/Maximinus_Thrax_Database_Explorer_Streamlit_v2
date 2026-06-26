@@ -78,7 +78,7 @@ def generate_bulk_search_csv(cursor):
                 ),
                 'no interventions'
             ) AS interventions,
-            mt.further_bibliography
+            COALESCE(mt.expanded_bibliography, 'N/A')
         FROM "Max_Thrax" mt
         LEFT JOIN "materials" m ON mt.material_id = m.material_id
         LEFT JOIN "support" s ON mt.support_id = s.support_id
@@ -171,7 +171,7 @@ SELECT DISTINCT
         ),
         'no interventions'
     ) AS [Interventions(Later modifications/reuse)],
-    mt.further_bibliography AS [Bibliography]
+    COALESCE(mt.expanded_bibliography, 'N/A') AS [Bibliography]
 FROM "Max_Thrax" mt
 LEFT JOIN "materials" m ON mt.material_id = m.material_id
 LEFT JOIN "support" s ON mt.support_id = s.support_id
