@@ -2100,17 +2100,14 @@ with col_text1:
     text_input_var = st.text_input(
         "Enter search text:", 
         placeholder="e.g., Quintus Decius",
+        key="main_text_input",
         label_visibility="collapsed",
-        # Force BOTH the running flag to False AND clear out the old query data cache
-        on_change=lambda: st.session_state.update({
-            "active_search_has_run": False,
-            "active_inscription_ids": [],
-            "trigger_map_html": None
-        })
+        on_change=reset_map_and_search_flags
     )
 
 with col_text2:
     if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
+        st.session_state["last_searched_text"] = text_input_var.strip()
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
@@ -2122,61 +2119,82 @@ st.markdown("### Inscription Report and Person Report Generator")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
 with col_s1:
-    ref_input_var = st.text_input("EDCS number:", placeholder="e.g. EDCS-12345678", key="edcs_report_input", on_change=reset_map_and_search_flags)
+    ref_input_var = st.text_input(
+        "EDCS number:", 
+        placeholder="e.g. EDCS-12345678", 
+        key="edcs_report_input", 
+        on_change=reset_map_and_search_flags
+    )
     if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
         if ref_input_var.strip():
+            st.session_state["last_searched_edcs"] = ref_input_var.strip()
             st.session_state["csv_mode"] = "ids"
             st.session_state["active_search_has_run"] = True
             st.session_state["trigger_map_html"] = None
-            # Run the search which fully updates st.session_state.active_inscription_ids
             run_ref_search(ref_input_var)
+            st.rerun()
+
 with col_s2:
-    id_input_var = st.text_input("Inscription ID:", placeholder="e.g. 24", on_change=reset_map_and_search_flags)
+    id_input_var = st.text_input(
+        "Inscription ID:", 
+        placeholder="e.g. 24", 
+        key="id_report_input",
+        on_change=reset_map_and_search_flags
+    )
     if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
-        st.session_state["csv_mode"] = "ids"
-        st.session_state["active_search_has_run"] = True
-        st.session_state["trigger_map_html"] = None
         if id_input_var.strip():
+            st.session_state["last_searched_id"] = id_input_var.strip()
+            st.session_state["csv_mode"] = "ids"
+            st.session_state["active_search_has_run"] = True
+            st.session_state["trigger_map_html"] = None
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
-        fetch_metadata_by_id(id_input_var)
+            fetch_metadata_by_id(id_input_var)
+            st.rerun()
+
 with col_s3:
-    pname_input_var = st.text_input("Lookup Person ID by Name:", placeholder="e.g. Maximinus", on_change=reset_map_and_search_flags)
+    pname_input_var = st.text_input(
+        "Lookup Person ID by Name:", 
+        placeholder="e.g. Maximinus", 
+        key="person_lookup_input",
+        on_change=reset_map_and_search_flags
+    )
     if st.button("Find Person", use_container_width=True):
-        lookup_person_options(pname_input_var)
+        if pname_input_var.strip():
+            st.session_state["last_searched_lookup"] = pname_input_var.strip()
+            lookup_person_options(pname_input_var)
+            st.rerun()
 
 with col_s4:
     if st.session_state.person_matches:
         options_list = [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
-        # Added callback here
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
+            key="person_select_input",
             on_change=reset_map_and_search_flags
         )
         
-        if st.button("Generate Person Report", use_container_width=True, type="primary"):
+        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
+            st.session_state["last_searched_person"] = selected_option
             st.session_state["csv_mode"] = "ids"
             st.session_state["active_search_has_run"] = True
             extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
             generate_person_report(extracted_id)
-            
-            # Re-enable the flags once the fresh report data finishes running
-            st.session_state["active_search_has_run"] = True
             st.rerun()
     else:
-        # Added callback here
         pid_input_var = st.text_input(
             "Person Selector:", 
             placeholder="Select from the list", 
+            key="person_report_input",
             on_change=reset_map_and_search_flags
         )
         
-        if st.button("Generate Person Report", use_container_width=True, type="primary"):
-            generate_person_report(pid_input_var)
-            
-            # Re-enable the flags once the fresh report data finishes running
-            st.session_state["active_search_has_run"] = True
-            st.rerun()
+        if st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary"):
+            if pid_input_var.strip():
+                st.session_state["last_searched_person"] = pid_input_var.strip()
+                st.session_state["active_search_has_run"] = True
+                generate_person_report(pid_input_var)
+                st.rerun()
 # =========================================================
 # ADVANCED SEARCH
 # =========================================================
@@ -2438,3 +2456,83 @@ with st.container(height=520, border=True):
         else:
             # For everything else (Context, Material, etc.), keep regular Markdown active
             st.markdown(block)
+
+# =========================================================
+# UNIVERSAL INPUT MATCH VALIDATION (ANTI-IDIOT GUARDRAIL)
+# =========================================================
+# Pair each live widget key with its corresponding "officially searched" anchor
+tracked_fields = {
+    "main_text_input": "last_searched_text",
+    "edcs_report_input": "last_searched_edcs",
+    "id_report_input": "last_searched_id",
+    "person_lookup_input": "last_searched_lookup",
+    "person_select_input": "last_searched_person",
+    "person_report_input": "last_searched_person"
+}
+
+any_input_has_unsearched_changes = False
+
+for widget_key, anchor_key in tracked_fields.items():
+    # Only evaluate if the widget currently exists in the live session state pass
+    if widget_key in st.session_state:
+        current_value = str(st.session_state[widget_key]).strip()
+        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+        
+        # If the user has typed/selected something but skipped hitting its execution button
+        if current_value != last_executed_value:
+            any_input_has_unsearched_changes = True
+            break
+
+# =========================================================
+# RENDER FINAL FOOTER BUTTONS
+# =========================================================
+col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
+
+# Shield condition checking both query state and input cleanliness
+if (
+    st.session_state.get("active_inscription_ids") 
+    and st.session_state.get("active_search_has_run")
+    and not any_input_has_unsearched_changes
+):
+    with col_exp_left:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            global_csv_string = generate_bulk_search_csv(cursor)
+            conn.close()
+        except Exception as e:
+            global_csv_string = f"Error compiling dataset: {str(e)}"
+
+        st.download_button(
+            label="Export Results to CSV",
+            data=global_csv_string,
+            file_name="search_results_export.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="btn_global_results_csv_export"
+        )
+        
+    with col_exp_mid:
+        if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
+            generate_active_map()
+            st.rerun()
+
+else:
+    # LOCKED STATE: Renders if a search hasn't run OR if someone messed with a text input field
+    with col_exp_left:
+        st.button(
+            label="Export Results to CSV",
+            key="global_csv_disabled_footer",
+            use_container_width=True,
+            disabled=True,
+            help="Please click the appropriate search/report button above to process your live changes before exporting."
+        )
+        
+    with col_exp_mid:
+        st.button(
+            label="Generate Map",
+            key="global_map_disabled_footer",
+            use_container_width=True,
+            disabled=True,
+            help="Please click the appropriate search/report button above to process your live changes before mapping."
+        )
