@@ -1175,7 +1175,13 @@ def generate_active_map():
         st.info("Active entries contain coordinates, but they evaluate as empty or null.")
         return
 
-    mymap = folium.Map(location=valid_center, zoom_start=6, tiles=None)
+   mymap = folium.Map(
+    location=valid_center, 
+    zoom_start=6, 
+    tiles=None,
+    zoom_snap=0.25,
+    wheel_px_per_zoom_level=150
+   )
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
    
@@ -1197,7 +1203,7 @@ def generate_active_map():
                        tooltip=folium.GeoJsonTooltip(fields=["Name"], aliases=["Province:"], localize=True)).add_to(mymap)
         
     # -------------------------------------------------------------
-    # 🛠️ THE SEPARATE CORE FUNCTIONAL LAYERS
+    # FIND AREA LAYER AND FIND SPOT LAYER
     # -------------------------------------------------------------
     # Layer 1: OFF BY DEFAULT (show=False) for the GeoJSON shapes
     range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
@@ -1241,7 +1247,7 @@ def generate_active_map():
                 ).add_to(range_layer)
             except Exception:
                 pass
-# -------------------------------------------------------------
+    # -------------------------------------------------------------
     # PASS 2: GENERATE THE PINS FOR THE INSCRIPTION LAYER
     # -------------------------------------------------------------
     for (lat, lon), rows in coord_buckets.items():
