@@ -2361,24 +2361,43 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
+# =========================================================
+# UNIVERSAL INPUT MATCH VALIDATION (ANTI-IDIOT GUARDRAIL)
+# =========================================================
+# Pair each live widget key with its corresponding "officially searched" anchor
+tracked_fields = {
+    "main_text_input": "last_searched_text",
+    "edcs_report_input": "last_searched_edcs",
+    "id_report_input": "last_searched_id",
+    "person_lookup_input": "last_searched_lookup",
+    "person_select_input": "last_searched_person",
+    "person_report_input": "last_searched_person"
+}
+
+any_input_has_unsearched_changes = False
+
+for widget_key, anchor_key in tracked_fields.items():
+    # Only evaluate if the widget currently exists in the live session state pass
+    if widget_key in st.session_state:
+        current_value = str(st.session_state[widget_key]).strip()
+        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+        
+        # If the user has typed/selected something but skipped hitting its execution button
+        if current_value != last_executed_value:
+            any_input_has_unsearched_changes = True
+            break
+
 
 # =========================================================
-# MAP VIEWER (Always Visible)
+# RENDER CSV AND MAP BUTTONS
 # =========================================================
-with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    if st.session_state.get("trigger_map_html"):
-        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
-    else:
-        st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query a map.")
-# =========================================================
-# UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
-# =========================================================
-# Created 3 structural columns to map them horizontally beside each other
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
-# Gated by both active data cache AND the search state execution flag
-if st.session_state.get("active_inscription_ids") and st.session_state.get("active_search_has_run"):
-    
+if (
+    st.session_state.get("active_inscription_ids") 
+    and st.session_state.get("active_search_has_run")
+    and not st.session_state.get("inputs_are_dirty", False)
+):
     with col_exp_left:
         try:
             conn = get_db_connection()
@@ -2403,24 +2422,34 @@ if st.session_state.get("active_inscription_ids") and st.session_state.get("acti
             st.rerun()
 
 else:
-    # Locked layout state when no active search exists or when a filter change has occurred
     with col_exp_left:
         st.button(
             label="Export Results to CSV",
-            key="global_csv_disabled_footer",
+            key="global_csv_disabled_footer_csv",
             use_container_width=True,
             disabled=True,
-            help="Run a fresh search to unlock CSV export."
+            help="Please click the appropriate search/report button above to process your live changes before exporting."
         )
         
     with col_exp_mid:
         st.button(
             label="Generate Map",
-            key="global_map_disabled_footer",
+            key="global_map_disabled_footer_map",
             use_container_width=True,
             disabled=True,
-            help="Run a fresh search to unlock map generation."
+            help="Please click the appropriate search/report button above to process your live changes before mapping."
         )
+
+
+# =========================================================
+# MAP VIEWER (Always Visible)
+# =========================================================
+with st.expander("Expand/Collapse Interactive Map", expanded=True):
+    if st.session_state.get("trigger_map_html"):
+        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+    else:
+        st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query a map.")
+
         
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
@@ -2479,80 +2508,3 @@ with st.container(height=520, border=True):
             # For everything else (Context, Material, etc.), keep regular Markdown active
             st.markdown(block)
 
-# =========================================================
-# UNIVERSAL INPUT MATCH VALIDATION (ANTI-IDIOT GUARDRAIL)
-# =========================================================
-# Pair each live widget key with its corresponding "officially searched" anchor
-tracked_fields = {
-    "main_text_input": "last_searched_text",
-    "edcs_report_input": "last_searched_edcs",
-    "id_report_input": "last_searched_id",
-    "person_lookup_input": "last_searched_lookup",
-    "person_select_input": "last_searched_person",
-    "person_report_input": "last_searched_person"
-}
-
-any_input_has_unsearched_changes = False
-
-for widget_key, anchor_key in tracked_fields.items():
-    # Only evaluate if the widget currently exists in the live session state pass
-    if widget_key in st.session_state:
-        current_value = str(st.session_state[widget_key]).strip()
-        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
-        
-        # If the user has typed/selected something but skipped hitting its execution button
-        if current_value != last_executed_value:
-            any_input_has_unsearched_changes = True
-            break
-
-# =========================================================
-# RENDER CSV AND MAP BUTTONS
-# =========================================================
-col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
-
-if (
-    st.session_state.get("active_inscription_ids") 
-    and st.session_state.get("active_search_has_run")
-    and not st.session_state.get("inputs_are_dirty", False)
-):
-    with col_exp_left:
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            global_csv_string = generate_bulk_search_csv(cursor)
-            conn.close()
-        except Exception as e:
-            global_csv_string = f"Error compiling dataset: {str(e)}"
-
-        st.download_button(
-            label="Export Results to CSV",
-            data=global_csv_string,
-            file_name="search_results_export.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key="btn_global_results_csv_export"
-        )
-        
-    with col_exp_mid:
-        if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
-            generate_active_map()
-            st.rerun()
-
-else:
-    with col_exp_left:
-        st.button(
-            label="Export Results to CSV",
-            key="global_csv_disabled_footer_csv",
-            use_container_width=True,
-            disabled=True,
-            help="Please click the appropriate search/report button above to process your live changes before exporting."
-        )
-        
-    with col_exp_mid:
-        st.button(
-            label="Generate Map",
-            key="global_map_disabled_footer_map",
-            use_container_width=True,
-            disabled=True,
-            help="Please click the appropriate search/report button above to process your live changes before mapping."
-        )
