@@ -1619,7 +1619,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
         f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"])
         
         # 4. Status Designation (With customized note warning out Imperial Titulature)
-        f_status = st.multiselect("Attested Status/Title (EXCLUDING emperors, see Imperial Titulature Search):", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
+        f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"])
         
         # 5. Office/Military Role
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"])
