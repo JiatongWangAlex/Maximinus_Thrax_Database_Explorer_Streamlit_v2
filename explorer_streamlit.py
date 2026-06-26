@@ -2225,12 +2225,13 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             st.info("Execute a search to unlock dataset export options.")
 
 # =========================================================
-# MAP VIEWER
+# MAP VIEWER (Always Visible)
 # =========================================================
-if st.session_state.trigger_map_html:
-    with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
+with st.expander("Close / Open Interactive Leaflet Map Layer Visualizer", expanded=True):
+    if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
-
+    else:
+        st.info("No active map coordinates loaded. Click 'Generate Map' above to visualize the inscription points on this layer.")
 # =========================================================
 # UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
 # =========================================================
