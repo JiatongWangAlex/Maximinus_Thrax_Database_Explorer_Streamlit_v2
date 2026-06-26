@@ -2149,7 +2149,7 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             with sub_col2:
                 dynamic_sql_query = generate_bulk_search_sql()
                 st.download_button(
-                    label="Download SQL Query Script",
+                    label="Download SQL Query",
                     data=dynamic_sql_query,
                     file_name="search_results_compiled_query.sql",
                     mime="text/plain",
