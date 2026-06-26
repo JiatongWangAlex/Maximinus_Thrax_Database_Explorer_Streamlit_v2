@@ -438,7 +438,7 @@ def run_standard_search(user_input):
         
         Sec2_Intervention_Nested_Details AS (
             SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
-                   '* _intervention ' || i.intervention_id || ' :_ ' || 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
                    CASE 
                        WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
                        WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
@@ -475,7 +475,6 @@ def run_standard_search(user_input):
             UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
-        
         if is_unit_query:
             search_terms = re.findall(r'\w+', converted_input.lower())
             cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
@@ -636,47 +635,161 @@ def run_ref_search(ref_query):
         
         # Comprehensive query pulling all related metadata matching the Reference search string
         sql = """
-        SELECT DISTINCT
-            mt.inscription_id,
-            mt.inscription_ref,
-            mt.line_ref,
-            mt.inscription_text_formatted,
-            COALESCE(mt.corrected_lemmas, 'N/A'),
-            COALESCE(ct.context_name, 'N/A'),
-            COALESCE(s.support_name, 'N/A'),
-            COALESCE(mt.dating, 'N/A'),
-            COALESCE(m.material_name, 'N/A'),
-            COALESCE(st.status_tituli_name, 'N/A'),
-            COALESCE(pr.province_name, 'N/A'),
-            COALESCE(pl.place_name, 'N/A'),
-            COALESCE(r_roads.road_name, 'N/A'),
-            COALESCE(mt.expanded_bibliography, 'N/A'),
-            -- Linked Trismegistos Numbers Links
-            COALESCE(
-                (SELECT GROUP_CONCAT(itm.TM_number, ', ') 
-                 FROM "inscriptions_and_TM_numbers" itm 
-                 WHERE itm.inscription_id = mt.inscription_id), 
-                'N/A'
-            ) AS tm_links,
-            -- Associated Persons names and IDs
-            COALESCE(
-                (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
-                 FROM persons p 
-                 JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
-                 WHERE ip.inscription_id = mt.inscription_id),
-                'N/A'
-            ) AS linked_persons
-        FROM "Max_Thrax" mt
-        LEFT JOIN "context_types" ct         ON mt.context_id = ct.context_id
-        LEFT JOIN "support" s                ON mt.support_id = s.support_id
-        LEFT JOIN "materials" m              ON mt.material_id = m.material_id
-        LEFT JOIN "provinces" pr             ON mt.province_id = pr.province_id
-        LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
-        LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
-        LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
-        LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
-        WHERE mt.inscription_ref LIKE ?
-        ORDER BY mt.inscription_id DESC;
+        WITH TargetInscription AS (SELECT ? AS selected_id),
+        TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
+        Metadata_Joined AS (
+            SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
+                   mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
+                   ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
+                   r_roads.road_name, r_roads.itinere_id,
+                   st.status_tituli_name,
+                   -- Subquery to pull and build comma-separated Markdown hyperlinks for all TM Numbers linked to this Inscription
+                   COALESCE(
+                       (SELECT GROUP_CONCAT('[' || itm.TM_number || '](https://www.trismegistos.org/text/' || itm.TM_number || ')', ', ')
+                        FROM "inscriptions_and_TM_numbers" itm 
+                        WHERE itm.inscription_id = mt.inscription_id), 
+                       'N/A'
+                   ) AS tm_hyperlinks
+            FROM "Max_Thrax" mt CROSS JOIN TargetInscription
+            LEFT JOIN "context_types" ct        ON mt.context_id = ct.context_id
+            LEFT JOIN "support" s                ON mt.support_id = s.support_id
+            LEFT JOIN "materials" m              ON mt.material_id = m.material_id
+            LEFT JOIN "provinces" pr            ON mt.province_id = pr.province_id
+            LEFT JOIN "places" pl                ON mt.place_id = pl.place_id
+            LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
+            LEFT JOIN "itiner_e_roads" r_roads  ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
+            LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
+            WHERE mt.inscription_id = TargetInscription.selected_id
+        ),
+        Sec0_Metadata AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
+                   '**Quick Reference:** ' || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/en/search?edcs-id=' || inscription_ref || ')' 
+                       ELSE '' 
+                   END || 
+                   CASE 
+                       WHEN inscription_ref IS NOT NULL AND line_ref IS NOT NULL THEN ' ' || line_ref
+                       WHEN line_ref IS NOT NULL THEN line_ref
+                       WHEN inscription_ref IS NULL AND line_ref IS NULL THEN 'N/A'
+                       ELSE ''
+                   END || 
+                   ' | **TM Number:** ' || tm_hyperlinks ||
+                   ' | **Inscription ID:** [' || inscription_id || '](?ins_id=' || inscription_id || ')' || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Nonstandard Spellings:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 5 AS inner_lo, '**Support:** ' || COALESCE(support_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 6 AS inner_lo, '**Dating:** ' || COALESCE(dating, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 11 AS inner_lo, '**Associated Roman Road (Itinere):** ' || CASE WHEN itinere_id IS NOT NULL THEN '[' || COALESCE(road_name, 'Unnamed Road') || '](https://itiner-e.org/?id=' || itinere_id || ')' ELSE 'N/A' END || char(10) || char(10) AS tl FROM Metadata_Joined
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 12 AS inner_lo, '**Bibliography:** ' || char(10) || '* ' || replace(COALESCE(expanded_bibliography, 'N/A'), char(10), char(10) || '* ') || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
+        Sec0_Text_Header AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.5 AS inner_lo, '**Inscription Text:**' || char(10) || char(10) AS tl FROM Metadata_Joined
+        ),
+        Sec0_Text_Body AS (
+            SELECT 0 AS sg, 0 AS seq_id, 1.6 AS inner_lo, 
+                   CASE 
+                       WHEN COALESCE(inscription_text_formatted, 'N/A') LIKE '-%' 
+                       THEN '' 
+                       ELSE '' 
+                   END ||
+                   replace(
+                       replace(COALESCE(inscription_text_formatted, 'N/A'), char(10), '  ' || char(10)),
+                       '  ' || char(10) || '-', 
+                       '  ' || char(10) || '' || '-'
+                   ) || '  ' || char(10) || char(10) AS tl 
+            FROM Metadata_Joined
+        ),
+        Sec0_Spacer AS (SELECT 0 AS sg, 999999 AS seq_id, 1 AS inner_lo, '' AS tl),
+        
+        Sec1_Header AS (
+            SELECT 1 AS sg, 0 AS seq_id, 1 AS inner_lo, 
+                   '#### ' || COUNT(mt.inscription_id) || ' inscriptions on object:' || char(10) || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
+        
+        Sec1_List AS (
+            SELECT DISTINCT 1 AS sg, mt.sequence_id AS seq_id, 2 AS inner_lo, 
+                   '* ' || mt.sequence_id || '. ' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' (id: [' || mt.inscription_id || '](?ins_id=' || mt.inscription_id || '))' || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
+        Sec1_Spacer AS (SELECT 1 AS sg, 999999 AS seq_id, 3 AS inner_lo, '' || char(10) || char(10) AS tl),
+        
+        Sec2_Header AS (
+            SELECT 2 AS sg, 0 AS seq_id, 0 AS inner_lo,
+                   '#### Interventions (Later Modifications / Reuse)' || char(10) || char(10) AS tl
+        ),
+        
+        Sec2_Summary AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '**' || mt.inscription_ref || 
+                   CASE WHEN mt.line_ref IS NOT NULL AND mt.line_ref <> '' THEN ' ' || mt.line_ref ELSE '' END || 
+                   CASE WHEN mt.inscription_id = (SELECT selected_id FROM TargetInscription) THEN '[current inscription]' ELSE '' END ||
+                   ' :** ' || 
+                   CASE 
+                       WHEN (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) = 0 
+                       THEN '_no interventions_' 
+                       ELSE (SELECT COUNT(DISTINCT i2.intervention_id) FROM "interventions_and_inscriptions" i2 JOIN "interventions" iam2 ON i2.intervention_id = iam2.intervention_id WHERE i2.inscription_id = mt.inscription_id AND i2.role_id = 1 AND iam2.method_id <> 1) || ' intervention(s)' 
+                   END || char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        ),
+        
+        Sec2_Intervention_Nested_Details AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
+                   CASE 
+                       WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
+                       WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       ELSE '' 
+                   END || char(10) AS tl 
+            FROM "interventions_and_inscriptions" i 
+            JOIN "interventions" iam ON i.intervention_id = iam.intervention_id 
+            LEFT JOIN "extent" e ON iam.extent_id = e.extent_id 
+            LEFT JOIN "methods" m ON iam.method_id = m.method_id 
+            JOIN "Max_Thrax" mt ON i.inscription_id = mt.inscription_id 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id 
+              AND i.role_id = 1 
+              AND iam.method_id <> 1
+        ),
+        Sec2_Spacer AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 999998 AS inner_lo, char(10) AS tl 
+            FROM "Max_Thrax" mt 
+            CROSS JOIN TargetObject 
+            WHERE mt.object_id = TargetObject.selected_obj_id
+        )
+        SELECT tl FROM (
+            SELECT sg, seq_id, inner_lo, tl FROM Sec0_Metadata 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec0_Text_Header 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec0_Text_Body 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec0_Spacer 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec1_Header 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec1_List 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec1_Spacer 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Header
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Summary 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Intervention_Nested_Details 
+            UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
+        ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
         
         cursor.execute(sql, (f"%{ref_query.strip()}%",))
@@ -1394,7 +1507,7 @@ def execute_advanced_search(f_dict):
         
         Sec2_Intervention_Nested_Details AS (
             SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
-                   '* _intervention ' || i.intervention_id || ' :_ ' || 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
                    CASE 
                        WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
                        WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
@@ -1431,7 +1544,6 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
-
         
         # 3. Stitch every matching custom card together sequentially
         for rank, ins_id in enumerate(all_matched_ids, 1):
@@ -1580,8 +1692,8 @@ def fetch_metadata_by_id(inscription_id):
         ),
         
         Sec2_Intervention_Nested_Details AS (
-            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 + ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) AS inner_lo, 
-                   '* _intervention ' || ROW_NUMBER() OVER (PARTITION BY i.inscription_id ORDER BY i.intervention_id) || ' :_ ' || 
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
                    CASE 
                        WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
                        WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
