@@ -1655,10 +1655,10 @@ with st.expander("Click to Expand / Collapse Advanced Search", expanded=False):
             form_payload = {
                 'text': f_text,
                 'relevance_index': (
-                "All" if f_rel == "All inscriptions regardless of relevance" 
-                else "True" if f_rel == "Relevant" 
-                else "False"
-                )
+                    "All" if f_rel == "All inscriptions regardless of relevance" 
+                    else 1 if f_rel == "Relevant" 
+                    else 0
+                ),
                 'distributio_titulorum': f_dist_tit,
                 'material_name': f_obj_mat,
                 'support_name': f_sup_name,
