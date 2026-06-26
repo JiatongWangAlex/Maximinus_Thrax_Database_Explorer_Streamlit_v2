@@ -2150,9 +2150,9 @@ with col2:
             [opt for opt in get_filter_options("positions", "position_description") if opt != "All"],
             on_change=reset_map_and_search_flags
         )
-  # =========================================================================
-    # COLUMN 3: Later Modifications / Reuse
-    # =========================================================================
+# =========================================================================
+# COLUMN 3: Later Modifications / Reuse
+# =========================================================================
     with col3:
         st.markdown("#### Based on Later Modifications / Reuse")
         
