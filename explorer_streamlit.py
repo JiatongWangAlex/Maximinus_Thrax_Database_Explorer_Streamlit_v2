@@ -2217,7 +2217,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
-        st.info("No map generated yet. If you have yet to make a search, do so. Then the 'Generate Map' button will appear. Click it to plot inscriptions matching your query a map.")
+        st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query a map.")
 # =========================================================
 # UNIVERSAL CSV EXPORT & RELOCATED GLOBAL MAP BUTTON
 # =========================================================
