@@ -2527,7 +2527,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     
     # Text search matching strategy toggle
     text_search_mode = st.radio(
-        "Text Search Strategy Matching Rules:",
+        "Text Search Strategy:",
         options=[
             "Match any inflected form of word or phrase", 
             "Match exact word or phrase"
