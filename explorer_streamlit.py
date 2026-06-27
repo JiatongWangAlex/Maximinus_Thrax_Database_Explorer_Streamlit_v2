@@ -2070,23 +2070,13 @@ def generate_active_map():
         return
 
     if not matched_points:
-        st.info("None of the active entries contain geographic coordinates in the database.")
+        st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
     # Seed map center
-    valid_center = None
-    for row in matched_points:
-        if row[1] is not None and row[2] is not None:
-            try:
-                valid_center = [float(row[1]), float(row[2])]
-                break
-            except (ValueError, TypeError):
-                continue
-
-    if not valid_center:
-        st.info("Active entries contain coordinates, but they evaluate as empty or null.")
-        return
-        
+    valid_center = [38.5, 18.0]  # Centered to capture from Scotland to Egypt
+    map_zoom = 4
+    
     mymap = folium.Map(location=valid_center, zoom_start=6, tiles=None,zoom_snap=0.25, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
