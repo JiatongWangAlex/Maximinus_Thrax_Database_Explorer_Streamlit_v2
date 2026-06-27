@@ -2075,7 +2075,7 @@ def generate_active_map():
 
     # Seed map center
     valid_center = [38.5, 18.0]  # Centered to capture from Scotland to Egypt
-    map_zoom = 3.8
+    map_zoom = 3
     
     mymap = folium.Map(location=valid_center, zoom_start=6, tiles=None,zoom_snap=0.25, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
