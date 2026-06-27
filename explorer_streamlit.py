@@ -103,7 +103,6 @@ def generate_bulk_search_csv(cursor):
                 'N/A'
             ) AS linked_collectives,
             COALESCE(pr.province_name, 'N/A'),
-            COALESCE(pr.province_name, 'N/A'),
             COALESCE((SELECT pl.place_name FROM "places" pl WHERE pl.place_id = mt.place_id), 'N/A') AS place_name,
             COALESCE((SELECT r_roads.road_name FROM "inscription_and_road" iar JOIN "itiner_e_roads" r_roads ON iar.itiner_e_road_id = r_roads.itiner_e_road_id WHERE iar.inscription_id = mt.inscription_id), 'N/A') AS road_name,
             COALESCE(o.number_of_inscriptions, 0) AS num_inscriptions,
