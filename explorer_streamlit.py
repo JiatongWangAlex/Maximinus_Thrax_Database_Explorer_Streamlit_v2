@@ -2568,6 +2568,23 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
         with date_col2:
             f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
+        f_dating_strategy = st.radio(
+            "Dating Search Strategy:",
+            options=["overlap", "strict"],
+            format_func=lambda x: (
+                "Search for any inscriptions whose date overlaps with this range" if x == "overlap"
+                else "Search for only inscriptions whose date is fully contained within this range"
+            ),
+            help=(
+                "• Overlap: Returns all inscriptions dated to a time period that overlaps with your search window. "
+                "For example, if you search 236–237 CE, inscriptions dated to 236 CE or 237CE or 236-237CE will appear, "
+                "and so will inscriptions dated to 235–238 CE.\n\n"
+                "• Fully Contained: Returns only inscriptions dated to a time period that falls completely inside your search window. "
+                "For example, if you search 236–236 CE, an inscription dated exactly to 236 CE will appear, "
+                "but an inscription dated to 235–238 CE will be excluded."
+            ),
+            on_change=reset_map_and_search_flags
+        )
     # =========================================================================
     # COLUMN 2: People and Institutions
     # =========================================================================
