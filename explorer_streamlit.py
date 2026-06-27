@@ -2101,13 +2101,39 @@ def generate_active_map():
         folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
         
+    # 1. Tally up the search result provinces right out of your matched_points list
+    from collections import Counter
+    search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
+        
+    # 2. Process and load the province boundary lines in memory
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
-        folium.GeoJson(provinces_data, name="Provinces (200CE)", show=True, overlay=True, control=True,
-                       style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
-                       tooltip=folium.GeoJsonTooltip(fields=["Name"], aliases=["Province:"], localize=True)).add_to(mymap)
         
+        # Inject the live counts into the temporary memory shapes
+        features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
+        for feature in features:
+            props = feature.setdefault("properties", {})
+            geo_name = props.get("Name") or props.get("province_name")
+            if geo_name:
+                props["search_count"] = search_counts.get(geo_name.strip(), 0)
+            else:
+                props["search_count"] = 0
+
+        # Pass to Folium with your brand new multi-line tooltip configuration
+        folium.GeoJson(
+            provinces_data, 
+            name="Provinces (200CE)", 
+            show=True, 
+            overlay=True, 
+            control=True,
+            style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
+            tooltip=folium.GeoJsonTooltip(
+                fields=["Name", "search_count"], 
+                aliases=["Province:", "Number of Matching Inscriptions:"], 
+                localize=True
+            )
+        ).add_to(mymap)
     # -------------------------------------------------------------
     # FIND AREA LAYER AND FIND SPOT LAYER
     # -------------------------------------------------------------
