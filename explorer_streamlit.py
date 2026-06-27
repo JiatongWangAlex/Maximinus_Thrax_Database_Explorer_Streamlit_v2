@@ -2089,23 +2089,21 @@ def generate_active_map():
             super(EasyPrint, self).__init__()
             self._template = Element("""
                 {% macro script(this, kwargs) %}
-                // 1. Load reliable jsDelivr assets
+                // 1. Load reliable jsDelivr plugin assets
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = 'https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.min.css';
                 document.head.appendChild(link);
 
-                // Use Jinja raw tags so the template engine ignores the CSS curly braces
-                {% raw %}
+                // 2. Inject the CSS tooltip rules inside the map's iframe environment
                 var style = document.createElement('style');
-                style.innerHTML = '.leaflet-control-easyPrint-button { position: relative; } .leaflet-control-easyPrint-button:hover::after { content: "Download current map view"; position: absolute; left: 34px; top: 2px; background: #333; color: #fff; padding: 4px 8px; border-radius: 4px; font-family: sans-serif; font-size: 12px; white-space: nowrap; box-shadow: 0 1px 5px rgba(0,0,0,0.4); pointer-events: none; }';
+                style.innerHTML = '.leaflet-control-easyPrint-button { position: relative; } .leaflet-control-easyPrint-button:hover::after { content: "Download current map view"; position: absolute; left: 34px; top: 2px; background: #333; color: #fff; padding: 4px 8px; border-radius: 4px; font-family: sans-serif; font-size: 12px; white-space: nowrap; box-shadow: 0 1px 5px rgba(0,0,0,0.4); pointer-events: none; z-index: 99999; }';
                 document.head.appendChild(style);
-                {% endraw %}
 
                 var script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/leaflet-easyprint@2.1.9/dist/bundle.min.js';
                 script.onload = function() {
-                    // 2. Initialize the plugin safely on this parent map
+                    // 3. Initialize the plugin safely once script loads
                     L.easyPrint({
                         title: 'Download current map view',
                         position: 'topleft',
@@ -2119,7 +2117,6 @@ def generate_active_map():
                 {% endmacro %}
             """)
 
-    # Attach it to your map object exactly the way you wanted
     mymap.add_child(EasyPrint())
     # -------------------------------------------------------------
     # BASE ROADS & PROVINCES OVERLAYS
@@ -2848,10 +2845,11 @@ else:
             disabled=True,
             help="Make a search before mapping search results."
         )
-        
+
 # =========================================================
 # MAP VIEWER (Always Visible)
 # =========================================================
+
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
