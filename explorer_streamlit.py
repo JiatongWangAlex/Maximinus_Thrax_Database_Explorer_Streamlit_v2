@@ -2131,7 +2131,7 @@ def generate_active_map():
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count"], 
                 # The line-break forces the table column to collapse, snapping the numbers closer!
-                aliases=["Province:", "Number of Matching<br>Inscriptions:"], 
+                aliases=["Province:", "Matching<br>Inscriptions:"], 
                 localize=True,
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
