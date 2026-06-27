@@ -573,7 +573,7 @@ def run_standard_search(user_input):
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
         # SEE IF ANY GROUP/INSTITUTION/MILITARY UNIT NAME MATCHES THE QUERY EXACTLY AND OUTPUT ALL INSCRIPTIONS LINKED TO IT
-       if is_unit_query:
+        if is_unit_query:
             raw_tokens = re.findall(r'\w+', converted_input.lower())
 
             expanded_token_clusters = []
