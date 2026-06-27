@@ -8,7 +8,7 @@ import re
 import csv
 import io
 from branca.element import Element
-from folium.elements import MacroElement
+
 
 if "inputs_are_dirty" not in st.session_state:
     st.session_state["inputs_are_dirty"] = False
@@ -2082,45 +2082,43 @@ def generate_active_map():
     mymap = folium.Map(location=valid_center, zoom_start=4.5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
-   
-   from branca.element import Element
 
-picture_mode_html = f"""
-<link rel="stylesheet" href="https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.css">
-<style>
-    .leaflet-control-easyPrint-button {{ position: relative; }}
-    .leaflet-control-easyPrint-button:hover::after {{
-        content: "Download current map view";
-        position: absolute;
-        left: 34px;
-        top: 2px;
-        background: #333;
-        color: #fff;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-family: sans-serif;
-        font-size: 12px;
-        white-space: nowrap;
-        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-        pointer-events: none;
-    }}
-</style>
-<script src="https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.js"></script>
-<script>
-    setTimeout(function() {{
-        L.easyPrint({{
-            title: 'Download current map view',
-            position: 'topleft',
-            sizeModes: ['Current'],
-            exportOnly: true,
-            hideControlContainer: true,
-            filename: 'clean_historical_map'
-        }}).addTo({mymap.get_name()});
-    }}, 500);
-</script>
-"""
+    picture_mode_html = f"""
+    <link rel="stylesheet" href="https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.css">
+    <style>
+        .leaflet-control-easyPrint-button {{ position: relative; }}
+        .leaflet-control-easyPrint-button:hover::after {{
+            content: "Download current map view";
+            position: absolute;
+            left: 34px;
+            top: 2px;
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: sans-serif;
+            font-size: 12px;
+            white-space: nowrap;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            pointer-events: none;
+        }}
+    </style>
+    <script src="https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.js"></script>
+    <script>
+        setTimeout(function() {{
+            L.easyPrint({{
+                title: 'Download current map view',
+                position: 'topleft',
+                sizeModes: ['Current'],
+                exportOnly: true,
+                hideControlContainer: true,
+                filename: 'clean_historical_map'
+            }}).addTo({mymap.get_name()});
+        }}, 500);
+    </script>
+    """
 
-mymap.get_root().html.add_child(Element(picture_mode_html))
+    mymap.get_root().html.add_child(Element(picture_mode_html))
    
     # -------------------------------------------------------------
     # BASE ROADS & PROVINCES OVERLAYS
