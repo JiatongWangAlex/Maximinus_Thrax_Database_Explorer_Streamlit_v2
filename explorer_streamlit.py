@@ -24,10 +24,10 @@ if "active_search_query_params" not in st.session_state:
 st.set_page_config(page_title="Maximinus Thrax Database Browser", layout="wide")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
-db_path = os.path.join(BASE_DIR, "version_58.db")
+DATABASE_FILE_PATH = os.path.join(BASE_DIR, "version_58.db")
 
-optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
-provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
+ITINERE_ROADS__FILE_PATH = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
+PROVINCES_FILE_PATH = os.path.join(BASE_DIR, "roman_provinces.json") 
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
@@ -268,10 +268,10 @@ ORDER BY mt.inscription_id DESC;"""
 
 
 def get_db_connection():
-    if not os.path.exists(db_path):
+    if not os.path.exists(DATABASE_FILE_PATH):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
         st.stop()
-    return sqlite3.connect(db_path)
+    return sqlite3.connect(DATABASE_FILE_PATH)
 # =========================================================
 # LATIN LEMMATIZATION / STEMMING DICTIONARY
 # =========================================================
@@ -363,7 +363,7 @@ if 'trigger_map_html' not in st.session_state:
     st.session_state.trigger_map_html = None
 
 # KEY WORD OR PHRASE SEARCH
-def run_standard_search(user_input):
+def key_word_or_phrase_search(user_input):
     if not user_input.strip():
         st.session_state.search_results = "Please enter a search term."
         return
@@ -2002,9 +2002,12 @@ def generate_active_map():
 
     # GENERATE INTINER-E ROADS LAYER
 
-    optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
-    if os.path.exists(optimized_json_path):
-        with open(optimized_json_path, "r", encoding="utf-8") as f:
+
+ITINERE_ROADS_FILE_PATH = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
+    if os.path.exists
+    ITINERE_ROADS_FILE_PATH):
+        with open
+        ITINERE_ROADS_FILE_PATH, "r", encoding="utf-8") as f:
             roads_data = json.load(f)
         folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
@@ -2015,8 +2018,8 @@ def generate_active_map():
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
     
-    if os.path.exists(provinces_json_path):
-        with open(provinces_json_path, "r", encoding="utf-8") as f:
+    if os.path.exists(PROVINCES_FILE_PATH):
+        with open(PROVINCES_FILE_PATH, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
         
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
@@ -2370,7 +2373,7 @@ with col_text2:
         
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Search by Inscription or Person")
-col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+column_edcs_search, column_inscription_id_search, column_person_name_lookup, column_person_selection = st.columns(4)
 
 # Render pass validation checks to flip the trap flag if text keys don't match anchors
 if "edcs_report_input" in st.session_state and st.session_state["edcs_report_input"].strip() != st.session_state.get("last_searched_edcs", ""):
@@ -2380,7 +2383,7 @@ if "id_report_input" in st.session_state and st.session_state["id_report_input"]
 if "person_lookup_input" in st.session_state and st.session_state["person_lookup_input"].strip() != st.session_state.get("last_searched_lookup", ""):
     st.session_state["inputs_are_dirty"] = True
 
-with col_s1:
+with column_edcs_search:
     ref_input_var = st.text_input(
         "EDCS number:", 
         placeholder="e.g. EDCS-12345678", 
@@ -2397,7 +2400,7 @@ with col_s1:
             run_ref_search(ref_input_var)
             st.rerun()
 
-with col_s2:
+with column_inscription_id_search:
     id_input_var = st.text_input(
         "Inscription ID:", 
         placeholder="e.g. 24", 
@@ -2415,7 +2418,7 @@ with col_s2:
             fetch_metadata_by_id(id_input_var)
             st.rerun()
 
-with col_s3:
+with column_person_name_lookup:
     pname_input_var = st.text_input(
         "Lookup Person ID by Name:", 
         placeholder="e.g. Maximinus", 
@@ -2428,7 +2431,7 @@ with col_s3:
             lookup_person_options(pname_input_var)
             st.rerun()
 
-with col_s4:
+with column_person_selection:
     if st.session_state.person_matches:
         options_list = [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         selected_option = st.selectbox(
