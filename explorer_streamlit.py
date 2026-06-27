@@ -8,6 +8,7 @@ import re
 import csv
 import io
 from branca.element import Element
+import itertools
 
 
 if "inputs_are_dirty" not in st.session_state:
@@ -20,25 +21,21 @@ if "active_search_query_params" not in st.session_state:
     st.session_state["active_search_query_params"] = {}
 
 
-st.set_page_config(page_title="Maximinus Thrax Database Explorer", layout="wide")
+st.set_page_config(page_title="Maximinus Thrax Database Browser", layout="wide")
 
-# This calculates the folder your app is running out of (both on your PC and on GitHub)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
 db_path = os.path.join(BASE_DIR, "version_58.db")
 
-# Path configs for your GitHub repository files
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
-
+#SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
-    """Hides the generate map button and clears the map frame immediately when a filter changes."""
     st.session_state["active_search_has_run"] = False
     st.session_state["trigger_map_html"] = None
 
-
+#SETUP FOR CSV EXPORT
 def generate_bulk_search_csv(cursor):
-    """Generates a multi-row CSV text string matching all current search filters safely without using external variables."""
     import io
     import csv
     
@@ -165,9 +162,9 @@ def generate_bulk_search_csv(cursor):
     
     for row in rows:
         writer.writerow(list(row))
-            
     return csv_buffer.getvalue()
-
+    
+#SETUP FOR SQL QUERY EXPORT
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
@@ -356,7 +353,6 @@ def convert_roman_to_arabic_in_text(text):
             converted_words.append(word)
     return " ".join(converted_words)
 
-# Initialize Session Engine Parameters Safely
 if 'active_inscription_ids' not in st.session_state:
     st.session_state.active_inscription_ids = []
 if 'search_results' not in st.session_state:
@@ -366,9 +362,7 @@ if 'person_matches' not in st.session_state:
 if 'trigger_map_html' not in st.session_state:
     st.session_state.trigger_map_html = None
 
-# =========================================================
-# SYSTEM SEARCH UTILITY ENGINES
-# =========================================================
+# KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
     if not user_input.strip():
         st.session_state.search_results = "Please enter a search term."
@@ -578,21 +572,50 @@ def run_standard_search(user_input):
             UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
-        if is_unit_query:
-            search_terms = re.findall(r'\w+', converted_input.lower())
+        # SEE IF ANY GROUP/INSTITUTION/MILITARY UNIT NAME MATCHES THE QUERY EXACTLY AND OUTPUT ALL INSCRIPTIONS LINKED TO IT
+       if is_unit_query:
+            raw_tokens = re.findall(r'\w+', converted_input.lower())
+
+            expanded_token_clusters = []
+            for token in raw_tokens:
+                root_lemma = LATIN_LEMMA_MAP.get(token, token)
+                token_variants = list(set(
+                    [k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, token]
+                ))
+                expanded_token_clusters.append(token_variants)
+    
+            possible_phrases = []
+            for combination in itertools.product(*expanded_token_clusters):
+                phrase_regex = r'\b' + r'\s+'.join(re.escape(word) for word in combination) + r'\b'
+                possible_phrases.append(phrase_regex)
+                
             cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
             all_collectives = cursor.fetchall()
-            c_ids = [col_id for col_id, col_search in all_collectives if col_search and all(re.search(r'\b' + re.escape(term) + r'\b', col_search.lower()) for term in search_terms)]
             
+            c_ids = []
+            for col_id, col_search in all_collectives:
+                if not col_search:
+                    continue
+                    
+                col_search_lower = col_search.lower()
+                
+                if any(re.search(pattern, col_search_lower) for pattern in possible_phrases):
+                    c_ids.append(col_id)
+                    
             if c_ids:
                 c_sql = f"""
                     SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
-                    (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id)
-                    FROM "Max_Thrax" mt JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
+                    (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
+                     FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
+                     WHERE ip.inscription_id = mt.inscription_id)
+                    FROM "Max_Thrax" mt 
+                    JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
                     WHERE ic.collective_id IN ({','.join(['?']*len(c_ids))});
                 """
                 cursor.execute(c_sql, c_ids)
                 text_rows = cursor.fetchall()
+        
+        # SEARCH FOR OTHER INFLECTED FORMS OF THE QUERY
         else:
             clean_query = clean_epigraphic_text(user_input).strip().lower()
             root_lemma = LATIN_LEMMA_MAP.get(clean_query, clean_query)
@@ -613,12 +636,8 @@ def run_standard_search(user_input):
                     text_rows.append(base_data)
                 else:
                     fallback_rows.append(base_data + ("lemma_cluster", root_lemma))
-            # =================================================================
-            # NEW FALLBACK: Continuous Substring Search
-            # Triggered ONLY if Phase 1 found nothing in text_rows or fallback_rows
-            # =================================================================
+            
             if not text_rows and not fallback_rows:
-                # Lowercase, smash out ALL spaces, and strip out epigraphic brackets/punctuation
                 continuous_term = user_input.lower().replace(" ", "")
                 continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_term)
                 
@@ -635,10 +654,10 @@ def run_standard_search(user_input):
                     for row in cursor.fetchall():
                         ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons = row
                         text_rows.append((ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons))
-            # =================================================================
+                        
+            # SEE IF ANY PERSON KINDA MATCHES THE QUERY AND OUTPUT ALL INSCRIPTIONS LINKED TO THAT PERSON
             smart_meta_input = lemmatize_query(user_input.strip())
             like_query = f"%{re.sub(r'\s+', '%', smart_meta_input)}%"
-            
             cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_query,))
             p_ids = [r[0] for r in cursor.fetchall()]
             if p_ids:
@@ -659,8 +678,6 @@ def run_standard_search(user_input):
         for row in fallback_rows:
             ins_id = row[0]
             if ins_id not in seen_text_ids and ins_id not in seen_fallback_ids:
-                if row[6] == "position" and (search_clean not in (row[1].lower() if row[1] else "")) and (base_word not in (row[1].lower() if row[1] else "")):
-                    continue
                 unique_fallback_rows.append(row)
                 seen_fallback_ids.add(ins_id)
                 
@@ -675,14 +692,12 @@ def run_standard_search(user_input):
             conn.close()
             return
             
-        # -----------------------------------------
         object_count = 0
         if all_matched_ids:
             obj_cursor = conn.cursor()
             chunk_size = 900
             unique_objects = set()
             
-            # Split IDs into safe chunks to prevent SQLite parameter limits from crashing
             for i in range(0, len(all_matched_ids), chunk_size):
                 chunk = all_matched_ids[i:i + chunk_size]
                 placeholders = ",".join(["?"] * len(chunk))
@@ -695,40 +710,35 @@ def run_standard_search(user_input):
                     unique_objects.add(row[0])
             
             object_count = len(unique_objects)
-        # -----------------------------------------
             
         out_str = []
-        
-        # 1. Create the header for the entire search results
+    
         header = f"## Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} indirect match(es)!\n"
         header += f"**Key Word:** {user_input}\n\n"
         header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects:\n\n"
         out_str.append(header)
         
-        # 2. LOOP THROUGH EVERY SINGLE MATCHING ID AND STITCH THEM TOGETHER
         for rank, ins_id in enumerate(all_matched_ids, 1):
             out_str.append(f"## Result {rank}\n")
             
-            # Execute the giant query uniquely for THIS inscription ID in the loop
             cursor.execute(sql, (int(ins_id),))
             card_rows = cursor.fetchall()
             
             if card_rows:
-                # Join all the metadata rows for this specific card
                 dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
                 out_str.append(dossier_text)
             else:
-                out_str.append(f"_Warning: Could not compile dossier data for ID: {ins_id}_")
+                out_str.append(f"_Warning: This ID not exist: {ins_id}_")
                 
-            # Add a clear visual divider between separate inscription dossiers
             out_str.append("\n\n---\n\n")
             
-        # 3. Stitch every single compiled card together into the final display state
         st.session_state.search_results = "\n\n".join(out_str)
         conn.close()
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
-        
+
+# LOOK UP INSCRIPTION BY EDCS NUMBER 
+
 def run_ref_search(ref_query):
     if not ref_query.strip():
         st.session_state.search_results = "Please enter an Inscription Reference code."
@@ -737,7 +747,6 @@ def run_ref_search(ref_query):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Comprehensive query pulling all related metadata matching the Reference search string
         sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
@@ -940,11 +949,9 @@ def run_ref_search(ref_query):
             st.session_state.active_inscription_ids = []
             return
 
-        # Securely lock found IDs into tracking state & update CSV target mode instantly
         st.session_state.active_inscription_ids = [row[0] for row in rows]
         st.session_state["csv_mode"] = "ids"
         
-        # Build out clean formatting structure mirroring your metadata presentation loops
         out_str = [
             f"#### Found {len(rows)} matching inscription(s):\n", 
             "_" * 70 + "\n\n"
@@ -975,7 +982,9 @@ def run_ref_search(ref_query):
         
     except Exception as e:
         st.session_state.search_results = f"Reference Search Error: {e}"
-        
+
+# LOOK UP PERSON BY NAME (to see if the user query matches any individual logged in the database so they may select the correct individual in the next box)
+
 def lookup_person_options(name_query):
     if not name_query.strip():
         st.warning("Please enter a name to match.")
@@ -990,7 +999,8 @@ def lookup_person_options(name_query):
             st.session_state.search_results = "No individuals matching that name found in database records."
     except Exception as e:
         st.error(f"Person parsing failure: {e}")
-
+        
+# GENERATE PERSON REPORT
 def generate_person_report(p_id):
     if not str(p_id).strip().isdigit():
         st.session_state.search_results = "Please enter a valid numerical Person ID."
@@ -1104,8 +1114,6 @@ def generate_person_report(p_id):
         WHERE p.person_id = TargetPerson.selected_person_id
         GROUP BY p.person_id;
         """
-        
-        # Executing the exact logic block using native positional bindings (?) compatible with standard python sqlite3 bindings
         cursor.execute(sql, (int(p_id),))
         result = cursor.fetchone()
         
@@ -1119,35 +1127,25 @@ def generate_person_report(p_id):
         if conn:
             conn.close()
 
+# SET UP BASIC DROPDOWN MENU FROM DATABASE (for Advanced Search)
 def get_filter_options(table, col):
     options = ["All"]
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Select distinct unique entries that aren't empty strings or nulls
         query = f'SELECT DISTINCT "{col}" FROM "{table}" WHERE "{col}" IS NOT NULL AND "{col}" <> "" ORDER BY "{col}" ASC;'
         cursor.execute(query)
         
         for row in cursor.fetchall():
             val = str(row[0])
-            
-            
-            if col == 'relevance_index':
-                if val == '0': val = "False"
-                elif val == '1': val = "True"
-                    
-            if col == 'intervention_status':
-                if val == '0': val = "False"
-                elif val == '1': val = "True"
-                
             options.append(val)
             
         conn.close()
-    except Exception as e:
+    except Exception:
         pass
     return options
-        
+    
+# ADVANCED SEARCH
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -1158,7 +1156,7 @@ def execute_advanced_search(f_dict):
     st.session_state["active_search_query_params"] = query_params
     st.session_state["active_search_has_run"] = True
 
-    # 1. Search Filters
+    # SQL SETUP
     base_sql = """
         SELECT DISTINCT
             mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
@@ -1190,20 +1188,16 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
         WHERE 1=1
     """
-# 2. Advanced Text Search with User-Selected Inflated/Exact Inflected Match Control
+    # ADVANCED TEXT SEARCH (USER PICKS STRATEGY)
     phrase = f_dict.get('text', '').strip()
     if phrase:
-        # Check the user-facing option selection from the payload dictionary
-        # Options from UI: "Match any inflected form of word or phrase" vs "Match exact word or phrase"
         search_mode = f_dict.get('text_search_mode', 'Match any inflected form of word or phrase')
         
-        # 1. Normalize spaces around explicit boolean operators and uppercase them for BOTH modes
         norm_phrase = phrase
         norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
         norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
         norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
         
-        # Split on explicit operators OR spaces to target individual vocabulary units
         tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
         
         fts_compiled_terms = []
@@ -1212,7 +1206,6 @@ def execute_advanced_search(f_dict):
             if not t_clean: 
                 continue
             
-            # Structural boolean words pass straight through natively in both modes
             if t_clean in ("AND", "OR", "NOT"):
                 fts_compiled_terms.append(t_clean)
             else:
@@ -1230,8 +1223,6 @@ def execute_advanced_search(f_dict):
                     continuous_words = list(set(continuous_words))
                     
                     all_variants = list(set(synonyms + continuous_words))
-                    
-                    # Group cluster variants inside FTS5 OR boundaries: (variant1 OR variant2)
                     if len(all_variants) > 1:
                         syn_clause = "(" + " OR ".join([f'"{v}"' for v in all_variants]) + ")"
                     else:
@@ -1239,7 +1230,6 @@ def execute_advanced_search(f_dict):
                     
                     fts_compiled_terms.append(syn_clause)
                 else:
-                    # --- EXACT MODE: MATCH EXACT WORD OR PHRASE ---
                     fts_compiled_terms.append(f'"{t_clean}"')
                     
         fts_query_string = " ".join(fts_compiled_terms)
@@ -1259,7 +1249,7 @@ def execute_advanced_search(f_dict):
         """
         where_clauses.append(fts_subquery)
         
-   # --- DATE RANGE FILTER LOGIC ---
+   # DATE (USER PICKS STRATEGY)
     req_start = f_dict.get('start_date')
     req_end = f_dict.get('end_date')
     dating_strategy = f_dict.get('dating_strategy', 'overlap') # Defaults to overlap if not specified
@@ -1305,16 +1295,12 @@ def execute_advanced_search(f_dict):
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
    ]
 
-  # --- THE AUTOMATIC SQL BUILDER ---
-    # This loop looks at each filter box you have filled in. 
-    # It automatically skips any empty boxes or boxes set to "All". 
-    # For everything else, it figures out if you picked one item or a list of items,
-    # and writes the WHERE clause accordingly
+  #SQL BUILDER
     
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
-        # FIX 1: Relevance Check (0 vs 1)
+     
         if key == 'relevance_index' and f_dict.get('relevance_active'):
             applied_criteria_summary.append(f"  • {display_name}: {'Relevant' if val == 1 else 'Not Relevant'}")
             p_name = f"param_{key}"
@@ -1322,7 +1308,6 @@ def execute_advanced_search(f_dict):
             query_params[p_name] = val
             continue
 
-        # FIX 2: Intervention Status Check (0 vs 1)
         if key == 'intervention_status' and f_dict.get('intervention_status_active'):
             applied_criteria_summary.append(f"  • {display_name}: {'Intervention present' if val == 1 else 'No later intervention'}")
             p_name = f"param_{key}"
@@ -1356,14 +1341,14 @@ def execute_advanced_search(f_dict):
             
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
             
-    # --- PERSON FILTER LOGIC (HANDLES AND vs OR) ---
+    #PERSONS
+    
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
 
     if person_ids and person_ids != "All" and person_ids != ["All"]:
         applied_criteria_summary.append(f"  • Person ({person_op}): {', '.join(map(str, person_ids))}")
-        
-        # Create dedicated parameters for the selected people
+    
         person_params = []
         for idx, p_id in enumerate(person_ids):
             p_param_name = f"param_person_id_{idx}"
@@ -1371,7 +1356,6 @@ def execute_advanced_search(f_dict):
             person_params.append(f":{p_param_name}")
 
         if person_op == "AND":
-            # Requires a sub-query checking that the count of matched target IDs matches the total selected
             where_clauses.append(f"""
                 (SELECT COUNT(DISTINCT ip_sub.person_id) 
                  FROM "inscriptions_and_persons" ip_sub 
@@ -1379,17 +1363,15 @@ def execute_advanced_search(f_dict):
                  AND ip_sub.person_id IN ({', '.join(person_params)})) = {len(person_ids)}
             """)
         else:
-            # Traditional OR mapping logic using simple inclusion matching
             where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
 
-    # --- COLLECTIVE FILTER LOGIC (HANDLES AND vs OR) ---
+    # INSTITUTIONS/GROUPS/MILITARY UNITS
     collective_names = f_dict.get('collective_name', [])
     collective_op = f_dict.get('collective_operator', 'OR')
 
     if collective_names and collective_names != "All" and collective_names != ["All"]:
         applied_criteria_summary.append(f"  • Collective/Military Unit ({collective_op}): {', '.join(map(str, collective_names))}")
         
-        # Create dedicated parameters for the selected collectives
         collective_params = []
         for idx, col_name in enumerate(collective_names):
             c_param_name = f"param_collective_name_{idx}"
@@ -1397,7 +1379,6 @@ def execute_advanced_search(f_dict):
             collective_params.append(f":{c_param_name}")
 
         if collective_op == "AND":
-            # Requires a sub-query checking that the count of matched collective names matches the total selected
             where_clauses.append(f"""
                 (SELECT COUNT(DISTINCT col_sub.collective_name) 
                  FROM "inscriptions_and_collectives" ic_sub
@@ -1406,10 +1387,10 @@ def execute_advanced_search(f_dict):
                  AND col_sub.collective_name IN ({', '.join(collective_params)})) = {len(collective_names)}
             """)
         else:
-            # Traditional OR mapping logic using simple inclusion matching
             where_clauses.append(f"col.collective_name IN ({', '.join(collective_params)})")
 
-    # --- VIRORUM DISTRIBUTIO FILTER LOGIC (CHECKS PERSONS OR COLLECTIVES) ---
+    # VIRORUM DISTRIBUTIO
+    
     vd_vals = f_dict.get('virorum_distributio', [])
     if vd_vals and vd_vals != "All" and vd_vals != ["All"]:
         if not isinstance(vd_vals, list):
@@ -1425,7 +1406,6 @@ def execute_advanced_search(f_dict):
             
         vd_placeholders = ", ".join(vd_params)
         
-        # Check if the inscription has any linked person or collective matching the virorum_distributio
         where_clauses.append(f"""
             (
                 EXISTS (
@@ -1448,7 +1428,6 @@ def execute_advanced_search(f_dict):
             )
         """)
 
-    # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
@@ -1478,7 +1457,6 @@ def execute_advanced_search(f_dict):
             
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
             
-    # Assemble complete sql string
     if where_clauses:
         final_sql = base_sql + " AND " + " AND ".join(where_clauses) + " ORDER BY mt.inscription_id DESC;"
     else:
@@ -1517,7 +1495,7 @@ def execute_advanced_search(f_dict):
                     unique_objects.add(row[0])
             
             object_count = len(unique_objects)
-        # -----------------------------------------
+            
         header_lines = ["## Advanced Search Results\n"]
         header_lines.append("**Filters Applied:**\n")
         if applied_criteria_summary:
@@ -1965,9 +1943,8 @@ def fetch_metadata_by_id(inscription_id):
         st.session_state.search_results = f"Error fetching metadata: {e}"
 
 
-# =========================================================
-# Map Generator
-# =========================================================
+# INTERACTIVE MAP
+
 def generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
@@ -2015,33 +1992,33 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
-    # Seed map center
-    valid_center = [41.807100, 14.919200]  # Centered at Larino
+    # SET MAP CENTER TO LARINO 
+    valid_center = [41.807100, 14.919200]
     
     mymap = folium.Map(location=valid_center, zoom_start=4.5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
 
-    # -------------------------------------------------------------
-    # BASE ROADS & PROVINCES OVERLAYS
-    # -------------------------------------------------------------
+
+    # GENERATE INTINER-E ROADS LAYER
+
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
             roads_data = json.load(f)
         folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
+
+    
+    # GENERATE PROVINCES LAYER 
         
-   # 1. Tally up the search result provinces right out of your matched_points list
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
-        
-    # 2. Process and load the province boundary lines in memory
+    
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
         
-        # In-memory loop to add the numeric tallies to the shape copy
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         for feature in features:
             props = feature.setdefault("properties", {})
@@ -2053,7 +2030,6 @@ def generate_active_map():
             else:
                 props["search_count"] = "<br>0"
                 
-        # Pass to Folium
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
@@ -2069,12 +2045,7 @@ def generate_active_map():
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
         ).add_to(mymap)
-
-        # -------------------------------------------------------------
-        # THE MAGIC INJECTOR FOR THE TABLE CELLS
-        # -------------------------------------------------------------
-        # Folium writes a specific ID for its tooltips. We inject a quick CSS patch 
-        # to guarantee the data cells are aligned left and not spaced miles apart.
+        
         mymap.get_root().header.add_child(folium.Element("""
             <style>
                 .leaflet-tooltip table td {
@@ -2083,18 +2054,17 @@ def generate_active_map():
                 }
             </style>
         """))
-    # -------------------------------------------------------------
-    # FIND AREA LAYER AND FIND SPOT LAYER
-    # -------------------------------------------------------------
-    # Layer 1: OFF BY DEFAULT (show=False) for the GeoJSON shapes
+        
+    # FIND AREA LAYER SETUP
+    
     range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
     
-    # Layer 2: ON BY DEFAULT (show=True) for the standard pins
+    # INSCRIPTIONS LAYER SETUP
+    
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
-    # -------------------------------------------------------------
-    # CLUSTER & POPULATE COORD BUCKETS FOR PINS
-    # -------------------------------------------------------------
+    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (LOCATIONS WITH MULTIPLE INSCRIPTIONS)
+    
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
@@ -2107,9 +2077,7 @@ def generate_active_map():
             except (ValueError, TypeError):
                 continue 
 
-        # -------------------------------------------------------------
-        # PASS 1: POPULATE THE INDEPENDENT RANGE LAYER (IF GEOJSON EXISTS)
-        # -------------------------------------------------------------
+        # GENERATE FIND AREA LAYER
         geo_json_str = row[13]
         f_id = row[0]
         if geo_json_str:
@@ -2118,19 +2086,19 @@ def generate_active_map():
                 folium.GeoJson(
                     polygon_geometry,
                     style_function=lambda feature: {
-                        "color": "#7f8c8d",       # Muted slate gray border
+                        "color": "#7f8c8d",       
                         "weight": 2,
-                        "dashArray": "6, 6",      # Clear dashes to signify uncertainty bounds
-                        "fillColor": "#95a5a6",   # Soft transparent center fill
+                        "dashArray": "6, 6",      
+                        "fillColor": "#95a5a6",   
                         "fillOpacity": 0.15,
                     },
                     tooltip=f"Uncertainty Bounds for Inscription ID: {f_id}"
                 ).add_to(range_layer)
             except Exception:
                 pass
-    # -------------------------------------------------------------
-    # PASS 2: GENERATE THE PINS FOR THE INSCRIPTION LAYER
-    # -------------------------------------------------------------
+                
+    # GENERATE NORMAL FEATURES FOR INSCRIPTION LAYER
+    
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
@@ -2217,9 +2185,8 @@ def generate_active_map():
         else:
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
-        # -------------------------------------------------------------
-        # COLOR ASSIGNMENT (Grey vs Classic Blue Pins based on approximate_location)
-        # -------------------------------------------------------------
+        # PIN COLOR ASSIGNMENT 
+        
         if overlap_count > 1:
             size = 22
             border_color = "#2c3e50" if is_bucket_approximate else "#001140"
@@ -2249,40 +2216,35 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(inscriptions_layer)
 
-    # Add both layers separately to the map canvas
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    # Render Layer Control Panel
     if not st.session_state.get("map_screenshot_mode", False):
         folium.LayerControl(collapsed=False).add_to(mymap)
     else:
-        # If snapshot mode is on, tell the map object itself to drop the zoom buttons
         mymap.options['zoomControl'] = False
 
     st.session_state.trigger_map_html = mymap._repr_html_()
     
-# =========================================================
-# APPLICATION CORE GRAPHICAL INTERFACE
-# =========================================================
+# FRONTEND
 
 query_params = st.query_params
 
-# Inscription hyperlink
+# Inscription hyperlink SETUP
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
         st.query_params.clear() 
         fetch_metadata_by_id(url_id)
         
-# Person hyperlink
+# Person hyperlink SETUP
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
         st.query_params.clear() 
         generate_person_report(url_per_id)
         
-# Institutions/Groups/Military Units hyperlink
+# Institutions/Groups/Military Units hyperlink SETUP
 if "collective_id" in st.query_params:
     selected_collective_id = st.query_params["collective_id"]
     
@@ -2294,23 +2256,19 @@ if "collective_id" in st.query_params:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Pull the Collective Name so you can notify the user what they searched for
         cursor.execute("SELECT collective_name FROM collectives WHERE collective_id = ?;", (selected_collective_id,))
         coll_name_row = cursor.fetchone()
         collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
         
-        # Pull all Inscription IDs that belong to this specific group
+
         cursor.execute("""
             SELECT inscription_id 
             FROM inscriptions_and_collectives 
             WHERE collective_id = ?;
         """, (selected_collective_id,))
         
-        # Save these IDs into session state so your dashboard updates automatically!
         matched_ids = [row[0] for row in cursor.fetchall()]
         st.session_state.active_inscription_ids = matched_ids
-        
-        # Define what displays in your main reports frame
         if matched_ids:
             st.session_state.search_results = f"#### Filtered by Institution/Group: **{collective_title}**\nFound {len(matched_ids)} matching inscriptions."
         else:
@@ -2320,7 +2278,9 @@ if "collective_id" in st.query_params:
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
         
+# HEADER
 st.markdown("## Maximinus Thrax Database Βrowser")
+
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
@@ -2379,9 +2339,8 @@ The advanced search suite offers the following filters:
 > **Note on the "Relevance?" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
 """)
 
-# =========================================================
-# MAIN SEARCH FUNCTIONS
-# =========================================================
+# MAIN SEARCH AND PERSON AND INSCRIPTION REPORTS
+
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])
 
@@ -2503,20 +2462,17 @@ with col_s4:
                 generate_person_report(pid_input_var)
                 st.rerun()
                 
-# =========================================================
 # ADVANCED SEARCH
-# =========================================================
+
 with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
 
-    # Text search 
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
         on_change=reset_map_and_search_flags
     )
     
-    # Inline hover hint placed right between the input box and the radio toggle
     st.caption(
         "Supported logic operators", 
         help=(
@@ -2525,7 +2481,6 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         )
     )
     
-    # Text search matching strategy toggle
     text_search_mode = st.radio(
         "Text Search Strategy:",
         options=[
@@ -2542,9 +2497,8 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     
     col1, col2, col3 = st.columns(3)
     
-    # =========================================================================
     # COLUMN 1: Inscription Metadata
-    # =========================================================================
+    
     with col1:
         st.markdown("#### Based on Inscription Metadata")
         
@@ -2585,9 +2539,9 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             ),
             on_change=reset_map_and_search_flags
         )
-    # =========================================================================
+        
     # COLUMN 2: People and Institutions
-    # =========================================================================
+    
     with col2:
         st.markdown("#### Based on People and Institutions")
         
@@ -2610,9 +2564,8 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
-    # =========================================================================
     # COLUMN 3: Later Modifications / Reuse
-    # =========================================================================
+    
     with col3:
         st.markdown("#### Based on Later Modifications / Reuse")
         
@@ -2625,9 +2578,9 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
-    # =========================================================================
-    # ACTION BUTTONS ROW (Streamlined: Execution & Standalone SQL Compilation)
-    # =========================================================================
+
+    # EXECUTE ADVANCED SEARCH AND DOWNLOAD SQL QUERY BUTTONS
+    
     col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
@@ -2692,10 +2645,9 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-# =========================================================
-# UNIVERSAL INPUT MATCH VALIDATION (ANTI-IDIOT GUARDRAIL)
-# =========================================================
-# Pair each live widget key with its corresponding "officially searched" anchor
+            
+# STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
+
 tracked_fields = {
     "main_text_input": "last_searched_text",
     "edcs_report_input": "last_searched_edcs",
@@ -2708,20 +2660,17 @@ tracked_fields = {
 any_input_has_unsearched_changes = False
 
 for widget_key, anchor_key in tracked_fields.items():
-    # Only evaluate if the widget currently exists in the live session state pass
     if widget_key in st.session_state:
         current_value = str(st.session_state[widget_key]).strip()
         last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
         
-        # If the user has typed/selected something but skipped hitting its execution button
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
             break
 
 
-# =========================================================
-# RENDER CSV AND MAP BUTTONS
-# =========================================================
+# EXPORT TO CSV AND GENERATE MAP BUTTONS
+
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
 # Check if ANY valid search results are ready (either basic list or advanced search state)
@@ -2775,9 +2724,7 @@ else:
             help="Make a search before mapping search results."
         )
 
-# =========================================================
 # MAP VIEWER (Always Visible)
-# =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     # 1. By setting vertical_alignment="center", Streamlit forces the center line of both columns to match perfectly
@@ -2842,48 +2789,34 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 
 
-# =========================================================
-# SEARCH RESULTS LIGHTBOX CONTAINER
-# =========================================================
+# SEARCH RESULTS
+
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
-
-    # 1. Clean standard line breaks
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
-
-    # 2. Break the results apart by double-newlines to isolate the text blocks
     blocks = clean_text.split("\n\n")
-
-    # This is our light switch. It starts turned OFF.
     process_this_block = False
 
     for block in blocks:
         cleaned_block = block.strip()
-        
-        # Check if the block contains any lines starting with 3+ dashes
         lines = cleaned_block.split("\n")
         has_dangerous_dashes = any(
             line.strip().startswith("---") for line in lines
         )
 
-        # 1. KILL switch: Turn processing OFF if we hit any downstream metadata or spelling section
         if any(header in cleaned_block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:", "Persons:"]):
             process_this_block = False
 
-        # 2. Run the formatting ONLY on the inner epigraphic text blocks
         if process_this_block:
             block = convert_markdown_bold_to_edh(block)
       
-        # 3. START switch: Turn processing ON for the NEXT loop iteration
         if "Inscription Text:" in cleaned_block:
             process_this_block = True
 
-        # 4. EXPLICIT INTERCEPTION: Is this block JUST the header itself?
         if cleaned_block == "**Inscription Text:**":
             # Force standard markdown rendering so the asterisks naturally bold!
             st.markdown(cleaned_block)
             
-        # 5. Handle all other epigraphic display blocks
         elif (
             "RIGHT:" in cleaned_block
             or "------ /" in cleaned_block
@@ -2896,6 +2829,5 @@ with st.container(height=520, border=True):
                 unsafe_allow_html=True,
                 )
         else:
-            # For everything else (Context, Material, etc.), keep regular Markdown active
             st.markdown(block)
 
