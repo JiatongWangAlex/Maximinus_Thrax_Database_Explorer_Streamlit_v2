@@ -2101,7 +2101,7 @@ def generate_active_map():
         folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
         
-    # 1. Tally up the search result provinces right out of your matched_points list
+   # 1. Tally up the search result provinces right out of your matched_points list
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
         
@@ -2110,7 +2110,7 @@ def generate_active_map():
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
         
-        # Inject the live counts into the temporary memory shapes
+        # Simple In-memory loop to slap the numeric tallies onto the shape copy
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         for feature in features:
             props = feature.setdefault("properties", {})
@@ -2120,7 +2120,7 @@ def generate_active_map():
             else:
                 props["search_count"] = 0
 
-        # Pass to Folium with your layout table alignment fix
+        # Pass to Folium
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
@@ -2130,22 +2130,10 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count"], 
-                aliases=["Province:", "Number of Matching Inscriptions:"], 
+                # The line-break forces the table column to collapse, snapping the numbers closer!
+                aliases=["Province:", "Number of Matching<br>Inscriptions:"], 
                 localize=True,
-                # This targeting CSS hunts down the hidden table elements and aligns them left!
-                style="""
-                    font-family: sans-serif;
-                    font-size: 13px;
-                    padding: 8px;
-                    background-color: white;
-                    border: 1px solid #ccc;
-                    border-radius: 4px;
-                    text-align: left;
-                """,
-                # This forces the text columns inside the table to map directly to the left side
-                text_anti_aliasing=True,
-                labels=True,
-                sticky=True
+                style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
         ).add_to(mymap)
 
