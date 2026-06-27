@@ -1211,7 +1211,6 @@ def execute_advanced_search(f_dict):
         ('context_name', 'ct.context_name', 'Context Type'),
         ('province_name', 'pr.province_name', 'Province'),
         ('number_of_inscriptions', 'o.number_of_inscriptions', 'Inscriptions on Object'),
-        ('virorum_distributio', 'vd.virorum_distributio', 'Distributio Virorum'),
         ('status_designation', 'sd.status_designation', 'Status Designation'),
         ('position_description', 'pos.position_description', 'Office/Military Role'),
         ('intervention_status', 'mt.intervention_status', 'Intervention Status'),
@@ -1221,7 +1220,12 @@ def execute_advanced_search(f_dict):
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
    ]
 
-   # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
+  # --- THE AUTOMATIC SQL BUILDER ---
+    # This loop looks at each filter box you have filled in. 
+    # It automatically skips any empty boxes or boxes set to "All". 
+    # For everything else, it figures out if you picked one item or a list of items,
+    # and writes the WHERE clause accordingly
+    
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
@@ -1319,6 +1323,45 @@ def execute_advanced_search(f_dict):
         else:
             # Traditional OR mapping logic using simple inclusion matching
             where_clauses.append(f"col.collective_name IN ({', '.join(collective_params)})")
+
+    # --- VIRORUM DISTRIBUTIO FILTER LOGIC (CHECKS PERSONS OR COLLECTIVES) ---
+    vd_vals = f_dict.get('virorum_distributio', [])
+    if vd_vals and vd_vals != "All" and vd_vals != ["All"]:
+        if not isinstance(vd_vals, list):
+            vd_vals = [vd_vals]
+            
+        applied_criteria_summary.append(f"  • Distributio Virorum: {', '.join(map(str, vd_vals))}")
+        
+        vd_params = []
+        for idx, vd_val in enumerate(vd_vals):
+            p_name = f"param_vd_custom_{idx}"
+            query_params[p_name] = vd_val
+            vd_params.append(f":{p_name}")
+            
+        vd_placeholders = ", ".join(vd_params)
+        
+        # Check if the inscription has any linked person or collective matching the virorum_distributio
+        where_clauses.append(f"""
+            (
+                EXISTS (
+                    SELECT 1 
+                    FROM "inscriptions_and_persons" ip_sub
+                    JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                    JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                    WHERE ip_sub.inscription_id = mt.inscription_id 
+                      AND vd_sub.virorum_distributio IN ({vd_placeholders})
+                )
+                OR
+                EXISTS (
+                    SELECT 1 
+                    FROM "inscriptions_and_collectives" ic_sub
+                    JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                    JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                    WHERE ic_sub.inscription_id = mt.inscription_id 
+                      AND vd_sub.virorum_distributio IN ({vd_placeholders})
+                )
+            )
+        """)
 
     # --- STANDARD LOOP FOR ALL REMAINING CRITERIA FIELDS ---
     for key, column_sql, display_name in mapping:
@@ -2291,14 +2334,13 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             person_options = {row[0]: row[1] for row in db_persons}
         except Exception:
             person_options = {}
-
+        f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
         f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_unit_operator = st.radio("Match selected units using:", options=["OR (Any of these units)", "AND (All of these units)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_collective_op", on_change=reset_map_and_search_flags)
         
         f_person_id = st.multiselect("Person:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags)
         f_person_operator = st.radio("Match selected people using:", options=["OR (Any of these people)", "AND (All of these people)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_person_op", on_change=reset_map_and_search_flags)
         
-        f_vir_dist = st.multiselect("Distributio Virorum | Type of Persons:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
         f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
