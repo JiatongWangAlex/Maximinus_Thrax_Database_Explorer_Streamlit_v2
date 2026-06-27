@@ -2509,26 +2509,26 @@ with col_s4:
 with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
-  # Text search 
+  # 1. Main Title
+    st.write("**Advanced Text Search (Boolean Logic Operators Allowed):**")
+    st.caption(
+        "**Supported Operators:** You can use **AND**, **OR**, and **NOT** in your queries. "
+        "Other boolean operators are not supported by SQL."
+    )
     f_text = st.text_input(
-        help=(
-            "**Supported Operators:**\n"
-            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
-            "• Other advanced search operators are not supported by the SQL database engine."
-        ),
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
-        on_change=reset_map_and_search_flags
+        on_change=reset_map_and_search_flags,
+        label_visibility="collapsed"  # Hides the default label so it doesn't double-render
     )
-    
     text_search_mode = st.radio(
-        "Text Search Strategy:",
+        "Text Search Strategy Matching Rules:",
         options=[
             "Match any inflected form of word or phrase", 
             "Match exact word or phrase"
         ],
         index=0,
-        on_change=reset_map_and_search_flags,
+        on_change=reset_map_and_search_flags
     )
     st.markdown("---")
     st.markdown("### Filters")
