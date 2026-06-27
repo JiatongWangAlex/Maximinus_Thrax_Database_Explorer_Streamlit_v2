@@ -2821,14 +2821,31 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Use a single narrow column to stack elements on the left, leaving a spacer on the right
-    control_col, spacer = st.columns([1.5, 6])
+    # 1. Create tight, left-aligned columns for the button and checkbox
+    # Adjusting the ratio to [1.3, 1.5, 5] pushes both tightly to the left margin
+    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5])
     
-    with control_col:
-        # Export button sits on top
+    with btn_col:
+        # Export button comes first on the far left
         export_clicked = st.button("Export Current View to PNG", use_container_width=True)
-        # Checkbox sits directly underneath it
+    with chk_col:
+        # Checkbox follows immediately right after it
+        # Styled to match the exact font stack, size, and vertical alignment of the button text
+        st.markdown(
+            """
+            <style>
+                .matching-font-label [data-testid="stCheckbox"] label p {
+                    font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                    font-size: 14px !important;
+                    color: #31333F !important;
+                }
+            </style>
+            <div class="matching-font-label" style="padding-top: 5px;">
+            """, 
+            unsafe_allow_html=True
+        )
         screenshot_mode = st.checkbox("Hide map controls")
+        st.markdown('</div>', unsafe_allow_html=True)
         
     # Force map data regeneration behind the scenes when the checkbox changes state
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
