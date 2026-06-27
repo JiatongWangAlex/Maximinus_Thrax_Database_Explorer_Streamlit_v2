@@ -2821,17 +2821,48 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Checkbox sits completely outside the map canvas
-    screenshot_mode = st.checkbox("Hide map controls")
+    # 1. Row of Controls completely outside the map canvas layout
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        screenshot_mode = st.checkbox("Hide map controls")
+    with col2:
+        # A completely native Streamlit button that triggers our image capture export
+        export_clicked = st.button("Export Current View to PNG")
     
-    # 2. If the switch toggles, update our state and immediately force a map regeneration
+    # Force map data regeneration behind the scenes when the checkbox changes state
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
         st.session_state.map_screenshot_mode = screenshot_mode
-        # If a map payload already exists, re-run your generator function right now
         if st.session_state.get("trigger_map_html"):
             generate_active_map()
 
-    # 3. Output the map payload
+    # 2. Inject the html2canvas engine if the export button is pressed
+    if export_clicked and st.session_state.get("trigger_map_html"):
+        st.markdown(
+            """
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+            <script>
+                var iframe = document.querySelector('iframe');
+                if (iframe) {
+                    // Force the iframe background canvas to match the viewport dimensions
+                    var mapCanvas = iframe.contentWindow.document.body;
+                    html2canvas(mapCanvas, {
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: null
+                    }).then(function(canvas) {
+                        // Convert the canvas drawing directly into a standard browser download link
+                        var link = document.createElement('a');
+                        link.download = 'historical_map_export.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                }
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # 3. Output the map payload frame
     if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
