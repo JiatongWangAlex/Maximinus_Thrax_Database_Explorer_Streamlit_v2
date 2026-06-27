@@ -2508,19 +2508,25 @@ with col_s4:
 # =========================================================
 with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
-    
-  # 1. Main Title
-    st.write("**Advanced Text Search (Boolean Logic Operators Allowed):**")
-    st.caption(
-        "**Supported Operators:** You can use **AND**, **OR**, and **NOT** in your queries. "
-        "Other boolean operators are not supported by SQL."
-    )
+
+    # Text search 
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
-        on_change=reset_map_and_search_flags,
-        label_visibility="collapsed"  # Hides the default label so it doesn't double-render
+        on_change=reset_map_and_search_flags
     )
+    
+    # Inline hover hint placed right between the input box and the radio toggle
+    st.caption(
+        "💡 Supported logic operators info (Hover here)", 
+        help=(
+            "**Supported Operators:**\n"
+            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
+            "• Other boolean operators are not supported by SQL."
+        )
+    )
+    
+    # Text search matching strategy toggle
     text_search_mode = st.radio(
         "Text Search Strategy Matching Rules:",
         options=[
@@ -2530,6 +2536,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         index=0,
         on_change=reset_map_and_search_flags
     )
+
     st.markdown("---")
     st.markdown("### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
