@@ -2315,19 +2315,12 @@ def generate_active_map():
     inscriptions_layer.add_to(mymap)
 
     # Render Layer Control Panel
-    folium.LayerControl(collapsed=False).add_to(mymap)
-    if st.session_state.get("map_screenshot_mode", False):
-        from branca.element import Element
-        hide_styles = """
-        <style>
-            .leaflet-control-zoom,
-            .leaflet-control-layers,
-            .leaflet-control-attribution {
-                display: none !important;
-            }
-        </style>
-        """
-        mymap.get_root().html.add_child(Element(hide_styles))
+    if not st.session_state.get("map_screenshot_mode", False):
+        folium.LayerControl(collapsed=False).add_to(mymap)
+    else:
+        # If snapshot mode is on, tell the map object itself to drop the zoom buttons
+        mymap.options['zoomControl'] = False
+
     st.session_state.trigger_map_html = mymap._repr_html_()
     
 # =========================================================
@@ -2828,28 +2821,19 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    if st.session_state.get("trigger_map_html"):
-        
-        # 1. The checkbox sits completely outside the map canvas
-        screenshot_mode = st.checkbox("Hide Map Controls")
-        
-        # 2. When checked, we inject CSS directly on the Streamlit page to alter how the iframe displays
-        if screenshot_mode:
-            st.markdown(
-                """
-                <style>
-                    /* Use an advanced CSS clip-path mask to trim off the edge controls and attribution bars instantly */
-                    iframe {
-                        clip-path: inset(40px 180px 25px 50px);
-                    }
-                </style>
-                """, 
-                unsafe_allow_html=True
-            )
+    # 1. Checkbox sits completely outside the map canvas
+    screenshot_mode = st.checkbox("Hide map controls")
+    
+    # 2. If the switch toggles, update our state and immediately force a map regeneration
+    if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
+        st.session_state.map_screenshot_mode = screenshot_mode
+        # If a map payload already exists, re-run your generator function right now
+        if st.session_state.get("trigger_map_html"):
+            generate_active_map()
 
-        # 3. Render your standard interactive map component container frame
+    # 3. Output the map payload
+    if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
-        
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 
