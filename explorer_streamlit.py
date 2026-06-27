@@ -2317,47 +2317,6 @@ def generate_active_map():
     # Render Layer Control Panel
     folium.LayerControl(collapsed=False).add_to(mymap)
     st.session_state.trigger_map_html = mymap._repr_html_()
-    screenshot_toggle_html = """
-    <style>
-        .screenshot-btn {
-            position: absolute;
-            top: 10px;
-            left: 50px;
-            z-index: 10000;
-            background: #ff4b4b;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-family: sans-serif;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-        }
-        .screenshot-btn:hover { background: #e03a3a; }
-        
-        /* When snapshot mode triggers, make the controls completely invisible */
-        .hide-controls .leaflet-control-zoom,
-        .hide-controls .leaflet-control-layers,
-        .hide-controls .leaflet-control-attribution,
-        .hide-controls .screenshot-btn {
-            display: none !important;
-        }
-    </style>
-    <button class="screenshot-btn" onclick="
-        var mapEl = document.querySelector('.leaflet-container');
-        if (mapEl) {
-            mapEl.classList.add('hide-controls');
-            setTimeout(function() { mapEl.classList.remove('hide-controls'); }, 8000);
-        }
-    ">Clean Map for Screenshot </button>
-    """
-    
-    # Safely deliver the button directly inside the map layout
-    mymap.get_root().html.add_child(Element(screenshot_toggle_html))
-
-    st.session_state.trigger_map_html = mymap._repr_html_()
     
 # =========================================================
 # APPLICATION CORE GRAPHICAL INTERFACE
@@ -2858,9 +2817,51 @@ else:
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
+        
+        # 1. The checkbox sits safely OUTSIDE the map on the Streamlit page
+        screenshot_mode = st.checkbox("Enable/Disable Screenshot Mode")
+        
+        # 2. If checked, inject CSS that makes the map controls invisible
+        if screenshot_mode:
+            st.markdown(
+                """
+                <style>
+                    /* Reaches inside the Streamlit HTML component and hides controls cleanly */
+                    iframe {
+                        clip-path: inset(0px 0px 0px 0px);
+                    }
+                </style>
+                <script>
+                    var iframe = document.querySelector('iframe');
+                    if (iframe) {
+                        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        var controls = innerDoc.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution');
+                        controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    }
+                </script>
+                """, 
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                """
+                <script>
+                    var iframe = document.querySelector('iframe');
+                    if (iframe) {
+                        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        var controls = innerDoc.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution');
+                        controls.forEach(el => el.style.setProperty('display', '', ''));
+                    }
+                </script>
+                """, 
+                unsafe_allow_html=True
+            )
+
+        # 3. Render your interactive map container frame
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+        
     else:
-        st.info("No map generated yet...")
+        st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
 # =========================================================
