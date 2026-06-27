@@ -2567,7 +2567,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         with date_col1:
             f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
         with date_col2:
-            f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 2
+            f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
     # =========================================================================
     # COLUMN 2: People and Institutions
     # =========================================================================
