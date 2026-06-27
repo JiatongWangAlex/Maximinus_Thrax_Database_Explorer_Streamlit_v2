@@ -2110,16 +2110,18 @@ def generate_active_map():
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
         
-        # Simple In-memory loop to slap the numeric tallies onto the shape copy
+        # In-memory loop to add the numeric tallies to the shape copy
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         for feature in features:
             props = feature.setdefault("properties", {})
             geo_name = props.get("Name") or props.get("province_name")
             if geo_name:
-                props["search_count"] = search_counts.get(geo_name.strip(), 0)
+                count = search_counts.get(geo_name.strip(), 0)
+                # QUICK & DIRTY TRICK: Bake a line break right into the string value!
+                props["search_count"] = f"<br>{count}"
             else:
-                props["search_count"] = 0
-
+                props["search_count"] = "<br>0"
+                
         # Pass to Folium
         folium.GeoJson(
             provinces_data, 
