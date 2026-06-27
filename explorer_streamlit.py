@@ -2821,14 +2821,20 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Row of Controls completely outside the map canvas layout
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        screenshot_mode = st.checkbox("Hide map controls")
-    with col2:
-        # A completely native Streamlit button that triggers our image capture export
-        export_clicked = st.button("Export Current View to PNG")
+    # 1. Create tight, left-aligned columns for the button and checkbox
+    # Adjusting the ratio to [1.2, 2, 5] pushes both tightly to the left margin
+    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5])
     
+    with btn_col:
+        # Export button comes first on the far left
+        export_clicked = st.button("Export Current View to PNG", use_container_width=True)
+    with chk_col:
+        # Checkbox follows immediately right after it
+        # Extra top padding inside the markdown centers the text perfectly with the button
+        st.markdown('<div style="padding-top: 5px;">', unsafe_allow_html=True)
+        screenshot_mode = st.checkbox("Hide map controls")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
     # Force map data regeneration behind the scenes when the checkbox changes state
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
         st.session_state.map_screenshot_mode = screenshot_mode
@@ -2843,14 +2849,12 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
             <script>
                 var iframe = document.querySelector('iframe');
                 if (iframe) {
-                    // Force the iframe background canvas to match the viewport dimensions
                     var mapCanvas = iframe.contentWindow.document.body;
                     html2canvas(mapCanvas, {
                         useCORS: true,
                         allowTaint: true,
                         backgroundColor: null
                     }).then(function(canvas) {
-                        // Convert the canvas drawing directly into a standard browser download link
                         var link = document.createElement('a');
                         link.download = 'historical_map_export.png';
                         link.href = canvas.toDataURL('image/png');
@@ -2867,6 +2871,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
+
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
