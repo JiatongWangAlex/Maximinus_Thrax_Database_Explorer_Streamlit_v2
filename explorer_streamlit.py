@@ -2003,7 +2003,7 @@ def generate_active_map():
     # GENERATE INTINER-E ROADS LAYER
 
 
-ITINERE_ROADS_FILE_PATH = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
+    ITINERE_ROADS_FILE_PATH = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists
     ITINERE_ROADS_FILE_PATH):
         with open
