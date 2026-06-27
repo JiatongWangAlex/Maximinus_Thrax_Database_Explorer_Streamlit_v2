@@ -2513,7 +2513,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
-        on_change=reset_map_and_search_flags
+        on_change=reset_map_and_search_flags,
         help=(
             "**Supported Operators:**\n"
             "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
