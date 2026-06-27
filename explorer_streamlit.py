@@ -41,26 +41,9 @@ class EasyPrint(MacroElement):
             link.href = 'https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.css';
             document.head.appendChild(link);
 
-            // Inject CSS to add a clean text label that pops out next to the button
+            // Inject CSS using a standard flat string to prevent Jinja2/Branca template crashes
             var style = document.createElement('style');
-            style.innerHTML = `
-                .leaflet-control-easyPrint-button { position: relative; }
-                .leaflet-control-easyPrint-button:hover::after {
-                    content: "Download current map view";
-                    position: absolute;
-                    left: 34px;
-                    top: 2px;
-                    background: #333;
-                    color: #fff;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    font-family: sans-serif;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-                    pointer-events: none;
-                }
-            `;
+            style.innerHTML = '.leaflet-control-easyPrint-button { position: relative; } .leaflet-control-easyPrint-button:hover::after { content: "Download current map view"; position: absolute; left: 34px; top: 2px; background: #333; color: #fff; padding: 4px 8px; border-radius: 4px; font-family: sans-serif; font-size: 12px; white-space: nowrap; box-shadow: 0 1px 5px rgba(0,0,0,0.4); pointer-events: none; }';
             document.head.appendChild(style);
 
             var script = document.createElement('script');
