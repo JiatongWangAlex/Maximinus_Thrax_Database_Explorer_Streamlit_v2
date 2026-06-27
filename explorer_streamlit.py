@@ -2651,7 +2651,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 'target_description': f_interv_tgt,
                 'status_tituli_name': f_status_tituli,
                 'start_date': f_start_date,  
-                'end_date': f_end_date 
+                'end_date': f_end_date,
                 'dating_strategy': f_dating_strategy
             }
             execute_advanced_search(form_payload)
