@@ -2821,16 +2821,14 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Create tight, left-aligned columns for the button and checkbox
-    # Adjusting the ratio to [1.3, 1.5, 5] pushes both tightly to the left margin
-    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5])
+    # 1. By setting vertical_alignment="center", Streamlit forces the center line of both columns to match perfectly
+    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5], vertical_alignment="center")
     
     with btn_col:
         # Export button comes first on the far left
-        export_clicked = st.button("Export Current View to PNG", use_container_width=True)
+        export_clicked = st.button("💾 Export to PNG", use_container_width=True)
     with chk_col:
-        # Checkbox follows immediately right after it
-        # Styled to match the exact font stack, size, and vertical alignment of the button text
+        # Checkbox follows immediately right after it, styled with the matching button font stack
         st.markdown(
             """
             <style>
@@ -2840,7 +2838,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                     color: #31333F !important;
                 }
             </style>
-            <div class="matching-font-label" style="padding-top: 5px;">
+            <div class="matching-font-label">
             """, 
             unsafe_allow_html=True
         )
@@ -2883,6 +2881,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
+
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
