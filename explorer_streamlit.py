@@ -2120,7 +2120,7 @@ def generate_active_map():
             else:
                 props["search_count"] = 0
 
-        # Pass to Folium with your brand new multi-line tooltip configuration
+        # Pass to Folium with your custom layout and alignment fixes
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
@@ -2131,7 +2131,19 @@ def generate_active_map():
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count"], 
                 aliases=["Province:", "Number of Matching Inscriptions:"], 
-                localize=True
+                localize=True,
+                # These styles force the tooltip labels and values to line up beautifully on the left
+                style="""
+                    font-family: sans-serif;
+                    font-size: 13px;
+                    padding: 8px;
+                    background-color: white;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                """,
+                # This explicitly forces both columns to stay glued to the left!
+                labels=True,
+                sticky=True
             )
         ).add_to(mymap)
     # -------------------------------------------------------------
