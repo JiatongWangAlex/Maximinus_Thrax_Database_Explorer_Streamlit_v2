@@ -2074,9 +2074,9 @@ def generate_active_map():
         return
 
     # Seed map center
-    valid_center = [38.11047, 15.66129]  # Centered at Reggio Calabria
+    valid_center = [41.807100, 14.919200]  # Centered at Larino
     
-    mymap = folium.Map(location=valid_center, zoom_start=5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
+    mymap = folium.Map(location=valid_center, zoom_start=4, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
    
