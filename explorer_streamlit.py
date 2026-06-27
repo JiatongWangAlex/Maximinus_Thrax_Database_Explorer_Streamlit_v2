@@ -2828,14 +2828,31 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Checkbox sits outside the map container completely
-    screenshot_mode = st.checkbox("📸 Enable Clean Snapshot Mode (Hides map controls)")
-    st.session_state["map_screenshot_mode"] = screenshot_mode
-
     if st.session_state.get("trigger_map_html"):
+        
+        # 1. The checkbox sits completely outside the map canvas
+        screenshot_mode = st.checkbox("Hide Map Controls")
+        
+        # 2. When checked, we inject CSS directly on the Streamlit page to alter how the iframe displays
+        if screenshot_mode:
+            st.markdown(
+                """
+                <style>
+                    /* Use an advanced CSS clip-path mask to trim off the edge controls and attribution bars instantly */
+                    iframe {
+                        clip-path: inset(40px 180px 25px 50px);
+                    }
+                </style>
+                """, 
+                unsafe_allow_html=True
+            )
+
+        # 3. Render your standard interactive map component container frame
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+        
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
+
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
 # =========================================================
