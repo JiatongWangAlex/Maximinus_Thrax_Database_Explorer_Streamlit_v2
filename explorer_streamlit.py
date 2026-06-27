@@ -1188,7 +1188,20 @@ def execute_advanced_search(f_dict):
                 f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
                 f"OR col.collective_name LIKE :{p_col})"
             )
+    # --- DATE RANGE FILTER LOGIC ---
+    req_start = f_dict.get('start_date')
+    req_end = f_dict.get('end_date')
 
+    if req_start is not None:
+        applied_criteria_summary.append(f"  • Start Date Bound: >= {req_start} CE")
+        where_clauses.append("mt.end_date >= :req_start")
+        query_params['req_start'] = int(req_start)
+
+    if req_end is not None:
+        applied_criteria_summary.append(f"  • End Date Bound: <= {req_end} CE")
+        where_clauses.append("mt.start_date <= :req_end")
+        query_params['req_end'] = int(req_end)
+        
    # 3. Mapping Configuration
     mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'),
@@ -2256,7 +2269,13 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
-
+        st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
+        st.markdown("##### Chronological Range (CE)")
+        date_col1, date_col2 = st.columns(2)
+        with date_col1:
+            f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
+        with date_col2:
+            f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
     # =========================================================================
     # COLUMN 2: People and Institutions
     # =========================================================================
@@ -2339,7 +2358,9 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
                 'target_description': f_interv_tgt,
-                'status_tituli_name': f_status_tituli
+                'status_tituli_name': f_status_tituli,
+                'start_date': f_start_date,  
+                'end_date': f_end_date     
             }
             execute_advanced_search(form_payload)
 
