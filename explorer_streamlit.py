@@ -2572,7 +2572,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             "Search Strategy:",
             options=["overlap", "strict"],
             format_func=lambda x: (
-                "A: Search for any inscriptions whose date overlaps with this range" if x == "overlap"
+                "A: Search for all inscriptions whose date overlaps with this range" if x == "overlap"
                 else "B: Search for only inscriptions whose date is fully contained within this range"
             ),
             help=(
