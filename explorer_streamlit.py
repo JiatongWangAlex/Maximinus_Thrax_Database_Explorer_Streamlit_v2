@@ -684,8 +684,8 @@ def run_standard_search(user_input):
         st.session_state.active_inscription_ids = list(seen_text_ids.union(seen_fallback_ids))
         all_matched_ids = st.session_state.active_inscription_ids
 
-        st.session_state["active_search_where_clauses"] = []  # Tells exporter: Mode 2 Active
-        st.session_state["active_search_has_run"] = True      # Lights up the button
+        st.session_state["active_search_where_clauses"] = [] 
+        st.session_state["active_search_has_run"] = True
         
         if not all_matched_ids:
             st.session_state.search_results = f'No inscriptions found matching string "{user_input}"'
