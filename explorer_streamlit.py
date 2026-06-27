@@ -151,7 +151,7 @@ def generate_bulk_search_csv(cursor):
         "Inscription Text", "Nonstandard Spellings", "Context", "Support", 
         "Dating", "Material", "Status Tituli", 
         "Virorum Distributio",  # Added
-        "Associated Persons", 
+        "Persons", 
         "Institutions / Groups / Military Units",  # Added
         "Province", "Place", "Associated Roman Road", "Number of Inscriptions on Object", 
         "Inscriptions on Object", "Interventions(Later modifications/reuse)", "Bibliography"
@@ -227,7 +227,7 @@ SELECT DISTINCT
     ) AS [Virorum Distributio],
     (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
      FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
-     WHERE ip.inscription_id = mt.inscription_id) AS [Associated Persons],
+     WHERE ip.inscription_id = mt.inscription_id) AS [Persons],
     COALESCE(
         (
             SELECT GROUP_CONCAT(c.collective_name, ', ')
