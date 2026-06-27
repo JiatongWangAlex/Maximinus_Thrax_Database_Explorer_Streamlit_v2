@@ -117,7 +117,7 @@ def generate_bulk_search_csv(cursor):
                     SELECT GROUP_CONCAT(
                         'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
                     )
-                    FROM (SELECT intervention_id, note, row_number() over (order by intervention_id) as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
+                    FROM (SELECT intervention_id, note, intervention_index as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
                     JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
                     LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
                     LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
@@ -253,6 +253,19 @@ SELECT DISTINCT
          WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1), 
         'None'
     ) AS [Linked Intervention IDs],
+    COALESCE(
+                (
+                    SELECT GROUP_CONCAT(
+                        'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
+                    )
+                    FROM (SELECT intervention_id, note, intervention_index as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
+                    JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
+                    LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
+                    LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
+                    WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
+                ),
+                'no interventions'
+            ) AS interventions,
     COALESCE(mt.expanded_bibliography, 'N/A') AS [Bibliography]
 FROM "Max_Thrax" mt
 LEFT JOIN "materials" m ON mt.material_id = m.material_id
