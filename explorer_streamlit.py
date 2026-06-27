@@ -2821,19 +2821,14 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Create tight, left-aligned columns for the button and checkbox
-    # Adjusting the ratio to [1.2, 2, 5] pushes both tightly to the left margin
-    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5])
+    # 1. Use a single narrow column to stack elements on the left, leaving a spacer on the right
+    control_col, spacer = st.columns([1.5, 6])
     
-    with btn_col:
-        # Export button comes first on the far left
+    with control_col:
+        # Export button sits on top
         export_clicked = st.button("Export Current View to PNG", use_container_width=True)
-    with chk_col:
-        # Checkbox follows immediately right after it
-        # Extra top padding inside the markdown centers the text perfectly with the button
-        st.markdown('<div style="padding-top: 5px;">', unsafe_allow_html=True)
+        # Checkbox sits directly underneath it
         screenshot_mode = st.checkbox("Hide map controls")
-        st.markdown('</div>', unsafe_allow_html=True)
         
     # Force map data regeneration behind the scenes when the checkbox changes state
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
@@ -2871,7 +2866,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
 
 # =========================================================
 # SEARCH RESULTS LIGHTBOX CONTAINER
