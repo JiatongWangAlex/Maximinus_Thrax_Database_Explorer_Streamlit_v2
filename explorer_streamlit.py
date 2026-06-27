@@ -2120,7 +2120,7 @@ def generate_active_map():
             else:
                 props["search_count"] = 0
 
-        # Pass to Folium with your custom layout and alignment fixes
+        # Pass to Folium with your layout table alignment fix
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
@@ -2132,7 +2132,7 @@ def generate_active_map():
                 fields=["Name", "search_count"], 
                 aliases=["Province:", "Number of Matching Inscriptions:"], 
                 localize=True,
-                # These styles force the tooltip labels and values to line up beautifully on the left
+                # This targeting CSS hunts down the hidden table elements and aligns them left!
                 style="""
                     font-family: sans-serif;
                     font-size: 13px;
@@ -2140,12 +2140,28 @@ def generate_active_map():
                     background-color: white;
                     border: 1px solid #ccc;
                     border-radius: 4px;
+                    text-align: left;
                 """,
-                # This explicitly forces both columns to stay glued to the left!
+                # This forces the text columns inside the table to map directly to the left side
+                text_anti_aliasing=True,
                 labels=True,
                 sticky=True
             )
         ).add_to(mymap)
+
+        # -------------------------------------------------------------
+        # THE MAGIC INJECTOR FOR THE TABLE CELLS
+        # -------------------------------------------------------------
+        # Folium writes a specific ID for its tooltips. We inject a quick CSS patch 
+        # to guarantee the data cells are aligned left and not spaced miles apart.
+        mymap.get_root().header.add_child(folium.Element("""
+            <style>
+                .leaflet-tooltip table td {
+                    text-align: left !important;
+                    padding-right: 15px !important;
+                }
+            </style>
+        """))
     # -------------------------------------------------------------
     # FIND AREA LAYER AND FIND SPOT LAYER
     # -------------------------------------------------------------
