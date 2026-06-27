@@ -205,9 +205,38 @@ SELECT DISTINCT
     COALESCE(mt.dating, 'N/A') AS [Dating],
     COALESCE(m.material_name, 'N/A') AS [Material],
     COALESCE(st.status_tituli_name, 'N/A') AS [Status Tituli],
+    COALESCE(
+        (
+            SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                FROM "inscriptions_and_persons" ip_sub
+                JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                WHERE ip_sub.inscription_id = mt.inscription_id
+                
+                UNION
+                
+                SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                FROM "inscriptions_and_collectives" ic_sub
+                JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                WHERE ic_sub.inscription_id = mt.inscription_id
+            )
+        ), 
+        'N/A'
+    ) AS [Virorum Distributio],
     (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
      FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
      WHERE ip.inscription_id = mt.inscription_id) AS [Associated Persons],
+    COALESCE(
+        (
+            SELECT GROUP_CONCAT(c.collective_name, ', ')
+            FROM "collectives" c
+            JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+            WHERE ic.inscription_id = mt.inscription_id
+        ),
+        'N/A'
+    ) AS [Institutions / Groups / Military Units],
     COALESCE(pr.province_name, 'N/A') AS [Province],
     COALESCE((SELECT pl.place_name FROM "places" pl WHERE pl.place_id = mt.place_id), 'N/A') AS [Place],
     COALESCE((SELECT r_roads.road_name FROM "inscription_and_road" iar JOIN "itiner_e_roads" r_roads ON iar.itiner_e_road_id = r_roads.itiner_e_road_id WHERE iar.inscription_id = mt.inscription_id), 'N/A') AS [Associated Roman Road],
