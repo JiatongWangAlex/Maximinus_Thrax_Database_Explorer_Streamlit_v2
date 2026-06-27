@@ -2521,8 +2521,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         "Supported logic operators", 
         help=(
             "**Supported Operators:**\n"
-            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
-            "• Other boolean operators are not supported by SQL."
+            "• You can use **AND**, **OR**, and **NOT** in your queries;Other boolean operators are not supported by SQL \n"
         )
     )
     
