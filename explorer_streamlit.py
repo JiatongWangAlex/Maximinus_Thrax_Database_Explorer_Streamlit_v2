@@ -2316,6 +2316,18 @@ def generate_active_map():
 
     # Render Layer Control Panel
     folium.LayerControl(collapsed=False).add_to(mymap)
+    if st.session_state.get("map_screenshot_mode", False):
+        from branca.element import Element
+        hide_styles = """
+        <style>
+            .leaflet-control-zoom,
+            .leaflet-control-layers,
+            .leaflet-control-attribution {
+                display: none !important;
+            }
+        </style>
+        """
+        mymap.get_root().html.add_child(Element(hide_styles))
     st.session_state.trigger_map_html = mymap._repr_html_()
     
 # =========================================================
@@ -2816,50 +2828,12 @@ else:
 # =========================================================
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    if st.session_state.get("trigger_map_html"):
-        
-        # 1. The checkbox sits safely OUTSIDE the map on the Streamlit page
-        screenshot_mode = st.checkbox("Enable/Disable Screenshot Mode")
-        
-        # 2. If checked, inject CSS that makes the map controls invisible
-        if screenshot_mode:
-            st.markdown(
-                """
-                <style>
-                    /* Reaches inside the Streamlit HTML component and hides controls cleanly */
-                    iframe {
-                        clip-path: inset(0px 0px 0px 0px);
-                    }
-                </style>
-                <script>
-                    var iframe = document.querySelector('iframe');
-                    if (iframe) {
-                        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-                        var controls = innerDoc.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution');
-                        controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }
-                </script>
-                """, 
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                """
-                <script>
-                    var iframe = document.querySelector('iframe');
-                    if (iframe) {
-                        var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-                        var controls = innerDoc.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution');
-                        controls.forEach(el => el.style.setProperty('display', '', ''));
-                    }
-                </script>
-                """, 
-                unsafe_allow_html=True
-            )
+    # 1. Checkbox sits outside the map container completely
+    screenshot_mode = st.checkbox("📸 Enable Clean Snapshot Mode (Hides map controls)")
+    st.session_state["map_screenshot_mode"] = screenshot_mode
 
-        # 3. Render your interactive map container frame
+    if st.session_state.get("trigger_map_html"):
         st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
-        
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 # =========================================================
