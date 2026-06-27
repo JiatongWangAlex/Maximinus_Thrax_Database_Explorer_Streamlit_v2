@@ -2518,7 +2518,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     
     # Inline hover hint placed right between the input box and the radio toggle
     st.caption(
-        "💡 Supported logic operators info (Hover here)", 
+        "Supported logic operators", 
         help=(
             "**Supported Operators:**\n"
             "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
