@@ -2826,7 +2826,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
     
     with btn_col:
         # Export button comes first on the far left
-        export_clicked = st.button("💾 Export to PNG", use_container_width=True)
+        export_clicked = st.button("Export Current View to PNG", use_container_width=True)
     with chk_col:
         # Checkbox follows immediately right after it, styled with the matching button font stack
         st.markdown(
