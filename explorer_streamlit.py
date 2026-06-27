@@ -2514,21 +2514,21 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
         on_change=reset_map_and_search_flags
+        help=(
+            "**Supported Operators:**\n"
+            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
+            "• Other advanced search operators are not supported by the SQL database engine."
+        )
     )
     
     text_search_mode = st.radio(
-        "Text Search Strategy Matching Rules:",
+        "Text Search Strategy:",
         options=[
             "Match any inflected form of word or phrase", 
             "Match exact word or phrase"
         ],
         index=0,
         on_change=reset_map_and_search_flags,
-        help=(
-            "**Supported Operators:**\n"
-            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
-            "• Other boolean operators are not supported by SQL."
-        )
     )
     st.markdown("---")
     st.markdown("### Filters")
