@@ -2693,8 +2693,12 @@ for widget_key, anchor_key in tracked_fields.items():
 # =========================================================
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
+# Check if ANY valid search results are ready (either basic list or advanced search state)
+has_basic_results = bool(st.session_state.get("active_inscription_ids"))
+has_advanced_results = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
+
 if (
-    st.session_state.get("active_inscription_ids") 
+    (has_basic_results or has_advanced_results)
     and st.session_state.get("active_search_has_run")
     and not st.session_state.get("inputs_are_dirty", False)
 ):
@@ -2737,10 +2741,9 @@ else:
             key="global_map_disabled_footer_map",
             use_container_width=True,
             disabled=True,
-            help="Make a search before mappinp search results."
+            help="Make a search before mapping search results."
         )
-
-
+        
 # =========================================================
 # MAP VIEWER (Always Visible)
 # =========================================================
