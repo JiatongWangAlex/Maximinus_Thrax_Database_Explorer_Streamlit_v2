@@ -1190,37 +1190,33 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
         WHERE 1=1
     """
-
-    # 2. Text Search with Boolean, Fallbacks, AND Latin Lemmatization Parser
+# 2. Advanced Text Search with User-Selected Inflated/Exact Inflected Match Control
     phrase = f_dict.get('text', '').strip()
     if phrase:
-        applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}'")
+        # Check the user-facing option selection from the payload dictionary
+        # Options from UI: "Match any inflected form of word or phrase" vs "Match exact word or phrase"
+        search_mode = f_dict.get('text_search_mode', 'Match any inflected form of word or phrase')
         
-        # Check for boolean operators regardless of case
-        upper_phrase = phrase.upper()
-        if " AND " in upper_phrase or " OR " in upper_phrase or " NOT " in upper_phrase:
+        # 1. Normalize spaces around explicit boolean operators and uppercase them for BOTH modes
+        norm_phrase = phrase
+        norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
+        norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
+        norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
+        
+        # Split on explicit operators OR spaces to target individual vocabulary units
+        tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
+        
+        fts_compiled_terms = []
+        for token in tokens:
+            t_clean = token.strip()
+            if not t_clean: 
+                continue
             
-            # Normalize spaces around operators and force them to uppercase
-            norm_phrase = phrase
-            norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
-            norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
-            norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
-            
-            tokens = re.split(r'( AND | OR | NOT )', norm_phrase)
-            
-            bool_clause = "("
-            current_op = "AND"
-            is_first_term = True
-            
-            for token in tokens:
-                t_clean = token.strip()
-                if not t_clean: 
-                    continue
-                
-                if t_clean in ("AND", "OR", "NOT"):
-                    current_op = t_clean
-                else:
-                    # --- LATIN PARSER INTEGRATION ---
+            # Structural boolean words pass straight through natively in both modes
+            if t_clean in ("AND", "OR", "NOT"):
+                fts_compiled_terms.append(t_clean)
+            else:
+                if search_mode == 'Match any inflected form of word or phrase':
                     clean_word = clean_epigraphic_text(t_clean).lower()
                     root_lemma = LATIN_LEMMA_MAP.get(clean_word, clean_word)
                     synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_word]))
@@ -1233,93 +1229,36 @@ def execute_advanced_search(f_dict):
                             continuous_words.append(cw)
                     continuous_words = list(set(continuous_words))
                     
-                    syn_stripped_pnames = []
-                    for idx, syn in enumerate(synonyms):
-                        pname = f"b_syn_str_{len(query_params)}"
-                        query_params[pname] = f"%{syn}%"
-                        syn_stripped_pnames.append(pname)
-                        
-                    syn_recon_pnames = []
-                    for idx, cw in enumerate(continuous_words):
-                        pname = f"b_syn_rec_{len(query_params)}"
-                        query_params[pname] = f"%{cw}%"
-                        syn_recon_pnames.append(pname)
+                    all_variants = list(set(synonyms + continuous_words))
                     
-                    meta_word = f"%{t_clean}%"
-                    p_pers = f"bool_pers_{len(query_params)}"
-                    p_col = f"bool_col_{len(query_params)}"
-                    query_params[p_pers] = meta_word
-                    query_params[p_col] = meta_word
-                    
-                    stripped_likes = " OR ".join([f"mt.inscription_text_stripped LIKE :{p}" for p in syn_stripped_pnames])
-                    recon_likes = " OR ".join([f"mt.reconstituted_text LIKE :{p}" for p in syn_recon_pnames])
-                    clean_likes = " OR ".join([f"mt.cleaned_text LIKE :{p}" for p in syn_recon_pnames])
-                    
-                    sub_clause = (
-                        f"({stripped_likes} "
-                        f"OR {recon_likes} "
-                        f"OR {clean_likes} "
-                        f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
-                        f"OR col.collective_name LIKE :{p_col})"
-                    )
-                    
-                    if current_op == "NOT":
-                        prefix = "" if is_first_term else " AND "
-                        bool_clause += f"{prefix}NOT {sub_clause}"
-                        current_op = "AND"
-                    elif is_first_term:
-                        bool_clause += sub_clause
+                    # Group cluster variants inside FTS5 OR boundaries: (variant1 OR variant2)
+                    if len(all_variants) > 1:
+                        syn_clause = "(" + " OR ".join([f'"{v}"' for v in all_variants]) + ")"
                     else:
-                        bool_clause += f" {current_op} {sub_clause}"
+                        syn_clause = f'"{all_variants[0]}"'
                     
-                    is_first_term = False
+                    fts_compiled_terms.append(syn_clause)
+                else:
+                    # --- EXACT MODE: MATCH EXACT WORD OR PHRASE ---
+                    fts_compiled_terms.append(f'"{t_clean}"')
                     
-            bool_clause += ")"
-            where_clauses.append(bool_clause)
-            
-        else:
-            # --- SIMPLE ADVANCED SEARCH WORD (NO BOOLEANS) ---
-            clean_phrase = clean_epigraphic_text(phrase).lower()
-            root_lemma = LATIN_LEMMA_MAP.get(clean_phrase, clean_phrase)
-            synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_phrase]))
-            
-            continuous_words = []
-            for syn in synonyms:
-                cw = syn.lower().replace(" ", "")
-                cw = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', cw)
-                if cw:
-                    continuous_words.append(cw)
-            continuous_words = list(set(continuous_words))
-            
-            syn_stripped_pnames = []
-            for idx, syn in enumerate(synonyms):
-                pname = f"p_syn_str_{len(query_params)}"
-                query_params[pname] = f"%{syn}%"
-                syn_stripped_pnames.append(pname)
-                
-            syn_recon_pnames = []
-            for idx, cw in enumerate(continuous_words):
-                pname = f"p_syn_rec_{len(query_params)}"
-                query_params[pname] = f"%{cw}%"
-                syn_recon_pnames.append(pname)
-                
-            meta_phrase = f"%{phrase}%"
-            p_pers = f"phrase_pers_{len(query_params)}"
-            p_col = f"phrase_col_{len(query_params)}"
-            query_params[p_pers] = meta_phrase
-            query_params[p_col] = meta_phrase
-            
-            stripped_likes = " OR ".join([f"mt.inscription_text_stripped LIKE :{p}" for p in syn_stripped_pnames])
-            recon_likes = " OR ".join([f"mt.reconstituted_text LIKE :{p}" for p in syn_recon_pnames])
-            clean_likes = " OR ".join([f"mt.cleaned_text LIKE :{p}" for p in syn_recon_pnames])
-            
-            where_clauses.append(
-                f"({stripped_likes} "
-                f"OR {recon_likes} "
-                f"OR {clean_likes} "
-                f"OR (SELECT GROUP_CONCAT(p2.person_name) FROM persons p2 JOIN inscriptions_and_persons ip2 ON p2.person_id = ip2.person_id WHERE ip2.inscription_id = mt.inscription_id) LIKE :{p_pers} "
-                f"OR col.collective_name LIKE :{p_col})"
+        fts_query_string = " ".join(fts_compiled_terms)
+
+        mode_label = "Inflected Forms" if search_mode == 'Match any inflected form of word or phrase' else "Exact Match"
+        applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {mode_label}]")
+        
+        pname = f"fts_phrase_{len(query_params)}"
+        query_params[pname] = fts_query_string
+       
+        fts_subquery = f"""
+            mt.inscription_id IN (
+                SELECT inscription_id 
+                FROM inscriptions_fts 
+                WHERE inscriptions_fts MATCH :{pname}
             )
+        """
+        where_clauses.append(fts_subquery)
+        
    # --- DATE RANGE FILTER LOGIC ---
     req_start = f_dict.get('start_date')
     req_end = f_dict.get('end_date')
@@ -2570,13 +2509,27 @@ with col_s4:
 with st.expander("Expand/Collapse Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     
-   # Text search assigned to its own private, isolated row context
+  # Text search 
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatus",
         on_change=reset_map_and_search_flags
     )
     
+    text_search_mode = st.radio(
+        "Text Search Strategy Matching Rules:",
+        options=[
+            "Match any inflected form of word or phrase", 
+            "Match exact word or phrase"
+        ],
+        index=0,
+        on_change=reset_map_and_search_flags,
+        help=(
+            "**Supported Operators:**\n"
+            "• You can use **AND**, **OR**, and **NOT** in your queries.\n"
+            "• Other boolean operators are not supported by SQL."
+        )
+    )
     st.markdown("---")
     st.markdown("### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
