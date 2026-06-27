@@ -2035,7 +2035,7 @@ elif "person_id" in query_params:
         st.query_params.clear() 
         generate_person_report(url_per_id)
         
-st.markdown("### Maximinus Thrax Database Interface")
+st.markdown("## Maximinus Thrax Database Βrowser")
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
