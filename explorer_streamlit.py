@@ -371,7 +371,42 @@ def run_standard_search(user_input):
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
+           
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.9 AS inner_lo, '**Distributio Virorum:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_persons" ip_sub
+                        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                        WHERE ip_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                        
+                        UNION
+                        
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_collectives" ic_sub
+                        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                        WHERE ic_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                    )
+                ), 
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
+            
+
+            
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+
+            -- 3. INSTITUTIONS / GROUPS / MILITARY UNITS (Placed below Persons at inner_lo 8.1)
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8.1 AS inner_lo, '**Institutions / Groups / Military Units:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT('[' || c.collective_name || '](?collective_id=' || c.collective_id || ')', ', ')
+                    FROM "collectives" c
+                    JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+                    WHERE ic.inscription_id = (SELECT selected_id FROM TargetInscription)
+                ),
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -689,8 +724,41 @@ def run_ref_search(ref_query):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.9 AS inner_lo, '**Distributio Virorum:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_persons" ip_sub
+                        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                        WHERE ip_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                        
+                        UNION
+                        
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_collectives" ic_sub
+                        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                        WHERE ic_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                    )
+                ), 
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+
+            -- 3. INSTITUTIONS / GROUPS / MILITARY UNITS (Placed below Persons at inner_lo 8.1)
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8.1 AS inner_lo, '**Institutions / Groups / Military Units:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT('[' || c.collective_name || '](?collective_id=' || c.collective_id || ')', ', ')
+                    FROM "collectives" c
+                    JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+                    WHERE ic.inscription_id = (SELECT selected_id FROM TargetInscription)
+                ),
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -1500,8 +1568,41 @@ def execute_advanced_search(f_dict):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.9 AS inner_lo, '**Distributio Virorum:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_persons" ip_sub
+                        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                        WHERE ip_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                        
+                        UNION
+                        
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_collectives" ic_sub
+                        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                        WHERE ic_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                    )
+                ), 
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+
+            -- 3. INSTITUTIONS / GROUPS / MILITARY UNITS (Placed below Persons at inner_lo 8.1)
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8.1 AS inner_lo, '**Institutions / Groups / Military Units:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT('[' || c.collective_name || '](?collective_id=' || c.collective_id || ')', ', ')
+                    FROM "collectives" c
+                    JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+                    WHERE ic.inscription_id = (SELECT selected_id FROM TargetInscription)
+                ),
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -1688,8 +1789,41 @@ def fetch_metadata_by_id(inscription_id):
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7 AS inner_lo, '**Material:** ' || COALESCE(material_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.5 AS inner_lo, '**Status Tituli:** ' || COALESCE(status_tituli_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
+
+            
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 7.9 AS inner_lo, '**Distributio Virorum:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_persons" ip_sub
+                        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                        WHERE ip_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                        
+                        UNION
+                        
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_collectives" ic_sub
+                        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                        WHERE ic_sub.inscription_id = (SELECT selected_id FROM TargetInscription)
+                    )
+                ), 
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
+
+            -- 3. INSTITUTIONS / GROUPS / MILITARY UNITS (Placed below Persons at inner_lo 8.1)
+            UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8.1 AS inner_lo, '**Institutions / Groups / Military Units:** ' || COALESCE(
+                (
+                    SELECT GROUP_CONCAT('[' || c.collective_name || '](?collective_id=' || c.collective_id || ')', ', ')
+                    FROM "collectives" c
+                    JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+                    WHERE ic.inscription_id = (SELECT selected_id FROM TargetInscription)
+                ),
+                'N/A'
+            ) || char(10) || char(10) AS tl FROM TargetInscription
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 9 AS inner_lo, '**Province:** ' || COALESCE(province_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 10 AS inner_lo, '**Place:** ' || CASE WHEN pleiades_id IS NOT NULL THEN '[' || place_name || '](https://pleiades.stoa.org/places/' || pleiades_id || ')' ELSE COALESCE(place_name, 'N/A') END || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -2079,17 +2213,57 @@ def generate_active_map():
 
 query_params = st.query_params
 
+# Inscription hyperlink
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
         st.query_params.clear() 
         fetch_metadata_by_id(url_id)
-
+        
+# Person hyperlink
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
         st.query_params.clear() 
         generate_person_report(url_per_id)
+        
+# Institutions/Groups/Military Units hyperlink
+if "collective_id" in st.query_params:
+    selected_collective_id = st.query_params["collective_id"]
+    
+    # Optional: Clear other search states so they don't clash
+    st.session_state["active_search_has_run"] = True
+    st.session_state["csv_mode"] = "ids"
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Pull the Collective Name so you can notify the user what they searched for
+        cursor.execute("SELECT collective_name FROM collectives WHERE collective_id = ?;", (selected_collective_id,))
+        coll_name_row = cursor.fetchone()
+        collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
+        
+        # Pull all Inscription IDs that belong to this specific group
+        cursor.execute("""
+            SELECT inscription_id 
+            FROM inscriptions_and_collectives 
+            WHERE collective_id = ?;
+        """, (selected_collective_id,))
+        
+        # Save these IDs into session state so your dashboard updates automatically!
+        matched_ids = [row[0] for row in cursor.fetchall()]
+        st.session_state.active_inscription_ids = matched_ids
+        
+        # Define what displays in your main reports frame
+        if matched_ids:
+            st.session_state.search_results = f"#### Filtered by Institution/Group: **{collective_title}**\nFound {len(matched_ids)} matching inscriptions."
+        else:
+            st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
+            
+        conn.close()
+    except Exception as e:
+        st.error(f"Error querying collective group filter: {e}")
         
 st.markdown("## Maximinus Thrax Database Βrowser")
 # Welcome Text & Instructions
