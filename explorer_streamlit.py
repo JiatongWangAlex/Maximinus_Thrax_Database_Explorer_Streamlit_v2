@@ -2125,7 +2125,7 @@ with col_text2:
         st.rerun()
         
 # Full Reports Panel Layout Execution Shell
-st.markdown("### Inscription Report and Person Report Generator")
+st.markdown("### Search by Inscription or Person")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
 # Render pass validation checks to flip the trap flag if text keys don't match anchors
