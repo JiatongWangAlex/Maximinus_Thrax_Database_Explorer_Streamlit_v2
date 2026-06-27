@@ -70,9 +70,39 @@ def generate_bulk_search_csv(cursor):
             COALESCE(mt.dating, 'N/A'),
             COALESCE(m.material_name, 'N/A'),
             COALESCE(st.status_tituli_name, 'N/A'),
+            COALESCE(
+                (
+                    SELECT GROUP_CONCAT(distinct_vd, ', ') FROM (
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_persons" ip_sub
+                        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+                        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+                        WHERE ip_sub.inscription_id = mt.inscription_id
+                        
+                        UNION
+                        
+                        SELECT DISTINCT vd_sub.virorum_distributio AS distinct_vd
+                        FROM "inscriptions_and_collectives" ic_sub
+                        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+                        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+                        WHERE ic_sub.inscription_id = mt.inscription_id
+                    )
+                ), 
+                'N/A'
+            ) AS virorum_distributio,
             (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
              FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
              WHERE ip.inscription_id = mt.inscription_id) AS linked_persons,
+            COALESCE(
+                (
+                    SELECT GROUP_CONCAT(c.collective_name, ', ')
+                    FROM "collectives" c
+                    JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+                    WHERE ic.inscription_id = mt.inscription_id
+                ),
+                'N/A'
+            ) AS linked_collectives,
+            COALESCE(pr.province_name, 'N/A'),
             COALESCE(pr.province_name, 'N/A'),
             COALESCE((SELECT pl.place_name FROM "places" pl WHERE pl.place_id = mt.place_id), 'N/A') AS place_name,
             COALESCE((SELECT r_roads.road_name FROM "inscription_and_road" iar JOIN "itiner_e_roads" r_roads ON iar.itiner_e_road_id = r_roads.itiner_e_road_id WHERE iar.inscription_id = mt.inscription_id), 'N/A') AS road_name,
@@ -119,7 +149,10 @@ def generate_bulk_search_csv(cursor):
     headers = [
         "Inscription ID", "Quick Citation", "Line Citation", "Trismegistos Number", 
         "Inscription Text", "Nonstandard Spellings", "Context", "Support", 
-        "Dating", "Material", "Status Tituli", "Associated Persons", 
+        "Dating", "Material", "Status Tituli", 
+        "Virorum Distributio",  # Added
+        "Associated Persons", 
+        "Institutions / Groups / Military Units",  # Added
         "Province", "Place", "Associated Roman Road", "Number of Inscriptions on Object", 
         "Inscriptions on Object", "Interventions(Later modifications/reuse)", "Bibliography"
     ]
