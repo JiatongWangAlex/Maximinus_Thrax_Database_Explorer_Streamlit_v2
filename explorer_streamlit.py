@@ -7,6 +7,8 @@ import json
 import re
 import csv
 import io
+from branca.element import Element
+from folium.elements import MacroElement
 
 if "inputs_are_dirty" not in st.session_state:
     st.session_state["inputs_are_dirty"] = False
@@ -26,7 +28,57 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 
 # Path configs for your GitHub repository files
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
-provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") # Ensure this matches your file name exactly!
+provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
+
+class EasyPrint(MacroElement):
+    def __init__(self):
+        super(EasyPrint, self).__init__()
+        self._template = Element("""
+            {% macro script(this, kwargs) %}
+            // 1. Load the external plugin assets
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.css';
+            document.head.appendChild(link);
+
+            // Inject CSS to add a clean text label that pops out next to the button
+            var style = document.createElement('style');
+            style.innerHTML = `
+                .leaflet-control-easyPrint-button { position: relative; }
+                .leaflet-control-easyPrint-button:hover::after {
+                    content: "Download current map view";
+                    position: absolute;
+                    left: 34px;
+                    top: 2px;
+                    background: #333;
+                    color: #fff;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-family: sans-serif;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+                    pointer-events: none;
+                }
+            `;
+            document.head.appendChild(style);
+
+            var script = document.createElement('script');
+            script.src = 'https://bundle.run/leaflet-easyprint@2.1.9/dist/bundle.js';
+            script.onload = function() {
+                // 2. Initialize the plugin
+                L.easyPrint({
+                    title: 'Download current map view', 
+                    position: 'topleft',
+                    sizeModes: ['Current'],
+                    exportOnly: true,
+                    hideControlContainer: true, 
+                    filename: 'clean_historical_map'
+                }).addTo({{this._parent.get_name()}});
+            };
+            document.head.appendChild(script);
+            {% endmacro %}
+        """)
 
 def reset_map_and_search_flags():
     """Hides the generate map button and clears the map frame immediately when a filter changes."""
@@ -2079,6 +2131,8 @@ def generate_active_map():
     mymap = folium.Map(location=valid_center, zoom_start=4.5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
     folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
     folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
+   
+    mymap.add_child(EasyPrint())
    
     # -------------------------------------------------------------
     # BASE ROADS & PROVINCES OVERLAYS
