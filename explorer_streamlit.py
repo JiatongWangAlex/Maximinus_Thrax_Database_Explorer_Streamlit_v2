@@ -2090,7 +2090,7 @@ def generate_active_map():
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
-        folium.GeoJson(provinces_data, name="Provinces", show=True, overlay=True, control=True,
+        folium.GeoJson(provinces_data, name="Provinces (200CE)", show=True, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
                        tooltip=folium.GeoJsonTooltip(fields=["Name"], aliases=["Province:"], localize=True)).add_to(mymap)
         
