@@ -2738,9 +2738,7 @@ else:
         )
 
 # MAP VIEWER (Always Visible)
-
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # Align control columns layout (Button column removed, checkbox shifted to left)
     chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
     
     with chk_col:
@@ -2759,87 +2757,29 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         )
         screenshot_mode = st.checkbox("Hide map controls")
         st.markdown('</div>', unsafe_allow_html=True)
-        
-    if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
-        st.session_state.map_screenshot_mode = screenshot_mode
-        if st.session_state.get("trigger_map_html"):
-            generate_active_map()
 
     if st.session_state.get("trigger_map_html"):
-        map_html_string = st.session_state.trigger_map_html
+        raw_html = st.session_state.trigger_map_html
         
-        secret_toggle_script = """
-        <script>
-            window.addEventListener('DOMContentLoaded', (event) => {
-                var mapElements = document.querySelectorAll('.folium-map');
-                if (mapElements.length > 0) {
-                    var mapId = mapElements[0].id;
-                    var mymap = window[mapId];
-                    
-                    if (mymap) {
-                        var savedCenter = sessionStorage.getItem('secret_map_center');
-                        var savedZoom = sessionStorage.getItem('secret_map_zoom');
-                        if (savedCenter && savedZoom) {
-                            mymap.setView(JSON.parse(savedCenter), parseInt(savedZoom), {animate: false});
-                        }
-                        
-                        var trackState = function() {
-                            sessionStorage.setItem('secret_map_center', JSON.stringify(mymap.getCenter()));
-                            sessionStorage.setItem('secret_map_zoom', mymap.getZoom().toString());
-                        };
-                        mymap.on('moveend zoomend', trackState);
-                    }
-                }
-
-                function saveControlPanelState() {
-                    var states = {};
-                    var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
-                    inputs.forEach(function(input) {
-                        var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                        if (labelText) {
-                            states[labelText] = input.checked;
-                        }
-                    });
-                    sessionStorage.setItem('secret_control_toggles', JSON.stringify(states));
-                }
-
-                setTimeout(function() {
-                    var savedStates = sessionStorage.getItem('secret_control_toggles');
-                    if (savedStates) {
-                        var states = JSON.parse(savedStates);
-                        var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
-                        
-                        inputs.forEach(function(input) {
-                            var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                            if (labelText && states.hasOwnProperty(labelText) && input.checked !== states[labelText]) {
-                                input.click(); 
-                            }
-                        });
-                    }
-                    
-                    document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
-                        input.addEventListener('change', saveControlPanelState);
-                    });
-                }, 100);
-
-                if (%s) {
+        # This clean script hides the UI components visually without destroying their internal state
+        if screenshot_mode:
+            cloak_script = """
+            <script>
+                window.addEventListener('DOMContentLoaded', (event) => {
                     setTimeout(function() {
                         var controls = document.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-draw, .easyprint-container, .legend');
                         controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }, 150);
-                }
-            });
-        </script>
-        """ % ("true" if screenshot_mode else "false")
-        
-        final_payload = f"{map_html_string}\n{secret_toggle_script}"
-        
+                    }, 50);
+                });
+            </script>
+            """
+            final_payload = f"{raw_html}\n{cloak_script}"
+        else:
+            final_payload = raw_html
+
         st.components.v1.html(final_payload, height=700, scrolling=True)
-        
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
-
 # SEARCH RESULTS
 
 with st.container(height=520, border=True):
