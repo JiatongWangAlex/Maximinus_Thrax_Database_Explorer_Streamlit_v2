@@ -2065,7 +2065,7 @@ def generate_active_map():
         location=valid_center, 
         zoom_start=4.5, 
         tiles=None,
-        zoom_snap=0.125, 
+        zoom_snap=0.5, 
         zoomDelta=0.125,
         wheel_px_per_zoom_level=150,
         wheel_debounce_time=150,
