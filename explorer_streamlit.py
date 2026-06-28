@@ -2011,6 +2011,7 @@ def generate_active_map():
         zoom_start=4.5, 
         tiles=None,
         zoom_snap=0.125, 
+        zoomDelta=0.125,
         wheel_px_per_zoom_level=150,
         control_scale=True,
         doubleClickZoom=False,
