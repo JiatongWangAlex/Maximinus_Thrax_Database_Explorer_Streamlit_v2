@@ -1959,6 +1959,18 @@ def fetch_metadata_by_id(inscription_id):
 # INTERACTIVE MAP
 
 def generate_active_map():
+    # --- 1. RECOVER VIEW AND CONTROL STATES ---
+    saved_state = {}
+    if st.session_state.get("use_saved_map_state", False):
+        saved_state = st.session_state.get("last_map_state", {})
+
+    st.session_state["use_saved_map_state"] = False
+
+    start_center = saved_state.get("center", None)
+    start_zoom = saved_state.get("zoom", None)
+    saved_layers = saved_state.get("layers", [])
+    show_controls = not st.session_state.get("map_screenshot_mode", False)
+
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -1968,7 +1980,6 @@ def generate_active_map():
         cursor = conn.cursor()
         placeholders = ",".join("?" for _ in ids_to_map)
         
-        # Select all normal inscription and place attributes, including our custom flags
         query = f"""
             SELECT m.inscription_id, p.latitude, p.longitude, m.inscription_ref, m.sequence_id, 
                    m.support_id, s.support_name, dt.distributio_titulorum, o.number_of_inscriptions, pr.province_name,
@@ -2005,26 +2016,40 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
-    # SET MAP CENTER TO LARINO 
-    valid_center = [41.807100, 14.919200]
+    # Default position fallbacks
+    valid_center = start_center if start_center else [41.807100, 14.919200]
+    valid_zoom = start_zoom if start_zoom else 4.5
     
-    mymap = folium.Map(location=valid_center, zoom_start=4.5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
-    folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
-    folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
+    # --- 2. INITIALIZE MAP WITH DYNAMIC PERSISTENCE ---
+    mymap = folium.Map(
+        location=valid_center, 
+        zoom_start=valid_zoom, 
+        tiles=None,
+        zoom_snap=0.125, 
+        wheel_px_per_zoom_level=150,
+        control_scale=show_controls
+    )
+    
+    # Determine which base layer was active, default to AWMC if empty memory
+    awmc_show = True if not saved_layers else any("tiles/{z}/{x}/{y}" in str(layer) for layer in saved_layers if "cawm" in str(layer))
+    dare_show = False if not saved_layers else any("imperium" in str(layer) for layer in saved_layers)
+    if saved_layers and not awmc_show and not dare_show:
+        awmc_show = True # Fallback flag safety
 
+    folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC", show=awmc_show).add_to(mymap)
+    folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE", show=dare_show).add_to(mymap)
 
-    # GENERATE INTINER-E ROADS LAYER
-
+    # --- 3. GENERATE INTINER-E ROADS LAYER ---
+    itinere_show = True if not saved_layers else "Itinere Land Roads" in saved_layers
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
             roads_data = json.load(f)
-        folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
+        folium.GeoJson(roads_data, name="Itinere Land Roads", show=itinere_show, overlay=True, control=True,
                        style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
 
-    
-    # GENERATE PROVINCES LAYER 
-        
+    # --- 4. GENERATE PROVINCES LAYER ---
+    provinces_show = True if not saved_layers else "Provinces (200CE)" in saved_layers
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
     
@@ -2038,7 +2063,6 @@ def generate_active_map():
             geo_name = props.get("Name") or props.get("province_name")
             if geo_name:
                 count = search_counts.get(geo_name.strip(), 0)
-                # QUICK & DIRTY TRICK: Bake a line break right into the string value!
                 props["search_count"] = f"<br>{count}"
             else:
                 props["search_count"] = "<br>0"
@@ -2046,13 +2070,12 @@ def generate_active_map():
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
-            show=True, 
+            show=provinces_show, 
             overlay=True, 
             control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count"], 
-                # The line-break forces the table column to collapse, snapping the numbers closer!
                 aliases=["Province:", "Matching<br>Inscriptions:"], 
                 localize=True,
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
@@ -2068,16 +2091,13 @@ def generate_active_map():
             </style>
         """))
         
-    # FIND AREA LAYER SETUP
+    # --- 5. REMAINDER LAYERS CONFIGURATION ---
+    range_show = False if not saved_layers else "Show Find Area for Approximate Findspots" in saved_layers
+    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=range_show)
     
-    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
-    
-    # INSCRIPTIONS LAYER SETUP
-    
-    inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
+    inscriptions_show = True if not saved_layers else "Inscriptions" in saved_layers
+    inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=inscriptions_show)
 
-    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (LOCATIONS WITH MULTIPLE INSCRIPTIONS)
-    
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
@@ -2090,7 +2110,6 @@ def generate_active_map():
             except (ValueError, TypeError):
                 continue 
 
-        # GENERATE FIND AREA LAYER
         geo_json_str = row[13]
         f_id = row[0]
         if geo_json_str:
@@ -2110,24 +2129,14 @@ def generate_active_map():
             except Exception:
                 pass
                 
-    # GENERATE NORMAL FEATURES FOR INSCRIPTION LAYER
-    
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
-        
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-       # Global Warning Banner for approximate coordinates
         if is_bucket_approximate:
             popup_html += """
-            <h3 style="
-                color: #000000; 
-                margin: 0 0 10px 0; 
-                font-weight: bold; 
-                text-align: center; 
-                font-size: 13px;
-            ">
+            <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
                 WARNING: APPROXIMATE FINDSPOT
             </h3>
             """
@@ -2192,19 +2201,15 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
 
-        # Tooltip tracking label
         if overlap_count > 1:
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
-        # PIN COLOR ASSIGNMENT 
-        
         if overlap_count > 1:
             size = 22
             border_color = "#2c3e50" if is_bucket_approximate else "#001140"
             fill_color = "#7f8c8d" if is_bucket_approximate else "#1a53ff"
-            
             icon_html = f"""
                 <div style="background-color: {fill_color}; border: 2px solid {border_color}; color: #ffffff; 
                             border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; 
@@ -2216,7 +2221,6 @@ def generate_active_map():
             size = 14
             border_color = "#34495e" if is_bucket_approximate else "#002fa7"
             fill_color = "#95a5a6" if is_bucket_approximate else "#33b5e5"
-            
             icon_html = f"""
                 <div style="background-color: {fill_color}; border: 2px solid {border_color}; 
                             border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
@@ -2232,7 +2236,8 @@ def generate_active_map():
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    if not st.session_state.get("map_screenshot_mode", False):
+    # --- 6. CONDITIONAL CONTROLS OVERLAY RENDERING ---
+    if show_controls:
         folium.LayerControl(collapsed=False).add_to(mymap)
     else:
         mymap.options['zoomControl'] = False
@@ -2737,10 +2742,9 @@ else:
             help="Make a search before mapping search results."
         )
 
-# MAP VIEWER (Always Visible)
 
+# MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # Align control columns layout (Button column removed, checkbox shifted to left)
     chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
     
     with chk_col:
@@ -2760,85 +2764,68 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         screenshot_mode = st.checkbox("Hide map controls")
         st.markdown('</div>', unsafe_allow_html=True)
         
+    # Check if the map is rebuilding specifically because of the checkbox toggle
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
         st.session_state.map_screenshot_mode = screenshot_mode
         if st.session_state.get("trigger_map_html"):
+            # Set a temporary flag: Yes, this build was caused by hiding/showing controls
+            st.session_state["use_saved_map_state"] = True
             generate_active_map()
 
     if st.session_state.get("trigger_map_html"):
         map_html_string = st.session_state.trigger_map_html
         
-        secret_toggle_script = """
+        state_sync_script = """
         <script>
             window.addEventListener('DOMContentLoaded', (event) => {
-                var mapElements = document.querySelectorAll('.folium-map');
-                if (mapElements.length > 0) {
-                    var mapId = mapElements[0].id;
-                    var mymap = window[mapId];
-                    
-                    if (mymap) {
-                        var savedCenter = sessionStorage.getItem('secret_map_center');
-                        var savedZoom = sessionStorage.getItem('secret_map_zoom');
-                        if (savedCenter && savedZoom) {
-                            mymap.setView(JSON.parse(savedCenter), parseInt(savedZoom), {animate: false});
-                        }
-                        
-                        var trackState = function() {
-                            sessionStorage.setItem('secret_map_center', JSON.stringify(mymap.getCenter()));
-                            sessionStorage.setItem('secret_map_zoom', mymap.getZoom().toString());
-                        };
-                        mymap.on('moveend zoomend', trackState);
-                    }
-                }
-
-                function saveControlPanelState() {
-                    var states = {};
-                    var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
-                    inputs.forEach(function(input) {
-                        var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                        if (labelText) {
-                            states[labelText] = input.checked;
-                        }
-                    });
-                    sessionStorage.setItem('secret_control_toggles', JSON.stringify(states));
-                }
-
                 setTimeout(function() {
-                    var savedStates = sessionStorage.getItem('secret_control_toggles');
-                    if (savedStates) {
-                        var states = JSON.parse(savedStates);
-                        var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
+                    var mapElements = document.querySelectorAll('.folium-map');
+                    if (mapElements.length > 0) {
+                        var mapId = mapElements[0].id;
+                        var mymap = window[mapId];
                         
-                        inputs.forEach(function(input) {
-                            var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                            if (labelText && states.hasOwnProperty(labelText) && input.checked !== states[labelText]) {
-                                input.click(); 
+                        if (mymap) {
+                            function reportStateToStreamlit() {
+                                var activeLayers = [];
+                                mymap.eachLayer(function(layer) {
+                                    if (layer.options && layer.options.layerName) {
+                                        activeLayers.push(layer.options.layerName);
+                                    } else if (layer._url) {
+                                        activeLayers.push(layer._url);
+                                    }
+                                });
+                                
+                                var stateData = {
+                                    center: [mymap.getCenter().lat, mymap.getCenter().lng],
+                                    zoom: mymap.getZoom(),
+                                    layers: activeLayers
+                                };
+                                
+                                window.parent.postMessage({
+                                    type: 'streamlit:setComponentValue',
+                                    value: JSON.stringify(stateData)
+                                }, '*');
                             }
-                        });
+                            
+                            mymap.on('moveend zoomend layeradd layerremove', reportStateToStreamlit);
+                        }
                     }
-                    
-                    document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
-                        input.addEventListener('change', saveControlPanelState);
-                    });
-                }, 100);
-
-                if (%s) {
-                    setTimeout(function() {
-                        var controls = document.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-draw, .easyprint-container, .legend');
-                        controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }, 150);
-                }
+                }, 300);
             });
         </script>
-        """ % ("true" if screenshot_mode else "false")
+        """
         
-        final_payload = f"{map_html_string}\n{secret_toggle_script}"
+        final_payload = f"{map_html_string}\n{state_sync_script}"
         
-        st.components.v1.html(final_payload, height=700, scrolling=True)
+        response = st.components.v1.html(final_payload, height=700, scrolling=True)
+        if response:
+            try:
+                st.session_state["last_map_state"] = json.loads(response)
+            except Exception:
+                pass
         
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
 
 # SEARCH RESULTS
 
