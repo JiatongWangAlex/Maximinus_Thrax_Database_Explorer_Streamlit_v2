@@ -2237,9 +2237,9 @@ def generate_active_map():
                 popup_html += (
                     "<span style='font-size: 11px; color: #000000; font-weight: bold; line-height: 1.4;'>"
                     "Some legacy place names cannot be securely linked to a modern location.<br>"
-                    "Approximate coordinates represent the geometric center of the area where "
-                    "the place is likely located, based on identifiable sites reported in its vicinity. "
-                    "or on the mile number of a milestone associated with the place"
+                    "Approximate coordinates represent the geometric center of the area where the place is likely located.<br>"
+                    "This area is estimated based on identifiable sites reported in the vicinity,"
+                    "or based on the mile number of a milestone associated with the place"
                     "</span><br><br>"
                 )
                  
