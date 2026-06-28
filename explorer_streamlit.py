@@ -2068,6 +2068,7 @@ def generate_active_map():
         zoom_snap=0.25, 
         zoomDelta=0.25,
         wheel_px_per_zoom_level=150,
+        wheel_debounce_time=150,
         control_scale=True,
         doubleClickZoom=False,
         smooth_wheel_zoom=True,
