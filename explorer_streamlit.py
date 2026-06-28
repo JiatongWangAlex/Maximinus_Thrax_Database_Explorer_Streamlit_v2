@@ -2841,7 +2841,8 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
             <script>
                 window.addEventListener('load', (event) => {
                     setTimeout(function() {
-                        html2canvas(document.body, {
+                        var targetNode = document.querySelector('.folium-map') || document.body;
+                        html2canvas(targetNode, {
                             useCORS: true,
                             allowTaint: false,
                             backgroundColor: '#ffffff',
@@ -2866,7 +2867,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
 # SEARCH RESULTS
 
 with st.container(height=520, border=True):
