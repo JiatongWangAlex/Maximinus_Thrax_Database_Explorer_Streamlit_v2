@@ -1959,19 +1959,9 @@ def fetch_metadata_by_id(inscription_id):
 # INTERACTIVE MAP
 
 def generate_active_map():
-    # --- 1. CHECKBOX DETECT RETENTION LOGIC ---
+    # --- 1. MINIMAL CHECKBOX LAYER TOGGLE CONTROL ---
     show_controls = not st.session_state.get("map_screenshot_mode", False)
-    
-    # If a real query button was pushed instead of the checkbox, reset visibility to defaults
-    if not st.session_state.get("checkbox_triggered_regen", False):
-        st.session_state.map_basemap = "AWMC"
-        st.session_state.map_show_roads = True
-        st.session_state.map_show_provinces = True
-        st.session_state.map_show_find_area = False
-        
-    # Instantly clear the trigger flag for the next cycle
-    st.session_state["checkbox_triggered_regen"] = False
-    # ------------------------------------------
+    # ------------------------------------------------
 
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
@@ -1982,7 +1972,6 @@ def generate_active_map():
         cursor = conn.cursor()
         placeholders = ",".join("?" for _ in ids_to_map)
         
-        # Select all normal inscription and place attributes, including our custom flags
         query = f"""
             SELECT m.inscription_id, p.latitude, p.longitude, m.inscription_ref, m.sequence_id, 
                    m.support_id, s.support_name, dt.distributio_titulorum, o.number_of_inscriptions, pr.province_name,
@@ -2019,10 +2008,10 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
-    # SET MAP CENTER TO LARINO 
+    # SET MAP CENTER TO LARINO
     valid_center = [41.807100, 14.919200]
     
-    # 2. INITIALIZE MAP CONTAINER
+    # INITIALIZE MAP CONTAINER
     mymap = folium.Map(
         location=valid_center, 
         zoom_start=4.5, 
@@ -2032,26 +2021,26 @@ def generate_active_map():
         control_scale=show_controls
     )
     
-    # 3. BASEMAPS ASSIGNMENT WITH DYNAMIC VISIBILITY
-    folium.TileLayer(
-        tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
-        name="AWMC", 
-        overlay=False, 
-        control=True, 
-        attr="AWMC",
-        show=(st.session_state.map_basemap == "AWMC")
-    ).add_to(mymap)
-    
+    # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
     folium.TileLayer(
         tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
         name="DARE", 
         overlay=False, 
         control=True, 
         attr="DARE",
-        show=(st.session_state.map_basemap == "DARE")
+        show=True
     ).add_to(mymap)
 
-    # 4. ITINER-E ROADS LAYER WITH DYNAMIC VISIBILITY
+    folium.TileLayer(
+        tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
+        name="AWMC", 
+        overlay=False, 
+        control=True, 
+        attr="AWMC",
+        show=False
+    ).add_to(mymap)
+    
+    # ITINER-E ROADS LAYER
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
@@ -2059,13 +2048,13 @@ def generate_active_map():
         folium.GeoJson(
             roads_data, 
             name="Itinere Land Roads", 
-            show=st.session_state.map_show_roads, 
+            show=True, 
             overlay=True, 
             control=True,
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-    # 5. PROVINCES LAYER WITH DYNAMIC VISIBILITY
+    # PROVINCES LAYER
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
     
@@ -2086,7 +2075,7 @@ def generate_active_map():
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
-            show=st.session_state.map_show_provinces, 
+            show=True, 
             overlay=True, 
             control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
@@ -2107,8 +2096,8 @@ def generate_active_map():
             </style>
         """))
         
-    # 6. FEATURE GROUPS WITH DYNAMIC SELECTION OVERRIDES
-    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=st.session_state.map_show_find_area)
+    # FEATURE GROUPS
+    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
     # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER
@@ -2153,13 +2142,7 @@ def generate_active_map():
         
         if is_bucket_approximate:
             popup_html += """
-            <h3 style="
-                color: #000000; 
-                margin: 0 0 10px 0; 
-                font-weight: bold; 
-                text-align: center; 
-                font-size: 13px;
-            ">
+            <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
                 WARNING: APPROXIMATE FINDSPOT
             </h3>
             """
@@ -2224,34 +2207,21 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
 
-        # Tooltip tracking label
         if overlap_count > 1:
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
-        # PIN COLOR ASSIGNMENT 
         if overlap_count > 1:
             size = 22
             border_color = "#2c3e50" if is_bucket_approximate else "#001140"
             fill_color = "#7f8c8d" if is_bucket_approximate else "#1a53ff"
-            
-            icon_html = f"""
-                <div style="background-color: {fill_color}; border: 2px solid {border_color}; color: #ffffff; 
-                            border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; 
-                            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">
-                    {overlap_count}
-                </div>
-            """
+            icon_html = f'<div style="background-color: {fill_color}; border: 2px solid {border_color}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
         else:
             size = 14
             border_color = "#34495e" if is_bucket_approximate else "#002fa7"
             fill_color = "#95a5a6" if is_bucket_approximate else "#33b5e5"
-            
-            icon_html = f"""
-                <div style="background-color: {fill_color}; border: 2px solid {border_color}; 
-                            border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
-            """
+            icon_html = f'<div style="background-color: {fill_color}; border: 2px solid {border_color}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
 
         folium.Marker(
             location=[lat, lon],
@@ -2263,14 +2233,12 @@ def generate_active_map():
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    # 7. LAYOUT CONTROLS OVERLAY CONDITIONAL ASSIGNMENT
     if show_controls:
         folium.LayerControl(collapsed=False).add_to(mymap)
     else:
         mymap.options['zoomControl'] = False
 
     st.session_state.trigger_map_html = mymap._repr_html_()
-
 
 # FRONTEND
 
@@ -2773,16 +2741,6 @@ else:
 
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # Initialize default layer visibility states in memory if they don't exist yet
-    if "map_basemap" not in st.session_state:
-        st.session_state.map_basemap = "AWMC"
-    if "map_show_roads" not in st.session_state:
-        st.session_state.map_show_roads = True
-    if "map_show_provinces" not in st.session_state:
-        st.session_state.map_show_provinces = True
-    if "map_show_find_area" not in st.session_state:
-        st.session_state.map_show_find_area = False
-
     chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
     
     with chk_col:
@@ -2802,20 +2760,57 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         screenshot_mode = st.checkbox("Hide map controls")
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # Check if this rerun was caused specifically by toggling the hide controls checkbox
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
         st.session_state.map_screenshot_mode = screenshot_mode
         if st.session_state.get("trigger_map_html"):
-            # Turn ON the flag telling your map function: "Use the saved layer selections!"
-            st.session_state["checkbox_triggered_regen"] = True
             generate_active_map()
 
     if st.session_state.get("trigger_map_html"):
-        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+        map_html_string = st.session_state.trigger_map_html
+        
+        # INTERCEPTOR SCRIPT: Listens to the layer menu clicks and forcefully re-checks them on load
+        interceptor_script = """
+        <script>
+            window.addEventListener('DOMContentLoaded', (event) => {
+                // 1. Instantly check browser memory to re-toggle layers to what the user chose
+                var savedLayers = sessionStorage.getItem('folium_layer_menu_state');
+                if (savedLayers) {
+                    var targetStates = JSON.parse(savedLayers);
+                    var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
+                    inputs.forEach(function(input) {
+                        var textLabel = input.nextSibling ? input.nextSibling.textContent.trim() : '';
+                        if (textLabel && targetStates.hasOwnProperty(textLabel)) {
+                            if (input.checked !== targetStates[textLabel]) {
+                                input.click();
+                            }
+                        }
+                    });
+                }
+
+                // 2. Attach an active live listener to remember future selections on the menu box
+                function saveMenuState() {
+                    var menuStates = {};
+                    document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
+                        var textLabel = input.nextSibling ? input.nextSibling.textContent.trim() : '';
+                        if (textLabel) {
+                            menuStates[textLabel] = input.checked;
+                        }
+                    });
+                    sessionStorage.setItem('folium_layer_menu_state', JSON.stringify(menuStates));
+                }
+
+                document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
+                    input.addEventListener('change', saveMenuState);
+                });
+            });
+        </script>
+        """
+        
+        final_payload = f"{map_html_string}\n{interceptor_script}"
+        st.components.v1.html(final_payload, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
-
+        
 #SEARCH RESULTS
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
