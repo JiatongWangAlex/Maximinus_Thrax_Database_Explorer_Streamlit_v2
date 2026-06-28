@@ -679,8 +679,6 @@ def run_standard_search(user_input):
                            'person', 'Person names match' FROM "Max_Thrax" mt JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id WHERE ip.person_id IN ({','.join(['?']*len(p_ids))});"""
                 cursor.execute(p_sql, p_ids)
                 fallback_rows.extend(cursor.fetchall())
-                
-       
         
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
@@ -2229,12 +2227,10 @@ def generate_active_map():
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    # --- THE ONLY MODIFIED AREA IN THIS FUNCTION ---
-    # 1. Add standard Leaflet Layer control elements
+    
     folium.LayerControl(collapsed=False).add_to(mymap)
 
-    # 2. Inject the localized hotkey toggle engine script directly into the map context
-    keyboard_hide_script = """
+    double_click_hide_script = """
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
             setTimeout(function() {
@@ -2246,25 +2242,24 @@ def generate_active_map():
                     if (mymap) {
                         var hiddenState = false;
                         
-                        document.addEventListener('keydown', function(e) {
-                            if (e.key === 'h' || e.key === 'H') {
-                                hiddenState = !hiddenState;
-                                
-                                var selectors = [
-                                    '.leaflet-control-zoom', 
-                                    '.leaflet-control-layers', 
-                                    '.leaflet-draw', 
-                                    '.easyprint-container', 
-                                    '.legend',
-                                    '.leaflet-control-scale'
-                                ];
-                                
-                                selectors.forEach(function(sel) {
-                                    document.querySelectorAll(sel).forEach(function(el) {
-                                        el.style.setProperty('display', hiddenState ? 'none' : 'block', 'important');
-                                    });
+                        // Native Leaflet map event listener - bypasses iframe window focus bugs completely
+                        mymap.on('dblclick', function(e) {
+                            hiddenState = !hiddenState;
+                            
+                            var selectors = [
+                                '.leaflet-control-zoom', 
+                                '.leaflet-control-layers', 
+                                '.leaflet-draw', 
+                                '.easyprint-container', 
+                                '.legend',
+                                '.leaflet-control-scale'
+                            ];
+                            
+                            selectors.forEach(function(sel) {
+                                document.querySelectorAll(sel).forEach(function(el) {
+                                    el.style.setProperty('display', hiddenState ? 'none' : 'block', 'important');
                                 });
-                            }
+                            });
                         });
                     }
                 }
@@ -2272,9 +2267,7 @@ def generate_active_map():
         });
     </script>
     """
-    mymap.get_root().header.add_child(folium.Element(keyboard_hide_script))
-    # -----------------------------------------------
-
+    mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
 
 # FRONTEND
@@ -2791,7 +2784,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                 font-size: 13px;
                 color: #1e293b;
             ">
-               Click on the map, then press the <b>[H]</b> key on your keyboard to toggle the control panels on/off.
+               Double Click anywhere on the map to toggle the control panels on/off.
             </div>
             """, 
             unsafe_allow_html=True
