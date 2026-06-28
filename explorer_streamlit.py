@@ -1,3 +1,60 @@
+"""
+THESIS DATABASE GUI
+--------------------------------------------------------------------
+Implemented By: Jiatong Wang
+Purpose: This GUI serves as the public-facing presentation layer for 
+         my BA thesis database. It is designed 
+         to help users browse the dataset easily.
+
+NOTES FOR FUTURE ME / EXAMINERS:
+--------------------------------------------------------------------
+
+PROJECT SCOPING & DEVELOPMENT HISTORY:
+--------------------------------------------------------------------
+Originally I did not want to make a GUI for the database.
+I only made an SQL query list in the beginning.
+To save time, this GUI reuses queries from the original query list, 
+in a modified form.
+
+The results window displays the printed output of the SQL queries, stitched
+together as plain text, rather than passing raw database records to the GUI.
+
+HIDDEN DATA:
+--------------------------------------------------------------------
+The 'location_data_source' field, which explains the 
+source of each coordinate, is only available in the database 
+itself within the 'places' table.
+
+The 11 tables handling the imperial titulatures of Maximinus Thrax and 
+his son are also invisible to the GUI. I used them to explore 
+how the use of imperial titles varied across different provinces but displaying 
+them in this interface would be an absolute nightmare, so they are intentionally 
+left out of the presentation layer.
+
+TO FUTURE ME (PORTABILITY):
+--------------------------------------------------------------------
+To Future Me: most of the code should be reusable for any database 
+following the same schema-- except the parts of the sql queries 
+that are hard coded.
+
+HARDCODED ITEMS
+--------------------------------------------------------------------
+For interventions, the text output for each method_id and 
+extent_id are hardcoded.
+
+Also, we distinguished between milestones commemorating road 
+restorations and simple milestones when creating the database but 
+it is not a very intuitive distinction to carry over to the GUI.
+
+Hence we masked the distinction and artificially merged every 
+inscription with support_id's 1 and 2 into one category-- milestones.
+This is also hardcoded and would not be reusable if the 
+support_id's change.
+
+====================================================================
+"""
+
+
 import sqlite3
 import os
 import textwrap
