@@ -2070,6 +2070,7 @@ def generate_active_map():
         wheel_px_per_zoom_level=150,
         control_scale=True,
         doubleClickZoom=False,
+        smooth_wheel_zoom=True,
     )
     
     # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
