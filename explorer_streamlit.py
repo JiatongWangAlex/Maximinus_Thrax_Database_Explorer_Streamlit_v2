@@ -1959,10 +1959,6 @@ def fetch_metadata_by_id(inscription_id):
 # INTERACTIVE MAP
 
 def generate_active_map():
-    # --- 1. MINIMAL CHECKBOX LAYER TOGGLE CONTROL ---
-    show_controls = not st.session_state.get("map_screenshot_mode", False)
-    # ------------------------------------------------
-
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -2011,14 +2007,14 @@ def generate_active_map():
     # SET MAP CENTER TO LARINO
     valid_center = [41.807100, 14.919200]
     
-    # INITIALIZE MAP CONTAINER
+    # INITIALIZE MAP CONTAINER (Always keep native scale line visible)
     mymap = folium.Map(
         location=valid_center, 
         zoom_start=4.5, 
         tiles=None,
         zoom_snap=0.125, 
         wheel_px_per_zoom_level=150,
-        control_scale=show_controls
+        control_scale=True
     )
     
     # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
@@ -2233,10 +2229,51 @@ def generate_active_map():
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    if show_controls:
-        folium.LayerControl(collapsed=False).add_to(mymap)
-    else:
-        mymap.options['zoomControl'] = False
+    # --- THE ONLY MODIFIED AREA IN THIS FUNCTION ---
+    # 1. Add standard Leaflet Layer control elements
+    folium.LayerControl(collapsed=False).add_to(mymap)
+
+    # 2. Inject the localized hotkey toggle engine script directly into the map context
+    keyboard_hide_script = """
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            setTimeout(function() {
+                var mapElements = document.querySelectorAll('.folium-map');
+                if (mapElements.length > 0) {
+                    var mapId = mapElements[0].id;
+                    var mymap = window[mapId];
+                    
+                    if (mymap) {
+                        var hiddenState = false;
+                        
+                        document.addEventListener('keydown', function(e) {
+                            if (e.key === 'h' || e.key === 'H') {
+                                hiddenState = !hiddenState;
+                                
+                                var selectors = [
+                                    '.leaflet-control-zoom', 
+                                    '.leaflet-control-layers', 
+                                    '.leaflet-draw', 
+                                    '.easyprint-container', 
+                                    '.legend',
+                                    '.leaflet-control-scale'
+                                ];
+                                
+                                selectors.forEach(function(sel) {
+                                    document.querySelectorAll(sel).forEach(function(el) {
+                                        el.style.setProperty('display', hiddenState ? 'none' : 'block', 'important');
+                                    });
+                                });
+                            }
+                        });
+                    }
+                }
+            }, 200);
+        });
+    </script>
+    """
+    mymap.get_root().header.add_child(folium.Element(keyboard_hide_script))
+    # -----------------------------------------------
 
     st.session_state.trigger_map_html = mymap._repr_html_()
 
@@ -2738,79 +2775,34 @@ else:
             help="Make a search before mapping search results."
         )
 
-
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
-    
-    with chk_col:
+    if st.session_state.get("trigger_map_html"):
+        # Display the hotkey hint cleanly in Python above the iframe canvas
         st.markdown(
             """
-            <style>
-                .matching-font-label [data-testid="stCheckbox"] label p {
-                    font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-                    font-size: 14px !important;
-                    color: #31333F !important;
-                }
-            </style>
-            <div class="matching-font-label">
+            <div style="
+                background-color: #f0f4ff; 
+                border-left: 4px solid #1a53ff; 
+                padding: 10px 15px; 
+                border-radius: 4px; 
+                margin-bottom: 12px;
+                font-family: 'Source Sans Pro', sans-serif;
+                font-size: 13px;
+                color: #1e293b;
+            ">
+               Click on the map, then press the <b>[H]</b> key on your keyboard to toggle the control panels on/off.
+            </div>
             """, 
             unsafe_allow_html=True
         )
-        screenshot_mode = st.checkbox("Hide map controls")
-        st.markdown('</div>', unsafe_allow_html=True)
         
-    if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
-        st.session_state.map_screenshot_mode = screenshot_mode
-        if st.session_state.get("trigger_map_html"):
-            generate_active_map()
-
-    if st.session_state.get("trigger_map_html"):
-        map_html_string = st.session_state.trigger_map_html
-        
-        # INTERCEPTOR SCRIPT: Listens to the layer menu clicks and forcefully re-checks them on load
-        interceptor_script = """
-        <script>
-            window.addEventListener('DOMContentLoaded', (event) => {
-                // 1. Instantly check browser memory to re-toggle layers to what the user chose
-                var savedLayers = sessionStorage.getItem('folium_layer_menu_state');
-                if (savedLayers) {
-                    var targetStates = JSON.parse(savedLayers);
-                    var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
-                    inputs.forEach(function(input) {
-                        var textLabel = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                        if (textLabel && targetStates.hasOwnProperty(textLabel)) {
-                            if (input.checked !== targetStates[textLabel]) {
-                                input.click();
-                            }
-                        }
-                    });
-                }
-
-                // 2. Attach an active live listener to remember future selections on the menu box
-                function saveMenuState() {
-                    var menuStates = {};
-                    document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
-                        var textLabel = input.nextSibling ? input.nextSibling.textContent.trim() : '';
-                        if (textLabel) {
-                            menuStates[textLabel] = input.checked;
-                        }
-                    });
-                    sessionStorage.setItem('folium_layer_menu_state', JSON.stringify(menuStates));
-                }
-
-                document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
-                    input.addEventListener('change', saveMenuState);
-                });
-            });
-        </script>
-        """
-        
-        final_payload = f"{map_html_string}\n{interceptor_script}"
-        st.components.v1.html(final_payload, height=700, scrolling=True)
+        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-        
+
+
+
 #SEARCH RESULTS
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
