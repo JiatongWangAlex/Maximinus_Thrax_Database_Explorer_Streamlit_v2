@@ -11,10 +11,8 @@ NOTES FOR FUTURE ME / EXAMINERS:
 
 PROJECT SCOPING & DEVELOPMENT HISTORY:
 --------------------------------------------------------------------
-Originally I did not want to make a GUI for the database.
-I only made an SQL query list in the beginning.
-To save time, this GUI reuses queries from the original query list, 
-in a modified form.
+Originally, I only made an SQL query list. Later, I decided to make this GUI.
+To save time, this GUI reuses queries from the original query list, in a modified form.
 
 The results window displays the printed output of the SQL queries, stitched
 together as plain text, rather than passing raw database records to the GUI.
