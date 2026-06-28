@@ -2149,7 +2149,7 @@ def generate_active_map():
         """))
         
     # FEATURE GROUPS
-    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
+    range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
     # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER
@@ -2195,7 +2195,7 @@ def generate_active_map():
         if is_bucket_approximate:
             popup_html += """
             <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
-                WARNING: APPROXIMATE FINDSPOT
+                WARNING: APPROXIMATE COORDINATES
             </h3>
             """
         if overlap_count > 1:
@@ -2234,8 +2234,15 @@ def generate_active_map():
                 popup_html += "<br>"
 
             if overlap_count == 1 and is_approx == 1:
-                popup_html += "<span style='font-size: 11px; color: #000000; font-weight: bold;'>Coordinates represent the geometric center of the area in which the findspot is located </span><br><br>"
-
+            popup_html += (
+                "<span style='font-size: 11px; color: #000000; font-weight: bold; line-height: 1.4;'>"
+                "Some legacy place names cannot be securely linked to a modern location.<br><br>"
+                "Approximate coordinates represent the geometric center of the area where "
+                "the place is believed to be located, based on identifiable sites "
+                "reported in its vicinity."
+                "</span><br><br>"
+            )
+                 
             popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
                 f"<b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
