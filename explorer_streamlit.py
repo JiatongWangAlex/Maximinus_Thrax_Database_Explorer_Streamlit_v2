@@ -2188,7 +2188,7 @@ def generate_active_map():
             )
             
             if support_id in (1, 2):
-                popup_html += "<br><b>Milestone</b>"
+                popup_html += "<br><b>Type of Inscription:</b> Milestone"
                 info = road_links_dict.get(f_id, {'roads': []})
                 if info['roads']:
                     road_name = ", ".join(list(set(r[0] for r in info['roads'] if r[0])))
@@ -2198,7 +2198,7 @@ def generate_active_map():
                 else:
                     popup_html += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road segment:</b> N/A"
             else:
-                popup_html += f"<br><b>distributio titulorum:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
+                popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
             if overlap_count > 1:
                 popup_html += "</div>"
