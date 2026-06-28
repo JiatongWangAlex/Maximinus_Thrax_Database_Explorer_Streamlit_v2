@@ -2785,8 +2785,8 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                 font-size: 13px;
                 color: #1e293b;
             ">
-                Double Click anywhere on the map to toggle the control panel on/off.<br>
-                Since double-clicking is reserved for toggling the control panel, use your mouse scroll wheel, trackpad pinch, or the [+] and [-] buttons (when visible) to zoom.
+                Double Click anywhere on the map to toggle the control panels on/off for a cleaner view.<br>
+                Since double-clicking is reserved for toggling the control panels, use your mouse scroll wheel, trackpad pinch, or the [+] and [-] buttons (when visible) to zoom.
             </div>
             """, 
             unsafe_allow_html=True
