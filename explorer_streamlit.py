@@ -2234,14 +2234,14 @@ def generate_active_map():
                 popup_html += "<br>"
 
             if overlap_count == 1 and is_approx == 1:
-            popup_html += (
-                "<span style='font-size: 11px; color: #000000; font-weight: bold; line-height: 1.4;'>"
-                "Some legacy place names cannot be securely linked to a modern location.<br><br>"
-                "Approximate coordinates represent the geometric center of the area where "
-                "the place is believed to be located, based on identifiable sites "
-                "reported in its vicinity."
-                "</span><br><br>"
-            )
+                popup_html += (
+                    "<span style='font-size: 11px; color: #000000; font-weight: bold; line-height: 1.4;'>"
+                    "Some legacy place names cannot be securely linked to a modern location.<br><br>"
+                    "Approximate coordinates represent the geometric center of the area where "
+                    "the place is believed to be located, based on identifiable sites "
+                    "reported in its vicinity."
+                    "</span><br><br>"
+                )
                  
             popup_html += (
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
