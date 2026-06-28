@@ -2740,7 +2740,6 @@ else:
 # MAP VIEWER (Always Visible)
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. Align control columns layout
     btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5], vertical_alignment="center")
     
     with btn_col:
@@ -2762,32 +2761,92 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         screenshot_mode = st.checkbox("Hide map controls")
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # Force map data regeneration behind the scenes when the checkbox changes state
     if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
         st.session_state.map_screenshot_mode = screenshot_mode
         if st.session_state.get("trigger_map_html"):
             generate_active_map()
 
-    # 2 & 3. Combine frame rendering and snapshot trigger directly inside the same iframe element
     if st.session_state.get("trigger_map_html"):
-        # We append html2canvas and an event listener directly inside your active map string
         map_html_string = st.session_state.trigger_map_html
         
-        # Inject html2canvas dependency script
         canvas_library = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>'
         
-        # Trigger execution only if the export button was pressed down in Streamlit
+        secret_toggle_script = """
+        <script>
+            window.addEventListener('DOMContentLoaded', (event) => {
+                var mapElements = document.querySelectorAll('.folium-map');
+                if (mapElements.length > 0) {
+                    var mapId = mapElements[0].id;
+                    var mymap = window[mapId];
+                    
+                    if (mymap) {
+                        var savedCenter = sessionStorage.getItem('secret_map_center');
+                        var savedZoom = sessionStorage.getItem('secret_map_zoom');
+                        if (savedCenter && savedZoom) {
+                            mymap.setView(JSON.parse(savedCenter), parseInt(savedZoom), {animate: false});
+                        }
+                        
+                        var trackState = function() {
+                            sessionStorage.setItem('secret_map_center', JSON.stringify(mymap.getCenter()));
+                            sessionStorage.setItem('secret_map_zoom', mymap.getZoom().toString());
+                        };
+                        mymap.on('moveend zoomend', trackState);
+                    }
+                }
+
+                function saveControlPanelState() {
+                    var states = {};
+                    var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
+                    inputs.forEach(function(input) {
+                        var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
+                        if (labelText) {
+                            states[labelText] = input.checked;
+                        }
+                    });
+                    sessionStorage.setItem('secret_control_toggles', JSON.stringify(states));
+                }
+
+                setTimeout(function() {
+                    var savedStates = sessionStorage.getItem('secret_control_toggles');
+                    if (savedStates) {
+                        var states = JSON.parse(savedStates);
+                        var inputs = document.querySelectorAll('.leaflet-control-layers-selector');
+                        
+                        inputs.forEach(function(input) {
+                            var labelText = input.nextSibling ? input.nextSibling.textContent.trim() : '';
+                            if (labelText && states.hasOwnProperty(labelText) && input.checked !== states[labelText]) {
+                                input.click(); 
+                            }
+                        });
+                    }
+                    
+                    document.querySelectorAll('.leaflet-control-layers-selector').forEach(function(input) {
+                        input.addEventListener('change', saveControlPanelState);
+                    });
+                }, 100);
+
+                if (%s) {
+                    setTimeout(function() {
+                        var controls = document.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-draw, .easyprint-container, .legend');
+                        controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    }, 150);
+                }
+            });
+        </script>
+        """ % ("true" if screenshot_mode else "false")
+        
         auto_trigger_script = ""
         if export_clicked:
             auto_trigger_script = """
             <script>
-                window.addEventListener('DOMContentLoaded', (event) => {
+                window.addEventListener('load', (event) => {
                     setTimeout(function() {
                         html2canvas(document.body, {
                             useCORS: true,
-                            allowTaint: true,
-                            backgroundColor: null,
-                            logging: false
+                            allowTaint: false,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                            scale: 2 
                         }).then(function(canvas) {
                             var link = document.createElement('a');
                             link.download = 'historical_map_export.png';
@@ -2796,15 +2855,13 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                             link.click();
                             document.body.removeChild(link);
                         });
-                    }, 500); // 500ms delay to make sure tiles finish rendering smoothly
+                    }, 5000); 
                 });
             </script>
             """
         
-        # Assemble complete integrated map payload
-        final_payload = f"{map_html_string}\n{canvas_library}\n{auto_trigger_script}"
+        final_payload = f"{map_html_string}\n{secret_toggle_script}\n{canvas_library}\n{auto_trigger_script}"
         
-        # Render frame
         st.components.v1.html(final_payload, height=700, scrolling=True)
         
     else:
