@@ -2020,7 +2020,7 @@ def generate_active_map():
     # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
     folium.TileLayer(
         tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
-        name="DARE", 
+        name="Digital Atlas of the Roman Empire", 
         overlay=False, 
         control=True, 
         attr="DARE",
@@ -2029,7 +2029,7 @@ def generate_active_map():
 
     folium.TileLayer(
         tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
-        name="AWMC", 
+        name="Ancient World Mapping Center Map", 
         overlay=False, 
         control=True, 
         attr="AWMC",
@@ -2043,7 +2043,7 @@ def generate_active_map():
             roads_data = json.load(f)
         folium.GeoJson(
             roads_data, 
-            name="Itinere Land Roads", 
+            name="Roads (based on Itiner-e)", 
             show=True, 
             overlay=True, 
             control=True,
