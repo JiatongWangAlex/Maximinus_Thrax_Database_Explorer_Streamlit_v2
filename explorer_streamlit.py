@@ -1959,6 +1959,20 @@ def fetch_metadata_by_id(inscription_id):
 # INTERACTIVE MAP
 
 def generate_active_map():
+    # --- 1. CHECKBOX DETECT RETENTION LOGIC ---
+    show_controls = not st.session_state.get("map_screenshot_mode", False)
+    
+    # If a real query button was pushed instead of the checkbox, reset visibility to defaults
+    if not st.session_state.get("checkbox_triggered_regen", False):
+        st.session_state.map_basemap = "AWMC"
+        st.session_state.map_show_roads = True
+        st.session_state.map_show_provinces = True
+        st.session_state.map_show_find_area = False
+        
+    # Instantly clear the trigger flag for the next cycle
+    st.session_state["checkbox_triggered_regen"] = False
+    # ------------------------------------------
+
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -2008,23 +2022,50 @@ def generate_active_map():
     # SET MAP CENTER TO LARINO 
     valid_center = [41.807100, 14.919200]
     
-    mymap = folium.Map(location=valid_center, zoom_start=4.5, tiles=None,zoom_snap=0.125, wheel_px_per_zoom_level=150)
-    folium.TileLayer(tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", name="AWMC", overlay=False, control=True, attr="AWMC").add_to(mymap)
-    folium.TileLayer(tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", name="DARE", overlay=False, control=True, attr="DARE").add_to(mymap)
+    # 2. INITIALIZE MAP CONTAINER
+    mymap = folium.Map(
+        location=valid_center, 
+        zoom_start=4.5, 
+        tiles=None,
+        zoom_snap=0.125, 
+        wheel_px_per_zoom_level=150,
+        control_scale=show_controls
+    )
+    
+    # 3. BASEMAPS ASSIGNMENT WITH DYNAMIC VISIBILITY
+    folium.TileLayer(
+        tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
+        name="AWMC", 
+        overlay=False, 
+        control=True, 
+        attr="AWMC",
+        show=(st.session_state.map_basemap == "AWMC")
+    ).add_to(mymap)
+    
+    folium.TileLayer(
+        tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
+        name="DARE", 
+        overlay=False, 
+        control=True, 
+        attr="DARE",
+        show=(st.session_state.map_basemap == "DARE")
+    ).add_to(mymap)
 
-
-    # GENERATE INTINER-E ROADS LAYER
-
+    # 4. ITINER-E ROADS LAYER WITH DYNAMIC VISIBILITY
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
             roads_data = json.load(f)
-        folium.GeoJson(roads_data, name="Itinere Land Roads", show=True, overlay=True, control=True,
-                       style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}).add_to(mymap)
+        folium.GeoJson(
+            roads_data, 
+            name="Itinere Land Roads", 
+            show=st.session_state.map_show_roads, 
+            overlay=True, 
+            control=True,
+            style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
+        ).add_to(mymap)
 
-    
-    # GENERATE PROVINCES LAYER 
-        
+    # 5. PROVINCES LAYER WITH DYNAMIC VISIBILITY
     from collections import Counter
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
     
@@ -2038,7 +2079,6 @@ def generate_active_map():
             geo_name = props.get("Name") or props.get("province_name")
             if geo_name:
                 count = search_counts.get(geo_name.strip(), 0)
-                # QUICK & DIRTY TRICK: Bake a line break right into the string value!
                 props["search_count"] = f"<br>{count}"
             else:
                 props["search_count"] = "<br>0"
@@ -2046,13 +2086,12 @@ def generate_active_map():
         folium.GeoJson(
             provinces_data, 
             name="Provinces (200CE)", 
-            show=True, 
+            show=st.session_state.map_show_provinces, 
             overlay=True, 
             control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count"], 
-                # The line-break forces the table column to collapse, snapping the numbers closer!
                 aliases=["Province:", "Matching<br>Inscriptions:"], 
                 localize=True,
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
@@ -2068,16 +2107,11 @@ def generate_active_map():
             </style>
         """))
         
-    # FIND AREA LAYER SETUP
-    
-    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=False)
-    
-    # INSCRIPTIONS LAYER SETUP
-    
+    # 6. FEATURE GROUPS WITH DYNAMIC SELECTION OVERRIDES
+    range_layer = folium.FeatureGroup(name="Show Find Area for Approximate Findspots", show=st.session_state.map_show_find_area)
     inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
 
-    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (LOCATIONS WITH MULTIPLE INSCRIPTIONS)
-    
+    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
@@ -2111,14 +2145,12 @@ def generate_active_map():
                 pass
                 
     # GENERATE NORMAL FEATURES FOR INSCRIPTION LAYER
-    
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
         
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-       # Global Warning Banner for approximate coordinates
         if is_bucket_approximate:
             popup_html += """
             <h3 style="
@@ -2199,7 +2231,6 @@ def generate_active_map():
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         # PIN COLOR ASSIGNMENT 
-        
         if overlap_count > 1:
             size = 22
             border_color = "#2c3e50" if is_bucket_approximate else "#001140"
@@ -2232,13 +2263,15 @@ def generate_active_map():
     range_layer.add_to(mymap)
     inscriptions_layer.add_to(mymap)
 
-    if not st.session_state.get("map_screenshot_mode", False):
+    # 7. LAYOUT CONTROLS OVERLAY CONDITIONAL ASSIGNMENT
+    if show_controls:
         folium.LayerControl(collapsed=False).add_to(mymap)
     else:
         mymap.options['zoomControl'] = False
 
     st.session_state.trigger_map_html = mymap._repr_html_()
-    
+
+
 # FRONTEND
 
 query_params = st.query_params
@@ -2737,8 +2770,19 @@ else:
             help="Make a search before mapping search results."
         )
 
+
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
+    # Initialize default layer visibility states in memory if they don't exist yet
+    if "map_basemap" not in st.session_state:
+        st.session_state.map_basemap = "AWMC"
+    if "map_show_roads" not in st.session_state:
+        st.session_state.map_show_roads = True
+    if "map_show_provinces" not in st.session_state:
+        st.session_state.map_show_provinces = True
+    if "map_show_find_area" not in st.session_state:
+        st.session_state.map_show_find_area = False
+
     chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
     
     with chk_col:
@@ -2757,49 +2801,17 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         )
         screenshot_mode = st.checkbox("Hide map controls")
         st.markdown('</div>', unsafe_allow_html=True)
+        
+    # Check if this rerun was caused specifically by toggling the hide controls checkbox
+    if "map_screenshot_mode" not in st.session_state or st.session_state.map_screenshot_mode != screenshot_mode:
+        st.session_state.map_screenshot_mode = screenshot_mode
+        if st.session_state.get("trigger_map_html"):
+            # Turn ON the flag telling your map function: "Use the saved layer selections!"
+            st.session_state["checkbox_triggered_regen"] = True
+            generate_active_map()
 
     if st.session_state.get("trigger_map_html"):
-        final_payload = st.session_state.trigger_map_html
-        
-        if screenshot_mode:
-            # This script actively watches the DOM and forces controls away the millisecond they appear
-            active_cloak_script = """
-            <script>
-                (function() {
-                    function hideControls() {
-                        var selectors = [
-                            '.leaflet-control-zoom', 
-                            '.leaflet-control-layers', 
-                            '.leaflet-draw', 
-                            '.easyprint-container', 
-                            '.legend'
-                        ];
-                        selectors.forEach(function(sel) {
-                            document.querySelectorAll(sel).forEach(function(el) {
-                                el.style.setProperty('display', 'none', 'important');
-                            });
-                        });
-                    }
-                    
-                    // Run immediately for any elements already rendered
-                    hideControls();
-                    
-                    // Constantly monitor the map container for dynamically added Leaflet elements
-                    var observer = new MutationObserver(function(mutations) {
-                        hideControls();
-                    });
-                    
-                    observer.observe(document.documentElement, {
-                        childList: true,
-                        subtree: true
-                    });
-                })();
-            </script>
-            </head>
-            """
-            final_payload = final_payload.replace("</head>", active_cloak_script, 1)
-
-        st.components.v1.html(final_payload, height=700, scrolling=True)
+        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 
