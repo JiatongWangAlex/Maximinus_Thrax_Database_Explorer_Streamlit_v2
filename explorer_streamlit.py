@@ -2012,7 +2012,8 @@ def generate_active_map():
         tiles=None,
         zoom_snap=0.125, 
         wheel_px_per_zoom_level=150,
-        control_scale=True
+        control_scale=True,
+        doubleClickZoom=False,
     )
     
     # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
@@ -2771,7 +2772,7 @@ else:
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
-        # Display the hotkey hint cleanly in Python above the iframe canvas
+        # Display the workflow hint cleanly in Python above the iframe canvas
         st.markdown(
             """
             <div style="
@@ -2784,7 +2785,8 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                 font-size: 13px;
                 color: #1e293b;
             ">
-               Double Click anywhere on the map to toggle the control panels on/off.
+                Double Click anywhere on the map to toggle the control panel on/off.<br>
+                Since double-clicking is reserved for toggling the control panel, use your mouse scroll wheel, a trackpad pinch, or the [+] and [-] buttons to zoom.
             </div>
             """, 
             unsafe_allow_html=True
