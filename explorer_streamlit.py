@@ -2789,7 +2789,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
                 Double Click anywhere on the map to toggle the control panels on/off for a cleaner view.<br>
                 Since double-clicking is reserved for toggling the control panels, use your mouse scroll wheel, trackpad pinch, or the [+] and [-] buttons (when visible) to zoom.<br>
                 Click on any feature to see a pop up with more information<br>
-                If you click on a hyperlink to a road segment on the itiner-e project, upon being redirected, you may need to click the button Explore Roman Roads to skip the welcone screen
+                If you click on a hyperlink to a road segment on the itiner-e project, upon being redirected, you may need to click the button Explore Roman Roads to skip their welcome screen
             </div>
             """, 
             unsafe_allow_html=True
