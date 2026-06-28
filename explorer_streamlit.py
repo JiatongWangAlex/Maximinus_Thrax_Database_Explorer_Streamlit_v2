@@ -2740,10 +2740,9 @@ else:
 # MAP VIEWER (Always Visible)
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5], vertical_alignment="center")
+    # Align control columns layout (Button column removed, checkbox shifted to left)
+    chk_col, spacer = st.columns([1.5, 6.8], vertical_alignment="center")
     
-    with btn_col:
-        export_clicked = st.button("Export Current View to PNG", use_container_width=True)
     with chk_col:
         st.markdown(
             """
@@ -2768,8 +2767,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 
     if st.session_state.get("trigger_map_html"):
         map_html_string = st.session_state.trigger_map_html
-        
-        canvas_library = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>'
         
         secret_toggle_script = """
         <script>
@@ -2835,38 +2832,14 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         </script>
         """ % ("true" if screenshot_mode else "false")
         
-        auto_trigger_script = ""
-        if export_clicked:
-            auto_trigger_script = """
-            <script>
-                window.addEventListener('load', (event) => {
-                    setTimeout(function() {
-                        var targetNode = document.querySelector('.folium-map') || document.body;
-                        html2canvas(targetNode, {
-                            useCORS: true,
-                            allowTaint: false,
-                            backgroundColor: '#ffffff',
-                            logging: false,
-                            scale: 2 
-                        }).then(function(canvas) {
-                            var link = document.createElement('a');
-                            link.download = 'historical_map_export.png';
-                            link.href = canvas.toDataURL('image/png');
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        });
-                    }, 5000); 
-                });
-            </script>
-            """
-        
-        final_payload = f"{map_html_string}\n{secret_toggle_script}\n{canvas_library}\n{auto_trigger_script}"
+        final_payload = f"{map_html_string}\n{secret_toggle_script}"
         
         st.components.v1.html(final_payload, height=700, scrolling=True)
         
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
+
+
 # SEARCH RESULTS
 
 with st.container(height=520, border=True):
