@@ -2759,29 +2759,52 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.markdown('</div>', unsafe_allow_html=True)
 
     if st.session_state.get("trigger_map_html"):
-        raw_html = st.session_state.trigger_map_html
+        final_payload = st.session_state.trigger_map_html
         
-        # This clean script hides the UI components visually without destroying their internal state
         if screenshot_mode:
-            cloak_script = """
+            # This script actively watches the DOM and forces controls away the millisecond they appear
+            active_cloak_script = """
             <script>
-                window.addEventListener('DOMContentLoaded', (event) => {
-                    setTimeout(function() {
-                        var controls = document.querySelectorAll('.leaflet-control-zoom, .leaflet-control-layers, .leaflet-draw, .easyprint-container, .legend');
-                        controls.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }, 50);
-                });
+                (function() {
+                    function hideControls() {
+                        var selectors = [
+                            '.leaflet-control-zoom', 
+                            '.leaflet-control-layers', 
+                            '.leaflet-draw', 
+                            '.easyprint-container', 
+                            '.legend'
+                        ];
+                        selectors.forEach(function(sel) {
+                            document.querySelectorAll(sel).forEach(function(el) {
+                                el.style.setProperty('display', 'none', 'important');
+                            });
+                        });
+                    }
+                    
+                    // Run immediately for any elements already rendered
+                    hideControls();
+                    
+                    // Constantly monitor the map container for dynamically added Leaflet elements
+                    var observer = new MutationObserver(function(mutations) {
+                        hideControls();
+                    });
+                    
+                    observer.observe(document.documentElement, {
+                        childList: true,
+                        subtree: true
+                    });
+                })();
             </script>
+            </head>
             """
-            final_payload = f"{raw_html}\n{cloak_script}"
-        else:
-            final_payload = raw_html
+            final_payload = final_payload.replace("</head>", active_cloak_script, 1)
 
         st.components.v1.html(final_payload, height=700, scrolling=True)
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-# SEARCH RESULTS
 
+
+#SEARCH RESULTS
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
