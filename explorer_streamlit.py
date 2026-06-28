@@ -2740,14 +2740,12 @@ else:
 # MAP VIEWER (Always Visible)
 
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    # 1. By setting vertical_alignment="center", Streamlit forces the center line of both columns to match perfectly
+    # 1. Align control columns layout
     btn_col, chk_col, spacer = st.columns([1.3, 1.5, 5], vertical_alignment="center")
     
     with btn_col:
-        # Export button comes first on the far left
         export_clicked = st.button("Export Current View to PNG", use_container_width=True)
     with chk_col:
-        # Checkbox follows immediately right after it, styled with the matching button font stack
         st.markdown(
             """
             <style>
@@ -2770,37 +2768,47 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         if st.session_state.get("trigger_map_html"):
             generate_active_map()
 
-    # 2. Inject the html2canvas engine if the export button is pressed
-    if export_clicked and st.session_state.get("trigger_map_html"):
-        st.markdown(
-            """
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-            <script>
-                var iframe = document.querySelector('iframe');
-                if (iframe) {
-                    var mapCanvas = iframe.contentWindow.document.body;
-                    html2canvas(mapCanvas, {
-                        useCORS: true,
-                        allowTaint: true,
-                        backgroundColor: null
-                    }).then(function(canvas) {
-                        var link = document.createElement('a');
-                        link.download = 'historical_map_export.png';
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
-                    });
-                }
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # 3. Output the map payload frame
+    # 2 & 3. Combine frame rendering and snapshot trigger directly inside the same iframe element
     if st.session_state.get("trigger_map_html"):
-        st.components.v1.html(st.session_state.trigger_map_html, height=700, scrolling=True)
+        # We append html2canvas and an event listener directly inside your active map string
+        map_html_string = st.session_state.trigger_map_html
+        
+        # Inject html2canvas dependency script
+        canvas_library = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>'
+        
+        # Trigger execution only if the export button was pressed down in Streamlit
+        auto_trigger_script = ""
+        if export_clicked:
+            auto_trigger_script = """
+            <script>
+                window.addEventListener('DOMContentLoaded', (event) => {
+                    setTimeout(function() {
+                        html2canvas(document.body, {
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: null,
+                            logging: false
+                        }).then(function(canvas) {
+                            var link = document.createElement('a');
+                            link.download = 'historical_map_export.png';
+                            link.href = canvas.toDataURL('image/png');
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        });
+                    }, 500); // 500ms delay to make sure tiles finish rendering smoothly
+                });
+            </script>
+            """
+        
+        # Assemble complete integrated map payload
+        final_payload = f"{map_html_string}\n{canvas_library}\n{auto_trigger_script}"
+        
+        # Render frame
+        st.components.v1.html(final_payload, height=700, scrolling=True)
+        
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
-
 
 # SEARCH RESULTS
 
