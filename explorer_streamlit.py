@@ -2235,9 +2235,10 @@ def generate_active_map():
 
             if overlap_count == 1 and is_approx == 1:
                 popup_html += (
-                    "<span style='font-size: 11px; color: #000000; font-weight: normal; line-height: 1.4;'>"
+                    "<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>"
                     "Some legacy place names cannot be securely linked to a modern location.<br>"
                     "Approximate coordinates represent the geometric center of the area where the place is likely located. This area is estimated based on identifiable sites reported in the vicinity,or based on the mile number of a milestone associated with the place.<br>"
+                    "</span><br>"
                 )
                  
             popup_html += (
