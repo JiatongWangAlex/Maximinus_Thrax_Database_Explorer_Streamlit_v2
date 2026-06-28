@@ -2194,9 +2194,9 @@ def generate_active_map():
                     road_name = ", ".join(list(set(r[0] for r in info['roads'] if r[0])))
                     popup_html += f"<br><b>road segment:</b> {road_name if road_name else 'N/A'}"
                     links = [f'<a href="https://itiner-e.org/?id={r[1]}" target="_blank">itiner-e.org/?id={r[1]}</a>' for r in info['roads'] if r[1]]
-                    popup_html += f"<br><b>itiner-e link to road:</b> {', '.join(links) if links else 'N/A'}"
+                    popup_html += f"<br><b>itiner-e link to road segment:</b> {', '.join(links) if links else 'N/A'}"
                 else:
-                    popup_html += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road:</b> N/A"
+                    popup_html += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road segment:</b> N/A"
             else:
                 popup_html += f"<br><b>distributio titulorum:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
