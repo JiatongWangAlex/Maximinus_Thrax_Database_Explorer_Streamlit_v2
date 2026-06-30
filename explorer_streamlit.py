@@ -6,7 +6,7 @@ Purpose: This GUI serves as the public-facing presentation layer for
          my BA thesis database. It is designed 
          to help users browse the dataset easily.
 
-NOTES FOR FUTURE ME / EXAMINERS:
+NOTES
 --------------------------------------------------------------------
 
 PROJECT SCOPING & DEVELOPMENT HISTORY:
@@ -24,10 +24,8 @@ source of each coordinate, is only available in the database
 itself within the 'places' table.
 
 The 11 tables handling the imperial titulatures of Maximinus Thrax and 
-his son are also invisible to the GUI. I used them to explore 
-how the use of imperial titles varied across different provinces but displaying 
-them in this interface would be an absolute nightmare, so they are intentionally 
-left out of the presentation layer.
+his son are currently invisible to the GUI. I will add a filter based on the 
+titulature_erasure_extent table to advanced search.
 
 TO FUTURE ME (PORTABILITY):
 --------------------------------------------------------------------
