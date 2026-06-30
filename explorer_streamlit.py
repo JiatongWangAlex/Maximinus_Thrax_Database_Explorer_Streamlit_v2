@@ -2,9 +2,11 @@
 THESIS DATABASE GUI
 --------------------------------------------------------------------
 Implemented By: Jiatong Wang
-Purpose: This GUI serves as the public-facing presentation layer for 
-         my BA thesis database. It is designed 
-         to help users browse the dataset easily.
+Purpose: This GUI allows anyone to browse my BA thesis database.
+         It offers an interactive map and intuitive searches & filters.
+         It also offers the option to download search results as a csv file, or export search settings as an sql query 
+         (The WHERE clause is dynamically generated based on user input. I have provided a default SELECT statement.
+         Of course the user may customize the SELECT statment based on their needs after downloading the query)
 
 NOTES
 --------------------------------------------------------------------
