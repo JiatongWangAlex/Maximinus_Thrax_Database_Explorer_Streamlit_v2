@@ -365,10 +365,10 @@ LATIN_LEMMA_MAP = {
 }
 
 
-def convert_markdown_bold_to_edh(text):
+def convert_markdown_bold_to_underline(text):
     """Tracks asterisks across lines exactly like a Markdown parser,
 
-    converting **text** into text(!), even if it straddles lines.
+    converting **text** into underlined text(!), even if it straddles lines.
     """
     output = []
     i = 0
@@ -2888,7 +2888,7 @@ with st.container(height=520, border=True):
             process_this_block = False
 
         if process_this_block:
-            block = convert_markdown_bold_to_edh(block)
+            block = convert_markdown_bold_to_underline(block)
       
         if "Inscription Text:" in cleaned_block:
             process_this_block = True
