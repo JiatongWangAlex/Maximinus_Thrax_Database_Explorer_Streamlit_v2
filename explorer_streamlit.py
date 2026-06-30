@@ -9,13 +9,13 @@ Purpose: This GUI serves as the public-facing presentation layer for
 NOTES
 --------------------------------------------------------------------
 
-PROJECT SCOPING & DEVELOPMENT HISTORY:
+DEVELOPMENT HISTORY:
 --------------------------------------------------------------------
 Originally, I only made an SQL query list. Later, I decided to make this GUI.
 To save time, this GUI reuses queries from the original query list, in a modified form.
 
-The results window displays the printed output of the SQL queries, stitched
-together as plain text, rather than passing raw database records to the GUI.
+The results window therefore displays the printed output of an SQL query, 
+stitched together as plain text.
 
 HIDDEN DATA:
 --------------------------------------------------------------------
@@ -27,13 +27,13 @@ The 11 tables handling the imperial titulatures of Maximinus Thrax and
 his son are currently invisible to the GUI. I will add a filter based on the 
 titulature_erasure_extent table to advanced search.
 
-TO FUTURE ME (PORTABILITY):
+PORTABILITY:
 --------------------------------------------------------------------
 To Future Me: most of the code should be reusable for any database 
 following the same schema-- except the parts of the sql queries 
 that are hard coded.
 
-HARDCODED ITEMS
+HARDCODED STUFF
 --------------------------------------------------------------------
 For interventions, the text output for each method_id and 
 extent_id are hardcoded.
