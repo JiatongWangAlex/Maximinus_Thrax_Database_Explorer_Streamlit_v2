@@ -368,7 +368,7 @@ LATIN_LEMMA_MAP = {
 def convert_markdown_bold_to_edh(text):
     """Tracks asterisks across lines exactly like a Markdown parser,
 
-    converting **text** into :underline[text(!)], even if it straddles lines.
+    converting **text** into text(!), even if it straddles lines.
     """
     output = []
     i = 0
@@ -379,16 +379,21 @@ def convert_markdown_bold_to_edh(text):
         if i < n - 1 and text[i] == "*" and text[i + 1] == "*":
             if not in_bold:
                 in_bold = True
-                output.append(":underline[")
             else:
-                output.append("(!)]")
+                # Underline each character of the EDH mark too
+                for char in "(!)":
+                    output.append(char + "\u0332")
                 in_bold = False
             i += 2
         else:
-            output.append(text[i])
+            if in_bold:
+                output.append(text[i] + "\u0332")
+            else:
+                output.append(text[i])
             i += 1
     if in_bold:
-        output.append("(!)]")
+        for char in "(!)":
+            output.append(char + "\u0332")
     return "".join(output)
 
 
