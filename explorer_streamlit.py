@@ -218,8 +218,10 @@ def generate_bulk_search_csv(cursor):
     for row in rows:
         writer.writerow(list(row))
     return csv_buffer.getvalue()
+         
     
 #SETUP FOR SQL QUERY EXPORT
+
 def generate_bulk_search_sql():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
