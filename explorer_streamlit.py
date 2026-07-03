@@ -1220,6 +1220,7 @@ def get_filter_options(table, col):
     return options
     
 # ADVANCED SEARCH
+# ADVANCED SEARCH
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -1262,6 +1263,34 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
         WHERE 1=1
     """
+    
+    # NEW INTERVENTION FILTER TOGGLE STRATEGY
+    intervention_toggle = f_dict.get('intervention_toggle', 'Interventions Relevant to Maximinus Thrax')
+    if intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
+        applied_criteria_summary.append("  • Scope: Interventions Relevant to Maximinus Thrax")
+        
+        # Enforce all conditions: 
+        # 1. mt.relevance_index = 1
+        # 2. mt.intervention_status = 1
+        # 3. Linked to an intervention where method_id != 1
+        # 4. NOT linked to person_id 50
+        where_clauses.append("""
+            mt.relevance_index = 1 
+            AND mt.intervention_status = 1 
+            AND EXISTS (
+                SELECT 1 FROM "interventions" int_sub 
+                WHERE int_sub.patient_inscription = mt.inscription_id 
+                AND int_sub.method_id != 1
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM "inscriptions_and_persons" ip_sub 
+                WHERE ip_sub.inscription_id = mt.inscription_id 
+                AND ip_sub.person_id = 50
+            )
+        """)
+    else:
+        applied_criteria_summary.append("  • Scope: All Interventions")
+
     # ADVANCED TEXT SEARCH (USER PICKS STRATEGY)
     phrase = f_dict.get('text', '').strip()
     if phrase:
@@ -1340,13 +1369,11 @@ def execute_advanced_search(f_dict):
         query_params['req_end'] = int(req_end)
         
     elif req_start is not None:
-        # Fallback if only start date was provided
         applied_criteria_summary.append(f"  • Start Date Bound: >= {req_start} CE")
         where_clauses.append("mt.end_date >= :req_start")
         query_params['req_start'] = int(req_start)
         
     elif req_end is not None:
-        # Fallback if only end date was provided
         applied_criteria_summary.append(f"  • End Date Bound: <= {req_end} CE")
         where_clauses.append("mt.start_date <= :req_end")
         query_params['req_end'] = int(req_end)
@@ -1370,11 +1397,15 @@ def execute_advanced_search(f_dict):
    ]
 
   #SQL BUILDER
-    
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
         
-     
+        # Prevent rewriting explicit manual values if toggle overrules them
+        if key == 'relevance_index' and intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
+            continue
+        if key == 'intervention_status' and intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
+            continue
+
         if key == 'relevance_index' and f_dict.get('relevance_active'):
             applied_criteria_summary.append(f"  • {display_name}: {'Relevant' if val == 1 else 'Not Relevant'}")
             p_name = f"param_{key}"
@@ -1416,7 +1447,6 @@ def execute_advanced_search(f_dict):
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
             
     #PERSONS
-    
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
 
@@ -1464,7 +1494,6 @@ def execute_advanced_search(f_dict):
             where_clauses.append(f"col.collective_name IN ({', '.join(collective_params)})")
 
     # VIRORUM DISTRIBUTIO
-    
     vd_vals = f_dict.get('virorum_distributio', [])
     if vd_vals and vd_vals != "All" and vd_vals != ["All"]:
         if not isinstance(vd_vals, list):
@@ -1490,52 +1519,14 @@ def execute_advanced_search(f_dict):
                     WHERE ip_sub.inscription_id = mt.inscription_id 
                       AND vd_sub.virorum_distributio IN ({vd_placeholders})
                 )
-                OR
-                EXISTS (
-                    SELECT 1 
-                    FROM "inscriptions_and_collectives" ic_sub
-                    JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
-                    JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
-                    WHERE ic_sub.inscription_id = mt.inscription_id 
-                      AND vd_sub.virorum_distributio IN ({vd_placeholders})
-                )
             )
         """)
 
-    for key, column_sql, display_name in mapping:
-        val = f_dict.get(key, [])
-        
-        if not val or val == "All" or val == ["All"]:
-            continue
-
-        if not isinstance(val, list):
-            val_str = str(val).strip()
-            if not val_str:
-                continue
-                
-            applied_criteria_summary.append(f"  • {display_name}: '{val_str}'")
-            if key in ('relevance_index', 'intervention_status'):
-                val = 1 if val_str in ("True", "1") else 0
-                
-            p_name = f"param_{key}"
-            where_clauses.append(f"{column_sql} = :{p_name}")
-            query_params[p_name] = val
-        else:
-            applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
-            
-            param_names = []
-            for idx, item in enumerate(val):
-                p_name = f"param_{key}_{idx}"
-                param_names.append(f":{p_name}")
-                query_params[p_name] = item
-            
-            where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
-            
+    # Combine final clauses
     if where_clauses:
-        final_sql = base_sql + " AND " + " AND ".join(where_clauses) + " ORDER BY mt.inscription_id DESC;"
+        final_sql = base_sql + " AND " + " AND ".join(where_clauses)
     else:
-        final_sql = base_sql + " ORDER BY mt.inscription_id DESC;"
-
+        final_sql = base_sql
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -2681,7 +2672,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
 
     # COLUMN 3: Later Modifications / Reuse
     
-    with col3:
+   with col3:
         st.markdown("#### Based on Later Modifications / Reuse")
         
         intervention_options = [
@@ -2689,12 +2680,25 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             "Intervention present",
             "No later intervention"
         ]
+        
+        intervention_scope = st.radio(
+            "Intervention Filter Scope",
+            options=[
+                "Interventions Relevant to Maximinus Thrax", 
+                "All Interventions"
+            ],
+            index=0  # Sets "Interventions Relevant to Maximinus Thrax" as default
+        )
+
+        # When compiling f_dict to send to the function:
+        f_dict['intervention_toggle'] = intervention_scope
+        
         f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
-
-    # EXECUTE ADVANCED SEARCH AND DOWNLOAD SQL QUERY BUTTONS
+    
+# EXECUTE ADVANCED SEARCH AND DOWNLOAD SQL QUERY BUTTONS
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
