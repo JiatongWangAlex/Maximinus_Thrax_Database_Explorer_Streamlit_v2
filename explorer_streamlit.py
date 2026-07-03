@@ -2866,7 +2866,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
     else:
-        st.info("No map generated yet/No results matched your query. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
+        st.info("No map generated yet/No inscription matched your query. If you have yet to make a search, do so. Then click the 'Generate Map' button to plot inscriptions matching your query on a map.")
 
 
 
