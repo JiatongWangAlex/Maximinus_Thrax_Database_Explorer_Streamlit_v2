@@ -2859,17 +2859,18 @@ if (
                     st.session_state["trigger_map_html"] = None
                 else:
                     st.session_state["map_status"] = "success"
+
                 # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                     if len(unmappable_rows) > 0:
                         province_groups = {}
                         for r in unmappable_rows:
-                            # Correctly unpack all 5 columns returned by the SQL query
-                            ins_id, ins_ref, line_ref, place_id, p_name = r
+                            # Unpack all 5 columns; map the 3rd column directly to l_ref
+                            ins_id, ins_ref, l_ref, place_id, p_name = r
                             p_name = p_name if p_name else "Unknown Province"
                             if p_name not in province_groups:
                                 province_groups[p_name] = []
-                            # Keep track of line_ref for the text output
-                            province_groups[p_name].append((ins_id, ins_ref, line_ref))
+                            # Pass l_ref through in the tuple group
+                            province_groups[p_name].append((ins_id, ins_ref, l_ref))
                         
                         html_alerts = []
                         for p_name, items in province_groups.items():
