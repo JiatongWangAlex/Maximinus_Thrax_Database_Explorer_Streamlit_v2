@@ -2991,7 +2991,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.warning("No inscription matched your search")
         
     elif st.session_state.get("map_status") == "unmappable_coordinates":
-        st.warning("No inscription matching your search is linked to a set of modern coordinates")
+        st.warning("None of the inscriptions matching your search has a findspot linked to modern coordinates")
         
     elif st.session_state.get("trigger_map_html"):
         # 1. Standard Info Box (Always on Top)
