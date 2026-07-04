@@ -2594,8 +2594,8 @@ with col_s4:
             st.rerun()
     else:
         pid_input_var = st.text_input(
-            "Lookup by Person ID/Person Selector:", 
-            placeholder="e.g. 43 or Select Person from list", 
+            "Person Selector / Search by Person ID:", 
+            placeholder="Select from dropdown menu or Search by ID e.g. 43", 
             key="person_report_input",
             on_change=reset_map_and_search_flags
         )
