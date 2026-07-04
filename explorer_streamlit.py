@@ -2999,6 +2999,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 
 
 #SEARCH RESULTS
+st.markdown("### Search Results")
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
