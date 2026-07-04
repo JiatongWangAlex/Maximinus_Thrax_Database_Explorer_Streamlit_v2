@@ -2331,6 +2331,10 @@ def generate_active_map():
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
 
+
+
+
+----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
 
 query_params = st.query_params
@@ -2384,7 +2388,10 @@ if "collective_id" in st.query_params:
         st.error(f"Error querying collective group filter: {e}")
         
 # HEADER
-st.markdown("## Maximinus Thrax Database Βrowser")
+st.markdown(
+    "<h2 style='margin-top: 0rem; margin-bottom: 0rem;'>Maximinus Thrax Database Βrowser</h2>", 
+    unsafe_allow_html=True
+)
 
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
