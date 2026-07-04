@@ -2608,7 +2608,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         
         relevance_options = [
             "Relevant",
-            "All Inscriptions regardless of relevance",
+            "All inscriptions regardless of relevance",
             "Not Relevant"
         ]
         f_rel = st.selectbox("Inscription Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
