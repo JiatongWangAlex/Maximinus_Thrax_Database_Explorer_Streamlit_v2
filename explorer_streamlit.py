@@ -2794,7 +2794,6 @@ for widget_key, anchor_key in tracked_fields.items():
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
-# Back to your exact original logic so buttons behave how you like
 has_basic_results = bool(st.session_state.get("active_inscription_ids"))
 has_advanced_results = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
 
@@ -2825,38 +2824,92 @@ if (
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
-            # 1. Lock in the current search fingerprint so our resetter doesn't instantly wipe it
-            st.session_state["last_mapped_search"] = {
-                "where": st.session_state.get("active_search_where_clauses", []),
-                "params": st.session_state.get("active_search_query_params", {}),
-                "ids_count": len(active_ids)
-            }
+            # Reset previous notices
+            st.session_state["unmappable_html_notice"] = None
             
-            # 2. Catching the 0 results click (Scenario 2)
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
             else:
-                # Catching the 100% bad coordinates click (Scenario 3)
                 unmappable_place_ids = (133, 177, 178, 227, 244)
+                all_unmappable = False
+                unmappable_html_content = ""
+                
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     placeholders = ",".join("?" for _ in active_ids)
-                    query = f"SELECT place_id FROM Max_Thrax WHERE inscription_id IN ({placeholders})"
+                    
+                    # 1. Fetch data for ALL inscriptions in the current search scope
+                    query = f"""
+                        SELECT m.inscription_id, m.inscription_ref, m.place_id, p.province_name
+                        FROM Max_Thrax m
+                        LEFT JOIN provinces p ON m.province_id = p.province_id
+                        WHERE m.inscription_id IN ({placeholders})
+                    """
                     cursor.execute(query, tuple(active_ids))
-                    rows = cursor.fetchall()
+                    all_rows = cursor.fetchall()
                     conn.close()
                     
-                    all_unmappable = all(row[0] in unmappable_place_ids for row in rows) if rows else True
-                except Exception:
+                    # 2. Separate valid rows from unmappable rows
+                    unmappable_rows = [r for r in all_rows if r[2] in unmappable_place_ids]
+                    valid_rows_count = len(all_rows) - len(unmappable_rows)
+                    
+                    if len(all_rows) > 0 and valid_rows_count == 0:
+                        all_unmappable = True
+                    
+                    # 3. If there are unmappable records, group them by province for Scenario B
+                    if unmappable_rows and not all_unmappable:
+                        # Grouping structural mapping: { province_name: [ (ins_id, ins_ref), ... ] }
+                        province_groups = {}
+                        for r in unmappable_rows:
+                            ins_id, ins_ref, _, p_name = r
+                            p_name = p_name if p_name else "Unknown Province"
+                            if p_name not in province_groups:
+                                province_groups[p_name] = []
+                            province_groups[p_name].append((ins_id, ins_ref))
+                        
+                        # Build the warning alert snippets styled gracefully matching Streamlit aesthetics
+                        html_alerts = []
+                        for p_name, items in province_groups.items():
+                            count_x = len(items)
+                            links = []
+                            for f_id, ref in items:
+                                report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
+                                links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{ref}</a>")
+                            
+                            links_str = ", ".join(links)
+                            
+                            alert_box = f"""
+                            <div style="
+                                background-color: #fffbeb; 
+                                border-left: 4px solid #d97706; 
+                                padding: 12px 15px; 
+                                border-radius: 4px; 
+                                margin-bottom: 10px;
+                                font-family: 'Source Sans Pro', sans-serif;
+                                font-size: 13px;
+                                color: #78350f;
+                            ">
+                                <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is not shown.<br>
+                                The following inscriptions are in {p_name} but are not linked to modern coordinates: {links_str}
+                            </div>
+                            """
+                            html_alerts.append(alert_box)
+                        
+                        unmappable_html_content = "".join(html_alerts)
+                        
+                except Exception as e:
                     all_unmappable = False
                 
+                # Assign status routing flags
                 if all_unmappable:
                     st.session_state["map_status"] = "unmappable_coordinates"
                     st.session_state["trigger_map_html"] = None
                 else:
                     st.session_state["map_status"] = "success"
+                    if unmappable_html_content:
+                        st.session_state["unmappable_html_notice"] = unmappable_html_content
                     generate_active_map()
             
             st.rerun()
@@ -2864,36 +2917,27 @@ if (
 else:
     with col_exp_left:
         st.button(
-            label="Export Results to CSV",
-            key="global_csv_disabled_footer_csv",
-            use_container_width=True,
-            disabled=True,
-            help="Make a search before exporting search results."
+            label="Export Results to CSV", key="global_csv_disabled_footer_csv",
+            use_container_width=True, disabled=True, help="Make a search before exporting search results."
         )
-        
     with col_exp_mid:
         st.button(
-            label="Generate Map",
-            key="global_map_disabled_footer_map",
-            use_container_width=True,
-            disabled=True,
-            help="Make a search before mapping search results."
+            label="Generate Map", key="global_map_disabled_footer_map",
+            use_container_width=True, disabled=True, help="Make a search before mapping search results."
         )
 
-
 # --- AUTOMATIC SEARCH COMMIT DETECTOR ---
-# Grab the current search parameters that were just committed
 current_search_fingerprint = {
     "where": st.session_state.get("active_search_where_clauses", []),
     "params": st.session_state.get("active_search_query_params", {}),
     "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
 }
 
-# If the search parameters don't match the last time we tracked a map event, 
-# it means a brand new search just ran! Wipe the error states and map HTML.
 if st.session_state.get("last_mapped_search") != current_search_fingerprint:
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
+    st.session_state["unmappable_html_notice"] = None
+
 
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
@@ -2901,9 +2945,11 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.warning("No inscription matched your search")
         
     elif st.session_state.get("map_status") == "unmappable_coordinates":
-        st.warning("No inscription matching your search is linked to a modern coordinate")
+        st.warning("No inscription matching your search is linked to a set of modern coordinates")
         
     elif st.session_state.get("trigger_map_html"):
+        
+        # 1. Standard Info Box (Always on Top)
         st.markdown(
             """
             <div style="
@@ -2924,12 +2970,16 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
             """, 
             unsafe_allow_html=True
         )
+        
+        # 2. Scenario B Injector: Detailed province warnings placed neatly below the blue banner
+        if st.session_state.get("unmappable_html_notice"):
+            st.markdown(st.session_state["unmappable_html_notice"], unsafe_allow_html=True)
+            
+        # 3. The Map Canvas Element
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
     else:
-        # Standard default landing instructions
         st.info("No map generated yet. Click 'Generate Map' to plot inscriptions matching your query on a map.")
-
 
 #SEARCH RESULTS
 with st.container(height=520, border=True):
