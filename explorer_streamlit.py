@@ -2821,7 +2821,7 @@ if (
             key="btn_global_results_csv_export"
         )
         
-    with col_exp_mid:
+with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
@@ -2860,16 +2860,14 @@ if (
                 else:
                     st.session_state["map_status"] = "success"
 
-                # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
+                    # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                     if len(unmappable_rows) > 0:
                         province_groups = {}
                         for r in unmappable_rows:
-                            # Unpack all 5 columns; map the 3rd column directly to l_ref
                             ins_id, ins_ref, l_ref, place_id, p_name = r
                             p_name = p_name if p_name else "Unknown Province"
                             if p_name not in province_groups:
                                 province_groups[p_name] = []
-                            # Pass l_ref through in the tuple group
                             province_groups[p_name].append((ins_id, ins_ref, l_ref))
                         
                         html_alerts = []
@@ -2878,7 +2876,6 @@ if (
                             links = []
                             for f_id, ref, l_ref in items:
                                 report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
-                                # CORE FIX: Handle the concatenation safely outside the f-string interpolation
                                 display_text = f"{ref} {l_ref}" if l_ref else ref
                                 links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{display_text}</a>")
                             
@@ -2912,7 +2909,6 @@ if (
                     generate_active_map()
             
             st.rerun()
-
 else:
     with col_exp_left:
         st.button(
