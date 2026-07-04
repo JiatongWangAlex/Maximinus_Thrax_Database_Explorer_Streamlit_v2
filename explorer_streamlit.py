@@ -2340,13 +2340,19 @@ def generate_active_map():
 
 query_params = st.query_params
 
+# Check if they arrived via ANY deep-link before we clear the params
 should_scroll = any(k in st.query_params or k in query_params for k in ["ins_id", "person_id", "collective_id"])
 
 # Inscription hyperlink SETUP
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
+        # --- FIX: Set the exact flags to light up the map/CSV button layout ---
+        st.session_state["active_search_has_run"] = True
+        st.session_state["inputs_are_dirty"] = False
+        st.session_state["csv_mode"] = "ids"
         st.session_state.active_inscription_ids = [int(url_id)]
+        
         st.query_params.clear() 
         fetch_metadata_by_id(url_id)
         
@@ -2354,20 +2360,21 @@ if "ins_id" in query_params:
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
-        # Tell the map engine that a search has officially run
+        # --- FIX: Light up the map/CSV button layout here too ---
         st.session_state["active_search_has_run"] = True
+        st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
         
-        # Run your report (which automatically handles setting st.session_state.active_inscription_ids!)
+        st.query_params.clear() 
         generate_person_report(url_per_id)
-        
-        # Clear the parameters so refreshing the browser window behaves normally
-        st.query_params.clear()
         
 # Institutions/Groups/Military Units hyperlink SETUP
 if "collective_id" in st.query_params:
     selected_collective_id = st.query_params["collective_id"]
+    
+    # --- FIX: Ensure inputs_are_dirty is explicitly False here as well ---
     st.session_state["active_search_has_run"] = True
+    st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
     
     try:
@@ -2395,8 +2402,6 @@ if "collective_id" in st.query_params:
         st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
-             
-
 # HEADER
 
 st.markdown(
@@ -3049,7 +3054,7 @@ with st.container(height=520, border=True):
         else:
             st.markdown(block)
 
-
+# Autoscrolling to search results when user arrives from a link
 
 if 'should_scroll' in locals() and should_scroll:
     st.components.v1.html(
