@@ -2869,6 +2869,17 @@ else:
             disabled=True,
             help="Make a search before mapping search results."
         )
+
+# --- AUTOMATIC SEARCH STATUS TRACKER ---
+# If a search has officially run, but the active list of IDs is completely empty:
+if st.session_state.get("active_search_has_run"):
+    # Check if we have zero results across both basic and advanced tracks
+    has_ids = bool(st.session_state.get("active_inscription_ids"))
+    has_advanced = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
+    
+    if not (has_ids or has_advanced):
+        st.session_state["map_status"] = "zero_search_results"
+        st.session_state["trigger_map_html"] = None
              
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
@@ -2897,19 +2908,17 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
-    elif st.session_state.get("map_status") == "unmappable_coordinates":
-        # Scenario 3: Inscriptions found, but 100% are unmappable
-        st.warning("None of the inscriptions matching your search is linked to a modern coordinate")
-        
-    elif st.session_state.get("active_search_has_run") and not (bool(st.session_state.get("active_inscription_ids")) or (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))):
-        # Scenario 2: Search ran, but returned 0 results
+    elif st.session_state.get("map_status") == "zero_search_results":
+        # Scenario 2: Search completed with absolutely 0 entries
         st.warning("No inscription matched your search")
         
+    elif st.session_state.get("map_status") == "unmappable_coordinates":
+        # Scenario 3: Entries exist, but 100% of them point to the 5 unmappable IDs
+        st.warning("No inscriptions matching your search are linked to modern coordinates")
+        
     else:
-        # Scenario 1: Default landing state (No search has run yet)
+        # Scenario 1: Default landing state (No search has run yet / fresh app load)
         st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
-
-
 #SEARCH RESULTS
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
