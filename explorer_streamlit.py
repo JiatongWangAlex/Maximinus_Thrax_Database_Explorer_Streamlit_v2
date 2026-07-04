@@ -2825,7 +2825,14 @@ if (
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
-            # Catching the 0 results click (Scenario 2)
+            # 1. Lock in the current search fingerprint so our resetter doesn't instantly wipe it
+            st.session_state["last_mapped_search"] = {
+                "where": st.session_state.get("active_search_where_clauses", []),
+                "params": st.session_state.get("active_search_query_params", {}),
+                "ids_count": len(active_ids)
+            }
+            
+            # 2. Catching the 0 results click (Scenario 2)
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
@@ -2872,17 +2879,31 @@ else:
             disabled=True,
             help="Make a search before mapping search results."
         )
-             
+
+
+# --- AUTOMATIC SEARCH COMMIT DETECTOR ---
+# Grab the current search parameters that were just committed
+current_search_fingerprint = {
+    "where": st.session_state.get("active_search_where_clauses", []),
+    "params": st.session_state.get("active_search_query_params", {}),
+    "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
+}
+
+# If the search parameters don't match the last time we tracked a map event, 
+# it means a brand new search just ran! Wipe the error states and map HTML.
+if st.session_state.get("last_mapped_search") != current_search_fingerprint:
+    st.session_state["map_status"] = None
+    st.session_state["trigger_map_html"] = None
+
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("map_status") == "zero_search_results":
         st.warning("No inscription matched your search")
         
     elif st.session_state.get("map_status") == "unmappable_coordinates":
-        st.warning("No inscriptions matching your search are linked to modern coordinates")
+        st.warning("No inscription matching your search is linked to a modern coordinate")
         
     elif st.session_state.get("trigger_map_html"):
-        # Display the workflow hint cleanly in Python above the iframe canvas
         st.markdown(
             """
             <div style="
@@ -2906,7 +2927,9 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
     else:
+        # Standard default landing instructions
         st.info("No map generated yet. Click 'Generate Map' to plot inscriptions matching your query on a map.")
+
 
 #SEARCH RESULTS
 with st.container(height=520, border=True):
