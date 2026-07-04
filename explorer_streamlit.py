@@ -2821,7 +2821,7 @@ if (
             key="btn_global_results_csv_export"
         )
         
-with col_exp_mid:
+    with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
