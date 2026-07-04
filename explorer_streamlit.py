@@ -2351,8 +2351,8 @@ if "ins_id" in query_params:
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
-        st.session_state["active_search_where_clauses"] = ["Deep Link Inscription ID Filter"]
-        st.session_state["active_search_query_params"] = {"ins_id": int(url_id)}
+        st.session_state["active_search_where_clauses"] = []
+        st.session_state["active_search_query_params"] = {}
         st.session_state.active_inscription_ids = [int(url_id)]
         
         st.query_params.clear() 
@@ -2366,9 +2366,8 @@ elif "person_id" in query_params:
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
-        st.session_state["active_search_where_clauses"] = ["Deep Link Person Dossier Filter"]
-        st.session_state["active_search_query_params"] = {"person_id": int(url_per_id)}
-        
+        st.session_state["active_search_where_clauses"] = []
+        st.session_state["active_search_query_params"] = {}
         st.query_params.clear() 
         generate_person_report(url_per_id)
         
@@ -2379,8 +2378,8 @@ if "collective_id" in st.query_params:
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
-    st.session_state["active_search_where_clauses"] = ["Deep Link Collective Filter"]
-    st.session_state["active_search_query_params"] = {"collective_id": int(selected_collective_id)}
+    st.session_state["active_search_where_clauses"] = []
+    st.session_state["active_search_query_params"] = {}
     
     try:
         conn = get_db_connection()
