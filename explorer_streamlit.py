@@ -2695,8 +2695,9 @@ with col3:
     f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
 # EXECUTE ADVANCED SEARCH AND DOWNLOAD SQL QUERY BUTTONS
-    
-    col_btn1, col_btn2 = st.columns([1, 1])
+
+
+col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
