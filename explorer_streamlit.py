@@ -2165,7 +2165,7 @@ def generate_active_map():
             </style>
         """))
         
-    # STACKABLE VISUAL LAYERS (UX FIX: NO LONGER MUTUALLY EXCLUSIVE)
+    # STACKABLE VISUAL LAYERS
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
@@ -2305,13 +2305,13 @@ def generate_active_map():
         if overlap_count > 1:
             size = 22
             d_border = "#20304c" if is_bucket_approximate else "#001140"
-            d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff" # Option 3 Slate Blue vs Royal Blue
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
             size = 14
             d_border = "#20304c" if is_bucket_approximate else "#002fa7"
-            d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5" # Option 3 Slate Blue vs Sky Blue
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
@@ -2326,17 +2326,18 @@ def generate_active_map():
         # PASS B: PLOT TO ERASURE OVERLAY LAYER (ONLY IF ERASED > 0)
         # ---------------------------------------------------------
         if erased_count > 0:
-            if erased_count > 1:
+            # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
+            if overlap_count > 1:
                 size = 22
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
-                e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a" # Dusty Rose vs Crimson Red
-                # UX Renders the EXACT count of erased items, NOT the total cluster count
+                e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
+                # Displays the unique erased subset value within the matching physical container
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
                 size = 14
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
-                e_fill = "#9c726c" if is_bucket_approximate else "#e56333" # Dusty Rose vs Coral Red
+                e_fill = "#9c726c" if is_bucket_approximate else "#e56333"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
@@ -2394,7 +2395,6 @@ def generate_active_map():
     """
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
-
 
 # ----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
