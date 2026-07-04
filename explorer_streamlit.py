@@ -2602,100 +2602,98 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
     
     col1, col2, col3 = st.columns(3)
 
-# COLUMN 1: Inscription Metadata
+    # COLUMN 1: Inscription Metadata
+    with col1:
+        st.markdown("#### Based on Inscription Metadata")
+        
+        relevance_options = [
+            "All inscriptions regardless of relevance",
+            "Relevant",
+            "Not Relevant"
+        ]
+        f_rel = st.selectbox("Inscription Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
+        f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
+        st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
+        st.markdown("##### Chronological Range (CE)")
+        date_col1, date_col2 = st.columns(2)
+        with date_col1:
+            f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
+        with date_col2:
+            f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
+        f_dating_strategy = st.radio(
+            "Search Strategy:",
+            options=["overlap", "strict"],
+            format_func=lambda x: (
+                "A: Search for all inscriptions whose date overlaps with this range" if x == "overlap"
+                else "B: Search for only inscriptions whose date is fully contained within this range"
+            ),
+            help=(
+                "• A: Returns all inscriptions dated to a time period that overlaps with your search window. "
+                "For example, if you search 236–237 CE, inscriptions dated to 236 CE or 237CE or 236-237CE will appear, "
+                "and so will inscriptions dated to 235–238 CE.\n\n"
+                "• B: Returns only inscriptions dated to a time period that falls completely inside your search window. "
+                "For example, if you search 236–236 CE, an inscription dated exactly to 236 CE will appear, "
+                "but an inscription dated to 235–238 CE will be excluded."
+            ),
+            on_change=reset_map_and_search_flags
+        )
+        
+    # COLUMN 2: People and Institutions
+    with col2:
+        st.markdown("#### Based on People and Institutions")
+        
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
+            db_persons = cursor.fetchall()
+            conn.close()
+            person_options = {row[0]: row[1] for row in db_persons}
+        except Exception:
+            person_options = {}
+        f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_unit_operator = st.radio("Match selected units using:", options=["OR (Any of these units)", "AND (All of these units)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_collective_op", on_change=reset_map_and_search_flags)
+        
+        f_person_id = st.multiselect("Person:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags)
+        f_person_operator = st.radio("Match selected people using:", options=["OR (Any of these people)", "AND (All of these people)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_person_op", on_change=reset_map_and_search_flags)
+        
+        f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
-with col1:
-    st.markdown("#### Based on Inscription Metadata")
-    
-    relevance_options = [
-        "All inscriptions regardless of relevance",
-        "Relevant",
-        "Not Relevant"
-    ]
-    f_rel = st.selectbox("Inscription Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
-    f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_in_con = st.multiselect("Context Type:", [opt for opt in get_filter_options("context_types", "context_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
-    st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
-    st.markdown("##### Chronological Range (CE)")
-    date_col1, date_col2 = st.columns(2)
-    with date_col1:
-        f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
-    with date_col2:
-        f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
-    f_dating_strategy = st.radio(
-        "Search Strategy:",
-        options=["overlap", "strict"],
-        format_func=lambda x: (
-            "A: Search for all inscriptions whose date overlaps with this range" if x == "overlap"
-            else "B: Search for only inscriptions whose date is fully contained within this range"
-        ),
-        help=(
-            "• A: Returns all inscriptions dated to a time period that overlaps with your search window. "
-            "For example, if you search 236–237 CE, inscriptions dated to 236 CE or 237CE or 236-237CE will appear, "
-            "and so will inscriptions dated to 235–238 CE.\n\n"
-            "• B: Returns only inscriptions dated to a time period that falls completely inside your search window. "
-            "For example, if you search 236–236 CE, an inscription dated exactly to 236 CE will appear, "
-            "but an inscription dated to 235–238 CE will be excluded."
-        ),
-        on_change=reset_map_and_search_flags
-    )
-    
-# COLUMN 2: People and Institutions
+    # COLUMN 3: Later Modifications / Reuse
+    with col3:
+        st.markdown("#### Based on Later Modifications / Reuse")
+        
+        intervention_options = [
+            "All inscriptions regardless of presence of later intervention",
+            "Intervention present",
+            "No later intervention"
+        ]
+        
+        intervention_scope = st.radio(
+            "Intervention Relevance to Maximinus Thrax",
+            options=[
+                "Interventions Relevant to Maximinus Thrax", 
+                "All Interventions"
+            ],
+            index=0
+        )
+      
+        f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
+        f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
-with col2:
-    st.markdown("#### Based on People and Institutions")
+    # BREAK BREAK OUT OF THE 3 COLUMNS GRID LATCH AND RENDER IN FULL WIDTH WITHIN EXPANDER
+    st.write("---")
     
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT person_id, person_name FROM persons ORDER BY person_name ASC;")
-        db_persons = cursor.fetchall()
-        conn.close()
-        person_options = {row[0]: row[1] for row in db_persons}
-    except Exception:
-        person_options = {}
-    f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_unit_operator = st.radio("Match selected units using:", options=["OR (Any of these units)", "AND (All of these units)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_collective_op", on_change=reset_map_and_search_flags)
-    
-    f_person_id = st.multiselect("Person:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags)
-    f_person_operator = st.radio("Match selected people using:", options=["OR (Any of these people)", "AND (All of these people)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_person_op", on_change=reset_map_and_search_flags)
-    
-    f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
-
-# COLUMN 3: Later Modifications / Reuse
-
-with col3:
-    st.markdown("#### Based on Later Modifications / Reuse")
-    
-    intervention_options = [
-        "All inscriptions regardless of presence of later intervention",
-        "Intervention present",
-        "No later intervention"
-    ]
-    
-    intervention_scope = st.radio(
-        "Intervention Relevance to Maximinus Thrax",
-        options=[
-            "Interventions Relevant to Maximinus Thrax", 
-            "All Interventions"
-        ],
-        index=0
-    )
-  
-    f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
-    f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
-    f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
-
-# EXECUTE ADVANCED SEARCH AND DOWNLOAD SQL QUERY BUTTONS
-
     col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
@@ -2761,7 +2759,7 @@ with col3:
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-            
+                 
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
 tracked_fields = {
