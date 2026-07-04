@@ -2587,7 +2587,7 @@ with col_s4:
         if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
             # Check if they left it on the placeholder text
             if selected_option == "PLEASE SELECT":
-                st.error("Please pick a valid person from the dropdown menu before generating a report!")
+                st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
                 st.session_state["last_searched_person"] = selected_option
                 st.session_state["csv_mode"] = "ids"
