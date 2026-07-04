@@ -2832,6 +2832,16 @@ for widget_key, anchor_key in tracked_fields.items():
             any_input_has_unsearched_changes = True
             break
 
+# --- TEMP DIAGNOSTIC LOGGING ---
+st.write("### Map Diagnosis Logs")
+st.write({
+    "has_basic_results": bool(st.session_state.get("active_inscription_ids")),
+    "active_inscription_ids_len": len(st.session_state.get("active_inscription_ids", [])),
+    "active_search_has_run": st.session_state.get("active_search_has_run"),
+    "inputs_are_dirty": st.session_state.get("inputs_are_dirty"),
+    "trigger_map_html_exists": bool(st.session_state.get("trigger_map_html")),
+    "map_status": st.session_state.get("map_status"),
+})
 
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
