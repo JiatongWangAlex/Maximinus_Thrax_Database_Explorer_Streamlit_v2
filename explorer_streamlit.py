@@ -2303,13 +2303,13 @@ def generate_active_map():
         # PASS A: PLOT TO DEFAULT VIEW LAYER (ALWAYS BLUES)
         # ---------------------------------------------------------
         if overlap_count > 1:
-            size = 14
+            size = 16
             d_border = "#20304c" if is_bucket_approximate else "#001140"
             d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
-            size = 10
+            size = 12
             d_border = "#20304c" if is_bucket_approximate else "#002fa7"
             d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
@@ -2328,14 +2328,14 @@ def generate_active_map():
         if erased_count > 0:
             # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
             if overlap_count > 1:
-                size = 14
+                size = 16
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
                 e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
                 # Displays the unique erased subset value within the matching physical container
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
-                size = 10
+                size = 12
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
                 e_fill = "#9c726c" if is_bucket_approximate else "#e56333"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
