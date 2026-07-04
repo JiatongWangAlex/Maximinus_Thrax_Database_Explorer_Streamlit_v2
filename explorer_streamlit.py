@@ -2612,7 +2612,7 @@ with col1:
         "Relevant",
         "Not Relevant"
     ]
-    f_rel = st.selectbox("Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
+    f_rel = st.selectbox("Inscription Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
     f_prov = st.multiselect("Province:", [opt for opt in get_filter_options("provinces", "province_name") if opt != "All"], on_change=reset_map_and_search_flags)
     f_dist_tit = st.multiselect("Distributio Titulorum | Type of Inscription:", [opt for opt in get_filter_options("distributio_titulorum", "distributio_titulorum") if opt != "All"], on_change=reset_map_and_search_flags)
     f_sup_name = st.multiselect("Support Type:", [opt for opt in get_filter_options("support", "support_name") if opt != "All"], on_change=reset_map_and_search_flags)
@@ -2681,7 +2681,7 @@ with col3:
     ]
     
     intervention_scope = st.radio(
-        "Intervention Filter Scope",
+        "Intervention Relevance to Maximinus Thrax",
         options=[
             "Interventions Relevant to Maximinus Thrax", 
             "All Interventions"
