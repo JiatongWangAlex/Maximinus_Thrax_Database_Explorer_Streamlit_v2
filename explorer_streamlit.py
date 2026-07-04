@@ -2165,10 +2165,10 @@ def generate_active_map():
             </style>
         """))
         
-    # MUTUALLY EXCLUSIVE VISUAL LAYERS
+    # STACKABLE VISUAL LAYERS (UX FIX: NO LONGER MUTUALLY EXCLUSIVE)
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
-    erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erased in Red)", show=False)
+    erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
 
     # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (UNCERTAINTY BOUNDS)
     coord_buckets = {}
@@ -2205,12 +2205,16 @@ def generate_active_map():
     # GENERATE MARKERS FOR BOTH VISUAL LAYERS
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
-        popup_html = ""
-        
         is_bucket_approximate = any(row[12] == 1 for row in rows)
-        bucket_has_erased = any(row[0] in erased_ids for row in rows)
         
-        # Build standard Popup HTML structure (Shared by both layers)
+        # Calculate exactly how many inscriptions in this specific bucket are erased
+        bucket_erased_rows = [row for row in rows if row[0] in erased_ids]
+        erased_count = len(bucket_erased_rows)
+        
+        # ---------------------------------------------------------
+        # 1. BUILD THE POPUP HTML (SHARED SYSTEM)
+        # ---------------------------------------------------------
+        popup_html = ""
         if is_bucket_approximate:
             popup_html += """
             <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
@@ -2244,10 +2248,15 @@ def generate_active_map():
             ref_link = f'<a href="https://edcs.hist.uzh.ch/en/search?edcs-id={ref_text}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
+            # Structural Header Line for Multi-Record Clusters
             if overlap_count > 1:
                 item_border = "#7f8c8d" if is_approx == 1 else "#001140"
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
                 popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
+                
+                # Dynamic UX Tag placement inside the Record header line
+                if f_id in erased_ids:
+                    popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 if is_approx == 1:
                     popup_html += " <span style='font-size:10px; color:#000000; font-weight:bold;'>(APPROXIMATE)</span>"
                 popup_html += "<br>"
@@ -2261,8 +2270,15 @@ def generate_active_map():
                 )
                  
             popup_html += (
-                f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}<br>"
-                f"<b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
+                f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
+            )
+            
+            # Dynamic UX Tag placement for Single Marker views
+            if overlap_count == 1 and f_id in erased_ids:
+                popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
+                
+            popup_html += (
+                f"<br><b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
                 f"<b>Province:</b> {province}<br>"
                 f"<b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
             )
@@ -2283,24 +2299,21 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
 
-        if overlap_count > 1:
-            tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
-        else:
-            tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
-
         # ---------------------------------------------------------
-        # PASS A: RENDER MARKER FOR DEFAULT VIEW LAYER (BLUES ONLY)
+        # PASS A: PLOT TO DEFAULT VIEW LAYER (ALWAYS BLUES)
         # ---------------------------------------------------------
         if overlap_count > 1:
             size = 22
             d_border = "#20304c" if is_bucket_approximate else "#001140"
             d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff" # Option 3 Slate Blue vs Royal Blue
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
+            tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
             size = 14
             d_border = "#20304c" if is_bucket_approximate else "#002fa7"
             d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5" # Option 3 Slate Blue vs Sky Blue
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+            tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         folium.Marker(
             location=[lat, lon],
@@ -2310,30 +2323,29 @@ def generate_active_map():
         ).add_to(default_layer)
 
         # ---------------------------------------------------------
-        # PASS B: RENDER MARKER FOR ERASED LAYER (REDS ON MATCH)
+        # PASS B: PLOT TO ERASURE OVERLAY LAYER (ONLY IF ERASED > 0)
         # ---------------------------------------------------------
-        if bucket_has_erased:
-            # Condition Met: Use mirrored Red Series
-            if overlap_count > 1:
+        if erased_count > 0:
+            if erased_count > 1:
                 size = 22
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
                 e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a" # Dusty Rose vs Crimson Red
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
+                # UX Renders the EXACT count of erased items, NOT the total cluster count
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
+                e_tooltip = f"{erased_count} relevant erasures here"
             else:
                 size = 14
                 e_border = "#4c2420" if is_bucket_approximate else "#400000"
                 e_fill = "#9c726c" if is_bucket_approximate else "#e56333" # Dusty Rose vs Coral Red
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
-        else:
-            # No erasure here: keep fallback Blue settings on the Erased map layer
-            e_icon = d_icon
+                e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
-        folium.Marker(
-            location=[lat, lon],
-            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon),
-            popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
-            tooltip=tooltip_label
-        ).add_to(erased_layer)
+            folium.Marker(
+                location=[lat, lon],
+                icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon),
+                popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
+                tooltip=e_tooltip
+            ).add_to(erased_layer)
 
     # Attach all layers to map
     range_layer.add_to(mymap)
@@ -2342,7 +2354,7 @@ def generate_active_map():
     
     folium.LayerControl(collapsed=False).add_to(mymap)
 
-    # Global UI Script (Handles double-click interface hiding + Overlay Checkbox Exclusivity Referee)
+    # Global UI Script (Handles double-click interface hiding)
     double_click_hide_script = """
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
@@ -2354,23 +2366,6 @@ def generate_active_map():
                     
                     if (mymap) {
                         var hiddenState = false;
-                        
-                        // Native Leaflet exclusivity referee
-                        mymap.on('overlayadd', function(e) {
-                            if (e.name === "Inscriptions (Default View)") {
-                                mymap.eachLayer(function(l) {
-                                    if (l.options && l.options.name === "Inscriptions (Show Erased in Red)") {
-                                        mymap.removeLayer(l);
-                                    }
-                                });
-                            } else if (e.name === "Inscriptions (Show Erased in Red)") {
-                                mymap.eachLayer(function(l) {
-                                    if (l.options && l.options.name === "Inscriptions (Default View)") {
-                                        mymap.removeLayer(l);
-                                    }
-                                });
-                            }
-                        });
                         
                         // Native Leaflet map event listener - double click interface toggler
                         mymap.on('dblclick', function(e) {
