@@ -2573,10 +2573,10 @@ with col_s3:
             st.session_state["last_searched_lookup"] = pname_input_var.strip()
             lookup_person_options(pname_input_var)
             st.rerun()
-
 with col_s4:
     if st.session_state.person_matches:
-        options_list = [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
+        # Prepend the default "PLEASE SELECT" option to the front of the list
+        options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
@@ -2585,13 +2585,18 @@ with col_s4:
         )
         
         if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
-            st.session_state["last_searched_person"] = selected_option
-            st.session_state["csv_mode"] = "ids"
-            st.session_state["active_search_has_run"] = True
-            st.session_state["inputs_are_dirty"] = False
-            extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
-            generate_person_report(extracted_id)
-            st.rerun()
+            # Check if they left it on the placeholder text
+            if selected_option == "PLEASE SELECT":
+                st.error("Please pick a valid person from the dropdown menu before generating a report!")
+            else:
+                st.session_state["last_searched_person"] = selected_option
+                st.session_state["csv_mode"] = "ids"
+                st.session_state["active_search_has_run"] = True
+                st.session_state["inputs_are_dirty"] = False
+                
+                extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
+                generate_person_report(extracted_id)
+                st.rerun()
     else:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
