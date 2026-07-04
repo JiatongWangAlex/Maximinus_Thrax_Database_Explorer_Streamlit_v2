@@ -2878,54 +2878,6 @@ if (
                             links = []
                             for f_id, ref, l_ref in items:
                                 report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
-                                links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{f'{ref} {l_ref}' if l_ref else ref}</a>")
-                            
-                            links_str = ", ".join(links)
-                            
-                            alert_box = f"""
-                            <div style="
-                                background-color: #fffbeb; 
-                                border-left: 4px solid #d97706; 
-                                padding: 12px 15px; 
-                                border-radius: 4px; 
-                                margin-bottom: 10px;
-                                font-family: 'Source Sans Pro', sans-serif;
-                                font-size: 13px;
-                                color: #78350f;
-                            ">
-                                <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is/are not shown.<br>
-                                The following inscriptions are in {p_name} but are not linked to modern coordinates: {links_str}
-                            </div>
-                            """
-                            html_alerts.append(alert_box)
-                        
-                        st.session_state["unmappable_html_notice"] = "".join(html_alerts)
-                    
-                    # Lock in tracking parameters and call map renderer
-                    st.session_state["last_mapped_search"] = {
-                        "where": st.session_state.get("active_search_where_clauses", []),
-                        "params": st.session_state.get("active_search_query_params", {}),
-                        "ids_count": len(active_ids)
-                    }
-                    generate_active_map()
-            st.rerun()# Scenario B Check: Are SOME rows unmappable? If yes, group and link them
-                    if len(unmappable_rows) > 0:
-                        province_groups = {}
-                        for r in unmappable_rows:
-                            # Unpack all 5 columns; map the 3rd column directly to l_ref
-                            ins_id, ins_ref, l_ref, place_id, p_name = r
-                            p_name = p_name if p_name else "Unknown Province"
-                            if p_name not in province_groups:
-                                province_groups[p_name] = []
-                            # Pass l_ref through in the tuple group
-                            province_groups[p_name].append((ins_id, ins_ref, l_ref))
-                        
-                        html_alerts = []
-                        for p_name, items in province_groups.items():
-                            count_x = len(items)
-                            links = []
-                            for f_id, ref, l_ref in items:
-                                report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
                                 # CORE FIX: Handle the concatenation safely outside the f-string interpolation
                                 display_text = f"{ref} {l_ref}" if l_ref else ref
                                 links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{display_text}</a>")
