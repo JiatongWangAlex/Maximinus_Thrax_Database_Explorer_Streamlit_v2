@@ -3044,32 +3044,24 @@ with st.container(height=520, border=True):
         else:
             st.markdown(block)
 
+
+
 if 'should_scroll' in locals() and should_scroll:
-    unique_key = int(time.time())
-    st.markdown(f"<div id='results-anchor-{unique_key}'></div>", unsafe_allow_html=True)
     st.components.v1.html(
-        f"""
+        """
+        <input id="scroll-target" style="position:absolute; opacity:0; pointer-events:none;" tabindex="-1" />
         <script>
-            function forceScroll() {{
-                // Find where our target div is relative to the viewport
-                var target = window.parent.document.getElementById('results-anchor-{unique_key}');
-                if (target) {{
-                    var rect = target.getBoundingClientRect();
-                    // Get the absolute position from the top of the parent window
-                    var absoluteTop = rect.top + window.parent.pageYOffset;
-                    
-                    // Force the outer parent window to scroll down to it
-                    window.parent.window.scrollTo({{
-                        top: absoluteTop - 20, // 20px buffer room
-                        behavior: 'smooth'
-                    }});
-                }} else {{
-                    setTimeout(forceScroll, 50);
-                }}
-            }}
-            // Execute as soon as the component finishes initializing
-            window.addEventListener('load', forceScroll);
-            setTimeout(forceScroll, 100); 
+            function executeScroll() {
+                var target = document.getElementById('scroll-target');
+                if (target) {
+                    // Native focus bypasses cross-origin iframe security blocks
+                    target.focus({preventScroll: false}); 
+                } else {
+                    setTimeout(executeScroll, 50);
+                }
+            }
+            window.addEventListener('load', executeScroll);
+            setTimeout(executeScroll, 100);
         </script>
         """,
         height=0
