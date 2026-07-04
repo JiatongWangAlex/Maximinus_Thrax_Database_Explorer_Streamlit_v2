@@ -2386,8 +2386,21 @@ if "collective_id" in st.query_params:
         conn.close()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
-        
+             
+
 # HEADER
+
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 2rem; /* Default is usually around 6rem */
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.markdown(
     "<h2 style='margin-top: 0rem; margin-bottom: 0rem;'>Maximinus Thrax Database Βrowser</h2>", 
     unsafe_allow_html=True
