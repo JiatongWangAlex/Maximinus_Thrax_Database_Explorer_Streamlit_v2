@@ -2338,14 +2338,15 @@ def generate_active_map():
 # ----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
 
-query_params = st.query_params# --- ADD THIS LINE FIRST ---
-# Check if they arrived via ANY deep-link before we clear the params
+query_params = st.query_params
+
 should_scroll = any(k in st.query_params or k in query_params for k in ["ins_id", "person_id", "collective_id"])
 
 # Inscription hyperlink SETUP
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
+        st.session_state.active_inscription_ids = [int(url_id)]
         st.query_params.clear() 
         fetch_metadata_by_id(url_id)
         
@@ -2353,14 +2354,19 @@ if "ins_id" in query_params:
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
-        st.query_params.clear() 
+        # Tell the map engine that a search has officially run
+        st.session_state["active_search_has_run"] = True
+        st.session_state["csv_mode"] = "ids"
+        
+        # Run your report (which automatically handles setting st.session_state.active_inscription_ids!)
         generate_person_report(url_per_id)
+        
+        # Clear the parameters so refreshing the browser window behaves normally
+        st.query_params.clear()
         
 # Institutions/Groups/Military Units hyperlink SETUP
 if "collective_id" in st.query_params:
     selected_collective_id = st.query_params["collective_id"]
-    
-    # Optional: Clear other search states so they don't clash
     st.session_state["active_search_has_run"] = True
     st.session_state["csv_mode"] = "ids"
     
@@ -2386,7 +2392,6 @@ if "collective_id" in st.query_params:
             st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
             
         conn.close()
-        # Clear the parameters here too so refreshing doesn't lock the URL
         st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
@@ -2724,7 +2729,7 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
-    # BREAK BREAK OUT OF THE 3 COLUMNS GRID LATCH AND RENDER IN FULL WIDTH WITHIN EXPANDER
+    
     st.write("---")
     
     col_btn1, col_btn2 = st.columns([1, 1])
