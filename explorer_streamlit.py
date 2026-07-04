@@ -2347,10 +2347,12 @@ should_scroll = any(k in st.query_params or k in query_params for k in ["ins_id"
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
-        # --- FIX: Set the exact flags to light up the map/CSV button layout ---
+        # Set all standard validation parameters for map tracking
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_where_clauses"] = ["Deep Link Inscription ID Filter"]
+        st.session_state["active_search_query_params"] = {"ins_id": int(url_id)}
         st.session_state.active_inscription_ids = [int(url_id)]
         
         st.query_params.clear() 
@@ -2360,10 +2362,12 @@ if "ins_id" in query_params:
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
-        # --- FIX: Light up the map/CSV button layout here too ---
+        # Set validation parameters for the person mapping tracking
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_where_clauses"] = ["Deep Link Person Dossier Filter"]
+        st.session_state["active_search_query_params"] = {"person_id": int(url_per_id)}
         
         st.query_params.clear() 
         generate_person_report(url_per_id)
@@ -2372,10 +2376,11 @@ elif "person_id" in query_params:
 if "collective_id" in st.query_params:
     selected_collective_id = st.query_params["collective_id"]
     
-    # --- FIX: Ensure inputs_are_dirty is explicitly False here as well ---
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
+    st.session_state["active_search_where_clauses"] = ["Deep Link Collective Filter"]
+    st.session_state["active_search_query_params"] = {"collective_id": int(selected_collective_id)}
     
     try:
         conn = get_db_connection()
@@ -2402,6 +2407,9 @@ if "collective_id" in st.query_params:
         st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
+
+
+
 # HEADER
 
 st.markdown(
