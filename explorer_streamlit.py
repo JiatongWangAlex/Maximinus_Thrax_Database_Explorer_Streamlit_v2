@@ -3045,14 +3045,11 @@ with st.container(height=520, border=True):
             st.markdown(block)
 
 
-
+import time
 
 if 'should_scroll' in locals() and should_scroll:
     unique_key = int(time.time())
-    
-    # Drop the invisible target right here at the bottom where the results box renders
     st.markdown(f"<div id='results-anchor-{unique_key}'></div>", unsafe_allow_html=True)
-    
     st.components.v1.html(
         f"""
         <script>
@@ -3060,7 +3057,7 @@ if 'should_scroll' in locals() and should_scroll:
                 var container = window.parent.document.querySelector(".main");
                 var target = window.parent.document.getElementById('results-anchor-{unique_key}');
                 if (target && container) {{
-                    target.scrollIntoView({{behavior: 'smooth', block: 'start'});
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
                 }} else {{
                     setTimeout(doScroll, 50);
                 }}
