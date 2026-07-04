@@ -2607,8 +2607,8 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
         st.markdown("#### Based on Inscription Metadata")
         
         relevance_options = [
-            "All inscriptions regardless of relevance",
             "Relevant",
+            "All Inscriptions regardless of relevance",
             "Not Relevant"
         ]
         f_rel = st.selectbox("Inscription Relevance to Maximinus Thrax:", relevance_options, on_change=reset_map_and_search_flags)
@@ -2677,20 +2677,29 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
             "No later intervention"
         ]
         
-        intervention_scope = st.radio(
+        # 1. Grab status selection first so we can use it to determine the disabled state
+        f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
+        
+        # 2. Only unlock the scope toggle if "Intervention present" is explicitly active
+        is_scope_disabled = (f_inter_status != "Intervention present")
+        
+        f_intervention_scope_raw = st.radio(
             "Intervention Relevance to Maximinus Thrax",
             options=[
                 "Interventions Relevant to Maximinus Thrax", 
                 "All Interventions"
             ],
-            index=0
+            index=0,
+            disabled=is_scope_disabled,
+            help="This setting only applies when 'Intervention present' is selected." if is_scope_disabled else None
         )
-      
-        f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
+        
+        # 3. Clean up the payload value: if disabled, force it to None or default state so it doesn't filter the data
+        intervention_scope = None if is_scope_disabled else f_intervention_scope_raw
+
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
-
     # BREAK BREAK OUT OF THE 3 COLUMNS GRID LATCH AND RENDER IN FULL WIDTH WITHIN EXPANDER
     st.write("---")
     
