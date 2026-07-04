@@ -1220,7 +1220,6 @@ def get_filter_options(table, col):
     return options
     
 # ADVANCED SEARCH
-# ADVANCED SEARCH
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -2687,12 +2686,9 @@ with col3:
             "Interventions Relevant to Maximinus Thrax", 
             "All Interventions"
         ],
-        index=0  # Sets "Interventions Relevant to Maximinus Thrax" as default
+        index=0
     )
-
-    # When compiling f_dict to send to the function:
-    f_dict['intervention_toggle'] = intervention_scope
-    
+  
     f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
     f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
     f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
@@ -2735,6 +2731,7 @@ with col3:
                     else 0
                 ),
                 'intervention_status_active': False if f_inter_status == "All inscriptions regardless of presence of later intervention" else True,
+                'intervention_toggle': intervention_scope,
                 'method_description': f_interv_meth,
                 'extent_description': f_interv_ext, 
                 'target_description': f_interv_tgt,
