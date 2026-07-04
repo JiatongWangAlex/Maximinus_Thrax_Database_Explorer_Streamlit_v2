@@ -3044,25 +3044,32 @@ with st.container(height=520, border=True):
         else:
             st.markdown(block)
 
-
-import time
-
 if 'should_scroll' in locals() and should_scroll:
     unique_key = int(time.time())
     st.markdown(f"<div id='results-anchor-{unique_key}'></div>", unsafe_allow_html=True)
     st.components.v1.html(
         f"""
         <script>
-            function doScroll() {{
-                var container = window.parent.document.querySelector(".main");
+            function forceScroll() {{
+                // Find where our target div is relative to the viewport
                 var target = window.parent.document.getElementById('results-anchor-{unique_key}');
-                if (target && container) {{
-                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                if (target) {{
+                    var rect = target.getBoundingClientRect();
+                    // Get the absolute position from the top of the parent window
+                    var absoluteTop = rect.top + window.parent.pageYOffset;
+                    
+                    // Force the outer parent window to scroll down to it
+                    window.parent.window.scrollTo({{
+                        top: absoluteTop - 20, // 20px buffer room
+                        behavior: 'smooth'
+                    }});
                 }} else {{
-                    setTimeout(doScroll, 50);
+                    setTimeout(forceScroll, 50);
                 }}
             }}
-            doScroll();
+            // Execute as soon as the component finishes initializing
+            window.addEventListener('load', forceScroll);
+            setTimeout(forceScroll, 100); 
         </script>
         """,
         height=0
