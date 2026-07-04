@@ -2047,6 +2047,24 @@ def generate_active_map():
             for ins_id, r_name, i_id in cursor.fetchall():
                 if ins_id in road_links_dict:
                     road_links_dict[ins_id]['roads'].append((r_name, i_id))
+
+        # === PATH B LOOKUP: ERASED INSCRIPTIONS ===
+        erased_ids = set()
+        if ids_to_map:
+            erased_query = f"""
+                SELECT DISTINCT mt.inscription_id 
+                FROM "Max_Thrax" mt
+                INNER JOIN "interventions" i ON mt.inscription_id = i.patient_inscription
+                WHERE mt.inscription_id IN ({placeholders})
+                  AND mt.relevance_index = 1
+                  AND i.method_id = 2
+                  AND mt.inscription_id NOT IN (
+                      SELECT inscription_id FROM "inscriptions_and_persons" WHERE person_id = 50
+                  );
+            """
+            cursor.execute(erased_query, ids_to_map)
+            erased_ids = {row[0] for row in cursor.fetchall()}
+
         conn.close()
     except Exception as e:
         st.error(f"Map rendering fault: {e}")
@@ -2059,7 +2077,7 @@ def generate_active_map():
     # SET MAP CENTER TO LARINO
     valid_center = [41.807100, 14.919200]
     
-    # INITIALIZE MAP CONTAINER (Always keep native scale line visible)
+    # INITIALIZE MAP CONTAINER
     mymap = folium.Map(
         location=valid_center, 
         zoom_start=4.5, 
@@ -2095,9 +2113,9 @@ def generate_active_map():
     optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
     if os.path.exists(optimized_json_path):
         with open(optimized_json_path, "r", encoding="utf-8") as f:
-            roads_data = json.load(f)
+            coords_data = json.load(f)
         folium.GeoJson(
-            roads_data, 
+            coords_data, 
             name="Roads (based on Itiner-e)", 
             show=True, 
             overlay=True, 
@@ -2147,11 +2165,12 @@ def generate_active_map():
             </style>
         """))
         
-    # FEATURE GROUPS
+    # MUTUALLY EXCLUSIVE VISUAL LAYERS
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
-    inscriptions_layer = folium.FeatureGroup(name="Inscriptions", show=True)
+    default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
+    erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erased in Red)", show=False)
 
-    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER
+    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (UNCERTAINTY BOUNDS)
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
@@ -2164,7 +2183,6 @@ def generate_active_map():
             except (ValueError, TypeError):
                 continue 
 
-        # GENERATE FIND AREA LAYER
         geo_json_str = row[13]
         f_id = row[0]
         if geo_json_str:
@@ -2184,13 +2202,15 @@ def generate_active_map():
             except Exception:
                 pass
                 
-    # GENERATE NORMAL FEATURES FOR INSCRIPTION LAYER
+    # GENERATE MARKERS FOR BOTH VISUAL LAYERS
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         popup_html = ""
         
         is_bucket_approximate = any(row[12] == 1 for row in rows)
+        bucket_has_erased = any(row[0] in erased_ids for row in rows)
         
+        # Build standard Popup HTML structure (Shared by both layers)
         if is_bucket_approximate:
             popup_html += """
             <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
@@ -2268,30 +2288,61 @@ def generate_active_map():
         else:
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
+        # ---------------------------------------------------------
+        # PASS A: RENDER MARKER FOR DEFAULT VIEW LAYER (BLUES ONLY)
+        # ---------------------------------------------------------
         if overlap_count > 1:
             size = 22
-            border_color = "#2c3e50" if is_bucket_approximate else "#001140"
-            fill_color = "#7f8c8d" if is_bucket_approximate else "#1a53ff"
-            icon_html = f'<div style="background-color: {fill_color}; border: 2px solid {border_color}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
+            d_border = "#20304c" if is_bucket_approximate else "#001140"
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff" # Option 3 Slate Blue vs Royal Blue
+            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
         else:
             size = 14
-            border_color = "#34495e" if is_bucket_approximate else "#002fa7"
-            fill_color = "#93d7db" if is_bucket_approximate else "#33b5e5"
-            icon_html = f'<div style="background-color: {fill_color}; border: 2px solid {border_color}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+            d_border = "#20304c" if is_bucket_approximate else "#002fa7"
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5" # Option 3 Slate Blue vs Sky Blue
+            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
 
         folium.Marker(
             location=[lat, lon],
-            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=icon_html),
+            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon),
             popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
             tooltip=tooltip_label
-        ).add_to(inscriptions_layer)
+        ).add_to(default_layer)
 
+        # ---------------------------------------------------------
+        # PASS B: RENDER MARKER FOR ERASED LAYER (REDS ON MATCH)
+        # ---------------------------------------------------------
+        if bucket_has_erased:
+            # Condition Met: Use mirrored Red Series
+            if overlap_count > 1:
+                size = 22
+                e_border = "#4c2420" if is_bucket_approximate else "#400000"
+                e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a" # Dusty Rose vs Crimson Red
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
+            else:
+                size = 14
+                e_border = "#4c2420" if is_bucket_approximate else "#400000"
+                e_fill = "#9c726c" if is_bucket_approximate else "#e56333" # Dusty Rose vs Coral Red
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+        else:
+            # No erasure here: keep fallback Blue settings on the Erased map layer
+            e_icon = d_icon
+
+        folium.Marker(
+            location=[lat, lon],
+            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon),
+            popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
+            tooltip=tooltip_label
+        ).add_to(erased_layer)
+
+    # Attach all layers to map
     range_layer.add_to(mymap)
-    inscriptions_layer.add_to(mymap)
-
+    default_layer.add_to(mymap)
+    erased_layer.add_to(mymap)
     
     folium.LayerControl(collapsed=False).add_to(mymap)
 
+    # Global UI Script (Handles double-click interface hiding + Overlay Checkbox Exclusivity Referee)
     double_click_hide_script = """
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
@@ -2304,7 +2355,24 @@ def generate_active_map():
                     if (mymap) {
                         var hiddenState = false;
                         
-                        // Native Leaflet map event listener - bypasses iframe window focus bugs completely
+                        // Native Leaflet exclusivity referee
+                        mymap.on('overlayadd', function(e) {
+                            if (e.name === "Inscriptions (Default View)") {
+                                mymap.eachLayer(function(l) {
+                                    if (l.options && l.options.name === "Inscriptions (Show Erased in Red)") {
+                                        mymap.removeLayer(l);
+                                    }
+                                });
+                            } else if (e.name === "Inscriptions (Show Erased in Red)") {
+                                mymap.eachLayer(function(l) {
+                                    if (l.options && l.options.name === "Inscriptions (Default View)") {
+                                        mymap.removeLayer(l);
+                                    }
+                                });
+                            }
+                        });
+                        
+                        // Native Leaflet map event listener - double click interface toggler
                         mymap.on('dblclick', function(e) {
                             hiddenState = !hiddenState;
                             
@@ -2331,8 +2399,6 @@ def generate_active_map():
     """
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
-
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------------
