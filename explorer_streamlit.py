@@ -2790,6 +2790,8 @@ for widget_key, anchor_key in tracked_fields.items():
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
             break
+
+
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
@@ -2857,22 +2859,23 @@ if (
                     st.session_state["trigger_map_html"] = None
                 else:
                     st.session_state["map_status"] = "success"
-                    
-                    # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
+                # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                     if len(unmappable_rows) > 0:
                         province_groups = {}
                         for r in unmappable_rows:
-                            ins_id, ins_ref, _, p_name = r
+                            # Correctly unpack all 5 columns returned by the SQL query
+                            ins_id, ins_ref, line_ref, place_id, p_name = r
                             p_name = p_name if p_name else "Unknown Province"
                             if p_name not in province_groups:
                                 province_groups[p_name] = []
-                            province_groups[p_name].append((ins_id, ins_ref))
+                            # Keep track of line_ref for the text output
+                            province_groups[p_name].append((ins_id, ins_ref, line_ref))
                         
                         html_alerts = []
                         for p_name, items in province_groups.items():
                             count_x = len(items)
                             links = []
-                            for f_id, ref in items:
+                            for f_id, ref, l_ref in items:
                                 report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
                                 links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{f'{ref} {l_ref}' if l_ref else ref}</a>")
                             
@@ -2904,7 +2907,6 @@ if (
                         "ids_count": len(active_ids)
                     }
                     generate_active_map()
-            
             st.rerun()
 
 else:
