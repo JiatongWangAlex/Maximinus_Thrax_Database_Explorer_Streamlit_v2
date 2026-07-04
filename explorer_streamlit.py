@@ -2276,7 +2276,7 @@ def generate_active_map():
         else:
             size = 14
             border_color = "#34495e" if is_bucket_approximate else "#002fa7"
-            fill_color = "#95a5a6" if is_bucket_approximate else "#33b5e5"
+            fill_color = "#93d7db" if is_bucket_approximate else "#33b5e5"
             icon_html = f'<div style="background-color: {fill_color}; border: 2px solid {border_color}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
 
         folium.Marker(
