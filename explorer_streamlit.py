@@ -2850,7 +2850,8 @@ if (
                 conn.close()
                 
                 # Separate rows using precise mapping keys
-                unmappable_rows = [r for r in all_rows if r[2] in unmappable_place_ids]
+                # FIX: Change r[2] to r[3] because place_id shifted to index 3 in the SELECT query
+                unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                 valid_rows_count = len(all_rows) - len(unmappable_rows)
                 
                 # Scenario A Check: Are 100% of rows unmappable?
