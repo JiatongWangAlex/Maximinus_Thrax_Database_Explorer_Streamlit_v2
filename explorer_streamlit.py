@@ -64,6 +64,7 @@ import csv
 import io
 from branca.element import Element
 import itertools
+import time
 
 
 if "inputs_are_dirty" not in st.session_state:
@@ -2337,7 +2338,9 @@ def generate_active_map():
 # ----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
 
-query_params = st.query_params
+query_params = st.query_params# --- ADD THIS LINE FIRST ---
+# Check if they arrived via ANY deep-link before we clear the params
+should_scroll = any(k in st.query_params or k in query_params for k in ["ins_id", "person_id", "collective_id"])
 
 # Inscription hyperlink SETUP
 if "ins_id" in query_params:
@@ -2369,7 +2372,6 @@ if "collective_id" in st.query_params:
         coll_name_row = cursor.fetchone()
         collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
         
-
         cursor.execute("""
             SELECT inscription_id 
             FROM inscriptions_and_collectives 
@@ -2384,6 +2386,8 @@ if "collective_id" in st.query_params:
             st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
             
         conn.close()
+        # Clear the parameters here too so refreshing doesn't lock the URL
+        st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
              
@@ -3039,3 +3043,30 @@ with st.container(height=520, border=True):
                 )
         else:
             st.markdown(block)
+
+
+
+
+if 'should_scroll' in locals() and should_scroll:
+    unique_key = int(time.time())
+    
+    # Drop the invisible target right here at the bottom where the results box renders
+    st.markdown(f"<div id='results-anchor-{unique_key}'></div>", unsafe_allow_html=True)
+    
+    st.components.v1.html(
+        f"""
+        <script>
+            function doScroll() {{
+                var container = window.parent.document.querySelector(".main");
+                var target = window.parent.document.getElementById('results-anchor-{unique_key}');
+                if (target && container) {{
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'});
+                }} else {{
+                    setTimeout(doScroll, 50);
+                }}
+            }}
+            doScroll();
+        </script>
+        """,
+        height=0
+    )
