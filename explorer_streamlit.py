@@ -2909,6 +2909,11 @@ if (
                 if len(all_rows) > 0 and valid_rows_count == 0:
                     st.session_state["map_status"] = "unmappable_coordinates"
                     st.session_state["trigger_map_html"] = None
+                    st.session_state["last_mapped_search"] = {
+                        "where": st.session_state.get("active_search_where_clauses", []),
+                        "params": st.session_state.get("active_search_query_params", {}),
+                        "ids_count": len(active_ids)
+                    }
                 else:
                     st.session_state["map_status"] = "success"
 
