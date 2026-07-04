@@ -2791,12 +2791,10 @@ for widget_key, anchor_key in tracked_fields.items():
             any_input_has_unsearched_changes = True
             break
 
-
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
-
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
-# Check if ANY valid search results are ready (either basic list or advanced search state)
+# Back to your exact original logic so buttons behave how you like
 has_basic_results = bool(st.session_state.get("active_inscription_ids"))
 has_advanced_results = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
 
@@ -2826,28 +2824,33 @@ if (
     with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
-            unmappable_place_ids = (133, 177, 178, 227, 244)
             
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                placeholders = ",".join("?" for _ in active_ids)
-                query = f"SELECT place_id FROM Max_Thrax WHERE inscription_id IN ({placeholders})"
-                cursor.execute(query, tuple(active_ids))
-                rows = cursor.fetchall()
-                conn.close()
-                
-                all_unmappable = all(row[0] in unmappable_place_ids for row in rows) if rows else True
-            except Exception:
-                all_unmappable = False
-            
-            if all_unmappable:
-                # SCENARIO 3: Results exist, but none can be mapped
-                st.session_state["map_status"] = "unmappable_coordinates"
+            # Catching the 0 results click (Scenario 2)
+            if not active_ids:
+                st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
             else:
-                st.session_state["map_status"] = "success"
-                generate_active_map()
+                # Catching the 100% bad coordinates click (Scenario 3)
+                unmappable_place_ids = (133, 177, 178, 227, 244)
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    placeholders = ",".join("?" for _ in active_ids)
+                    query = f"SELECT place_id FROM Max_Thrax WHERE inscription_id IN ({placeholders})"
+                    cursor.execute(query, tuple(active_ids))
+                    rows = cursor.fetchall()
+                    conn.close()
+                    
+                    all_unmappable = all(row[0] in unmappable_place_ids for row in rows) if rows else True
+                except Exception:
+                    all_unmappable = False
+                
+                if all_unmappable:
+                    st.session_state["map_status"] = "unmappable_coordinates"
+                    st.session_state["trigger_map_html"] = None
+                else:
+                    st.session_state["map_status"] = "success"
+                    generate_active_map()
             
             st.rerun()
 
@@ -2869,21 +2872,16 @@ else:
             disabled=True,
             help="Make a search before mapping search results."
         )
-
-# --- AUTOMATIC SEARCH STATUS TRACKER ---
-# If a search has officially run, but the active list of IDs is completely empty:
-if st.session_state.get("active_search_has_run"):
-    # Check if we have zero results across both basic and advanced tracks
-    has_ids = bool(st.session_state.get("active_inscription_ids"))
-    has_advanced = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
-    
-    if not (has_ids or has_advanced):
-        st.session_state["map_status"] = "zero_search_results"
-        st.session_state["trigger_map_html"] = None
              
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
-    if st.session_state.get("trigger_map_html"):
+    if st.session_state.get("map_status") == "zero_search_results":
+        st.warning("No inscription matched your search")
+        
+    elif st.session_state.get("map_status") == "unmappable_coordinates":
+        st.warning("No inscriptions matching your search are linked to modern coordinates")
+        
+    elif st.session_state.get("trigger_map_html"):
         # Display the workflow hint cleanly in Python above the iframe canvas
         st.markdown(
             """
@@ -2905,20 +2903,11 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
             """, 
             unsafe_allow_html=True
         )
-        
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
-    elif st.session_state.get("map_status") == "zero_search_results":
-        # Scenario 2: Search completed with absolutely 0 entries
-        st.warning("No inscription matched your search")
-        
-    elif st.session_state.get("map_status") == "unmappable_coordinates":
-        # Scenario 3: Entries exist, but 100% of them point to the 5 unmappable IDs
-        st.warning("No inscriptions matching your search are linked to modern coordinates")
-        
     else:
-        # Scenario 1: Default landing state (No search has run yet / fresh app load)
-        st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
+        st.info("No map generated yet. Click 'Generate Map' to plot inscriptions matching your query on a map.")
+
 #SEARCH RESULTS
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
