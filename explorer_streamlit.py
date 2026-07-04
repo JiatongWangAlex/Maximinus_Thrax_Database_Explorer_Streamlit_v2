@@ -2838,7 +2838,7 @@ if (
                 
                 # Fetch data for ALL inscriptions in the current search scope
                 query = f"""
-                    SELECT m.inscription_id, m.inscription_ref, m.place_id, p.province_name
+                    SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
                     FROM Max_Thrax m
                     LEFT JOIN provinces p ON m.province_id = p.province_id
                     WHERE m.inscription_id IN ({placeholders})
@@ -2874,7 +2874,7 @@ if (
                             links = []
                             for f_id, ref in items:
                                 report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
-                                links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{ref}</a>")
+                                links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{f'{ref} {l_ref}' if l_ref else ref}</a>")
                             
                             links_str = ", ".join(links)
                             
@@ -2889,7 +2889,7 @@ if (
                                 font-size: 13px;
                                 color: #78350f;
                             ">
-                                <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is not shown.<br>
+                                <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is/are not shown.<br>
                                 The following inscriptions are in {p_name} but are not linked to modern coordinates: {links_str}
                             </div>
                             """
