@@ -2825,7 +2825,30 @@ if (
         
     with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
-            generate_active_map()
+            active_ids = st.session_state.get("active_inscription_ids", [])
+            unmappable_place_ids = (133, 177, 178, 227, 244)
+            
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                placeholders = ",".join("?" for _ in active_ids)
+                query = f"SELECT place_id FROM Max_Thrax WHERE inscription_id IN ({placeholders})"
+                cursor.execute(query, tuple(active_ids))
+                rows = cursor.fetchall()
+                conn.close()
+                
+                all_unmappable = all(row[0] in unmappable_place_ids for row in rows) if rows else True
+            except Exception:
+                all_unmappable = False
+            
+            if all_unmappable:
+                # SCENARIO 3: Results exist, but none can be mapped
+                st.session_state["map_status"] = "unmappable_coordinates"
+                st.session_state["trigger_map_html"] = None
+            else:
+                st.session_state["map_status"] = "success"
+                generate_active_map()
+            
             st.rerun()
 
 else:
@@ -2846,7 +2869,7 @@ else:
             disabled=True,
             help="Make a search before mapping search results."
         )
-
+             
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
     if st.session_state.get("trigger_map_html"):
@@ -2873,9 +2896,18 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         )
         
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
+        
+    elif st.session_state.get("map_status") == "unmappable_coordinates":
+        # Scenario 3: Inscriptions found, but 100% are unmappable
+        st.warning("None of the inscriptions matching your search is linked to a modern coordinate")
+        
+    elif st.session_state.get("active_search_has_run") and not (bool(st.session_state.get("active_inscription_ids")) or (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))):
+        # Scenario 2: Search ran, but returned 0 results
+        st.warning("No inscription matched your search")
+        
     else:
-        st.info("No map generated yet/No inscription matched your query. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
-
+        # Scenario 1: Default landing state (No search has run yet)
+        st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
 
 
 #SEARCH RESULTS
