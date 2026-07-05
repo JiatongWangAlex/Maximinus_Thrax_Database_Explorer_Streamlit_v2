@@ -426,7 +426,7 @@ with col_s3:
     pname_input_var = st.text_input(
         "Lookup Person ID by Name:", 
         placeholder="e.g. Maximinus", 
-        key="person_lookup_input",  # 🔒 Original key intact for reset triggers
+        key="person_lookup_input",
         on_change=reset_map_and_search_flags
     )
     if st.button("Find Person", use_container_width=True):
@@ -462,19 +462,31 @@ with col_s4:
                 st.session_state["last_searched_person"] = selected_option
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
                 
                 extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
                 
-                # 🚀 FIX: Connect the specific person's profile datasets to map/csv scopes
+                # 1. Fetch the exact IDs for the map/CSV scope
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (extracted_id,))
-                    st.session_state["active_inscription_ids"] = [row[0] for row in cursor.fetchall()]
+                    p_inscription_ids = [row[0] for row in cursor.fetchall()]
+                    st.session_state["active_inscription_ids"] = p_inscription_ids
                     conn.close()
                 except Exception:
+                    p_inscription_ids = []
                     st.session_state["active_inscription_ids"] = []
+
+                # 2. Reset the dropdown selection to default state
+                st.session_state["person_select_input"] = "PLEASE SELECT"
+                st.session_state["inputs_are_dirty"] = False
+
+                # 🚀 FIX: Lock in mapping tracking state so the map engine registers the dataset profile
+                st.session_state["last_mapped_search"] = {
+                    "where": st.session_state.get("active_search_where_clauses", []),
+                    "params": st.session_state.get("active_search_query_params", {}),
+                    "ids_count": len(p_inscription_ids)
+                }
 
                 generate_person_report(extracted_id)
                 st.rerun()
@@ -492,16 +504,27 @@ with col_s4:
                 st.session_state["last_searched_person"] = target_id
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
                 
+                # 1. Fetch the exact IDs for the map/CSV scope
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (target_id,))
-                    st.session_state["active_inscription_ids"] = [row[0] for row in cursor.fetchall()]
+                    p_inscription_ids = [row[0] for row in cursor.fetchall()]
+                    st.session_state["active_inscription_ids"] = p_inscription_ids
                     conn.close()
                 except Exception:
+                    p_inscription_ids = []
                     st.session_state["active_inscription_ids"] = []
+
+                st.session_state["inputs_are_dirty"] = False
+
+                # 🚀 FIX: Lock in mapping tracking state so the map engine registers the dataset profile
+                st.session_state["last_mapped_search"] = {
+                    "where": st.session_state.get("active_search_where_clauses", []),
+                    "params": st.session_state.get("active_search_query_params", {}),
+                    "ids_count": len(p_inscription_ids)
+                }
 
                 generate_person_report(target_id)
                 st.rerun()
