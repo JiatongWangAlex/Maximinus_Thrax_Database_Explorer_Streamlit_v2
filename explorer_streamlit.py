@@ -2381,28 +2381,41 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
         if st.button("Show Matching Bibliography Records", key="lit_btn_right"):
             raw_input = author_input.strip()
             if not raw_input:
-                st.warning("Please enter an author, editor, volume, or work name.")
+                st.warning("Please enter an author, editor, work, or full citation.")
             else:
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # 1. Helper to build an order-independent multi-word search query
+                    # Helper to build an order-independent multi-word search query
                     def build_multi_word_query(search_text):
-                        # Split query into separate keywords (ignoring extra spaces)
                         words = [w.strip() for w in search_text.split() if w.strip()]
                         if not words:
                             return None, []
                         
-                        # Build dynamic clause checking that ALL keywords appear somewhere in the fields
                         conditions = []
                         params = []
                         for word in words:
-                            wildcard = f"%{word}%"
-                            conditions.append(
-                                "(uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)"
-                            )
-                            params.extend([wildcard, wildcard, wildcard, wildcard])
+                            # Hardcoded Rule: Map ILS and Dessau interchangeably
+                            cleaned_upper = word.upper().replace('.', '').replace(',', '')
+                            if cleaned_upper == "ILS" or cleaned_upper == "DESSAU":
+                                # Allow the database fields to match EITHER term dynamically
+                                conditions.append(
+                                    """(
+                                        (uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)
+                                        OR 
+                                        (uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)
+                                    )"""
+                                )
+                                w1, w2 = "%ILS%", "%Dessau%"
+                                params.extend([w1, w1, w1, w1, w2, w2, w2, w2])
+                            else:
+                                # Normal dynamic clause for any other standard words
+                                wildcard = f"%{word}%"
+                                conditions.append(
+                                    "(uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)"
+                                )
+                                params.extend([wildcard, wildcard, wildcard, wildcard])
                             
                         sql = f"""
                             SELECT DISTINCT uc.unique_citation_id, uc.expanded_citation 
@@ -2413,7 +2426,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         """
                         return sql, params
 
-                    # Try 1: Run multi-word wildcard search with their raw text inputs
+                    # Try 1: Run multi-word wildcard search with raw text inputs
                     query1, params1 = build_multi_word_query(raw_input)
                     if query1:
                         cursor.execute(query1, params1)
@@ -2435,21 +2448,32 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn.close()
                 except Exception as e:
                     st.error(f"Database query error: {e}")
-
-    # Row 3: Dynamic Dropdown List Area & Action Hook Trigger
+                         
+# Row 3: Dynamic Dropdown List Area & Action Hook Trigger
     if st.session_state.lit_matches:
         st.markdown("---")
         res_col1, res_col2 = st.columns(2)
         
-        options_dict = {"PLEASE SELECT": None}
+        # 1. Map options to their IDs
+        options_dict = {}
         for uc_id, exp_cit in st.session_state.lit_matches:
             if exp_cit:
                 options_dict[exp_cit.strip()] = uc_id
 
+        # 2. Extract the citations and apply a Natural Sorting algorithm
+        raw_options = list(options_dict.keys())
+        
+        # Dynamic natural sorting key logic
+        natural_sort_key = lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+        sorted_options = sorted(raw_options, key=natural_sort_key)
+        
+        # Place the placeholder strictly at the front of the sorted list
+        dropdown_choices = ["PLEASE SELECT"] + sorted_options
+
         with res_col1:
             selected_citation = st.selectbox(
                 "Matching Bibliography Records Found:",
-                options=list(options_dict.keys()),
+                options=dropdown_choices,
                 key="lit_dropdown_selection"
             )
             
@@ -2475,12 +2499,10 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         if not linked_ids:
                             st.info("No inscriptions are currently cataloged under that specific reference text.")
                         else:
-                            # Sets the ID keys to automatically build the dossiers in your main engine loop
                             st.session_state.active_inscription_ids = linked_ids
                             st.session_state.active_search_has_run = True
                             st.session_state["csv_mode"] = "ids"
                             
-                            # Clean up local expander states to clear out UI artifacts
                             st.session_state.lit_matches = []
                             st.session_state.lit_search_type = None
                             
@@ -2488,6 +2510,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             
                     except Exception as action_err:
                         st.error(f"Failed sourcing linked junction table IDs: {action_err}")
+                             
     elif st.session_state.lit_search_type is not None:
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
