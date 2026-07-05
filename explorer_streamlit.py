@@ -1230,6 +1230,10 @@ st.markdown("### Search Results")
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
+    # Track the expander state in session state so it doesn't force a layout shift loop
+    if "list_view_expanded" not in st.session_state:
+        st.session_state["list_view_expanded"] = True
+
     # Extract the active IDs found by your search functions
     matched_ids = st.session_state.active_inscription_ids
     
@@ -1280,7 +1284,8 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         
         conn_overview.close()
 
-        with st.expander("Search Results List View", expanded=False):
+        # Driving expanded via session state allows it to open smoothly without fighting the scroll injector
+        with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
             st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
             
             with st.container(height=300, border=False):
@@ -1304,8 +1309,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
-
-
+             
 # MAIN RESULTS VIEW
 st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
 
