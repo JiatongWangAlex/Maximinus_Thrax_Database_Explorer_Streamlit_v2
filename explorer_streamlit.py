@@ -74,6 +74,7 @@ if streamlit_cloud_path not in sys.path:
 
 from backend_logic import *
 
+
 # ----------------------------------------------------------------------------------------------------------------------------
 # UI FRONTEND
 
@@ -102,7 +103,17 @@ if "skip_scroll" not in st.session_state:
 if "reset_selectbox" not in st.session_state:
     st.session_state["reset_selectbox"] = False
 
-         
+
+
+if 'active_inscription_ids' not in st.session_state:
+    st.session_state.active_inscription_ids = []
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = ""
+if 'person_matches' not in st.session_state:
+    st.session_state.person_matches = []
+if 'trigger_map_html' not in st.session_state:
+    st.session_state.trigger_map_html = None
+
 
 # LINK SETUPS
 query_params = st.query_params
