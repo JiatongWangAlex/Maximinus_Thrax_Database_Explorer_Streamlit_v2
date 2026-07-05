@@ -10,9 +10,17 @@ NOTES
 PORTABILITY:
 --------------------------------------------------------------------
 To Future Me: This script provides the db queries and other constants and functions for the streamlit interface
-It is mostly reusable as long as the db schema that those queries rely on stay the same...
+It is somewhat reusable as long as the db schema that those queries rely on stay the same...
 
-EXCEPT FOR the following items which ARE hardcoded
+EXCEPT FOR the logic that determines whether an erasure is relevant to Maximinus Thrax (this is hardcoded to exclude any inscription
+linked to the person_id 50,i.e. Licinnius Serenianus's monuments which are erased due to a separate memory sanction against him;on the
+inscriptions of Licinnius Serenianus which we have, the name of Maximinus Thrax and his name are never erased. Other than the milestones
+of Licinnius Serenianus, we do not have other inscriptions relevant to Maximinus Thrax which suffered an erasure as the result of a 
+different memory sanction campaign therefore for this corpus. Therefore, in this corpus, excluding all monuments linked to the person_id
+person_id 50 from being counted as a relevant erasure can safely exclude ALL erasures ON monuments relevevant to Maximinus Thrax
+BUT ARE NOT actually part of the memory sanction campaign against him)
+
+AND EXCEPT FOR the following items which ARE hardcoded
 
 HARDCODED STUFF
 --------------------------------------------------------------------
