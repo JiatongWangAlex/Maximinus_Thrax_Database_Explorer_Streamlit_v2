@@ -1869,28 +1869,6 @@ def generate_active_map():
     st.session_state.trigger_map_html = mymap._repr_html_()
 
 
-def teleport_to_results():
-    unique_id = str(time.time()).replace(".", "")
-    st.components.v1.html(
-        f"""
-        <script>
-            function smoothGlide() {{
-                try {{
-                    var target = window.parent.document.getElementById("results-anchor");
-                    if (target) {{
-                        target.scrollIntoView({{ behavior: "smooth", block: "start" }});
-                        return;
-                    }}
-                }} catch (e) {{
-                    window.parent.postMessage({{"type": "scroll", "target": "results-anchor"}}, "*");
-                }}
-            }}
-            smoothGlide();
-            setTimeout(smoothGlide, 150);
-        </script>
-        """,
-        height=0
-    )
         
 __all__ = [
     
@@ -1913,7 +1891,6 @@ __all__ = [
     'fetch_metadata_by_id',
     'fetch_metadata_by_object_id',
     'generate_active_map',
-    'teleport_to_results',
     
 ]
 
