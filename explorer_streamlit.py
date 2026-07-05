@@ -2377,7 +2377,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 except Exception as e:
                     st.error(f"Database query error: {e}")
 
-with btn_col2:
+    with btn_col2:
         if st.button("Show Matching Bibliography Records", key="lit_btn_right"):
             raw_input = author_input.strip()
             if not raw_input:
