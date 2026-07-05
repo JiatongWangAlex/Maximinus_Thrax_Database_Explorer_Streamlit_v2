@@ -3177,7 +3177,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         
         # Non-intrusive List View expander positioned right before the heavy lightbox views
         with st.expander("Search Results List View", expanded=False):
-            st.markdown(f"**Found {len(overview_rows)} records matching your search filters:**")
+            st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
             
             # Internal fixed-height container to cleanly scroll long result lists without page distortion
             with st.container(height=300, border=False):
