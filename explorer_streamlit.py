@@ -2913,7 +2913,6 @@ for widget_key, anchor_key in tracked_fields.items():
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
             break
-
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
@@ -2956,6 +2955,12 @@ if (
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
+                # Lock in tracking parameters so the automatic commit detector doesn't instantly wipe this out
+                st.session_state["last_mapped_search"] = {
+                    "where": st.session_state.get("active_search_where_clauses", []),
+                    "params": st.session_state.get("active_search_query_params", {}),
+                    "ids_count": 0
+                }
             else:
                 try:
                     conn = get_db_connection()
@@ -3112,7 +3117,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
-
 
 
 #SEARCH RESULTS
