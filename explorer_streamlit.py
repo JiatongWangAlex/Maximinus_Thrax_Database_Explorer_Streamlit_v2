@@ -2445,7 +2445,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         """
                         return sql, params
 
-                    # Try 1: Run multi-word wildcard search with raw text inputs
+                    # Try 1: Run strict multi-word wildcard search (All words must match via AND)
                     query1, params1 = build_multi_word_query(raw_input)
                     if query1:
                         cursor.execute(query1, params1)
@@ -2453,14 +2453,28 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     else:
                         results = []
                     
-                    # Try 2: Fallback with Roman numeral conversion if first search finds nothing
+                    # Try 2: General Looser Partial Match Fallback
+                    if not results and query1:
+                        # Dynamically flip the strict "AND" operators to "OR" operators
+                        looser_query = query1.replace(" WHERE ", " WHERE ").replace(" AND ", " OR ")
+                        cursor.execute(looser_query, params1)
+                        results = cursor.fetchall()
+                    
+                    # Try 3: Fallback with Roman numeral conversion if still nothing found
                     if not results:
                         converted_input = convert_roman_to_arabic_in_text(raw_input)
                         if converted_input != raw_input:
                             query2, params2 = build_multi_word_query(converted_input)
                             if query2:
+                                # Try strict with converted input
                                 cursor.execute(query2, params2)
                                 results = cursor.fetchall()
+                                
+                                # Try loose with converted input if strict converted fails
+                                if not results:
+                                    looser_query2 = query2.replace(" AND ", " OR ")
+                                    cursor.execute(looser_query2, params2)
+                                    results = cursor.fetchall()
                             
                     st.session_state.lit_matches = results
                     st.session_state.lit_search_type = "right"
