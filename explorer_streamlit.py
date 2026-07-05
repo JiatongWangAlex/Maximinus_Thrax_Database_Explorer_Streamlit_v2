@@ -1845,6 +1845,11 @@ def generate_active_map():
 
 query_params = st.query_params
 
+url_id = None
+url_per_id = None
+selected_collective_id = None
+selected_obj_id = None
+
 should_scroll = any(k in query_params for k in ["ins_id", "person_id", "collective_id", "obj_id"])
 
 # Inscription hyperlink SETUP
