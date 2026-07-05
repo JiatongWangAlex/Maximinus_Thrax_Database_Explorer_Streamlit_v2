@@ -249,6 +249,8 @@ elif "obj_id" in query_params:
     
     fetch_metadata_by_object_id(selected_obj_id)
     st.query_params.clear()
+
+
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
 tracked_fields = {
@@ -260,13 +262,49 @@ tracked_fields = {
     "person_report_input": "last_searched_person"
 }
 
-# --- SIMPLE PROGRESSIVE PROTECTION LOCK ---
+# --- SAFE TOP-OF-SCRIPT AUTOMATIC WIPER ---
+# If a wipe cycle was requested by the previous pass, clear everything out safely before widgets render
+if st.session_state.get("clear_inputs_on_next_run", False):
+    st.session_state["clear_inputs_on_next_run"] = False
+    
+    for widget_key in tracked_fields.keys():
+        if widget_key in st.session_state:
+            if widget_key == "person_select_input":
+                st.session_state[widget_key] = "PLEASE SELECT"
+            else:
+                st.session_state[widget_key] = ""
+        # Reset keystroke loop tracking memory
+        prior_key = f"prior_{widget_key}"
+        if prior_key in st.session_state:
+            st.session_state[prior_key] = ""
+
+    # Clear advanced query panels completely out of state memory
+    advanced_keys = [
+        "f_text", "f_rel", "f_prov", "f_dist_tit", "f_sup_name", "f_in_con", 
+        "f_obj_mat", "f_status_tituli", "f_num_ins", "f_start_date", "f_end_date",
+        "f_vir_dist", "f_unit", "f_person_id", "f_inter_status", "f_interv_meth",
+        "f_interv_ext", "f_interv_tgt", "abbr_input", "author_input", "lit_dropdown_selection"
+    ]
+    for adv_key in advanced_keys:
+        if adv_key in st.session_state:
+            del st.session_state[adv_key]
+
+    # Synchronize tracking anchors so buttons remain perfectly unlocked
+    for widget_key, anchor_key in tracked_fields.items():
+        st.session_state[anchor_key] = st.session_state.get(widget_key, "")
+    st.session_state["inputs_are_dirty"] = False
+
+# --- CONTINUOUS LIVE KEYSTROKE LOCK DETECTOR ---
 if st.session_state.get("active_search_has_run", False):
+    # Search is alive; verify tracking anchors match active inputs to unlock buttons
     for widget_key, anchor_key in tracked_fields.items():
         if widget_key in st.session_state:
-            st.session_state[anchor_key] = st.session_state[widget_key]
+            # If the field is currently empty because of a wipe, sync the anchor to match it
+            if st.session_state[widget_key] == "" or st.session_state[widget_key] == "PLEASE SELECT":
+                st.session_state[anchor_key] = st.session_state[widget_key]
     st.session_state["inputs_are_dirty"] = False
 else:
+    # Standard protection loop. Slam the deadbolt if uncommitted letters are typed!
     any_input_has_unsearched_changes = False
     for widget_key, anchor_key in tracked_fields.items():
         if widget_key in st.session_state:
@@ -289,7 +327,6 @@ else:
                 st.session_state[prior_rerun_key] = current_value
 
     st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
-
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
@@ -1170,7 +1207,7 @@ if (
 
 
 # SCROLL TO SEARCH RESULTS OR MAP
-# --- UNIFIED LAYOUT SCROLL INJECTOR + AUTO INPUT CLEANER ---
+# --- UNIFIED LAYOUT SCROLL INJECTOR ---
 import time
 cache_breaker = str(time.time())
 
@@ -1220,30 +1257,8 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     )
     st.session_state["skip_scroll"] = True
     
-    for widget_key in ["main_text_input", "edcs_report_input", "id_report_input", "person_lookup_input", "person_report_input"]:
-        if widget_key in st.session_state:
-            st.session_state[widget_key] = ""
-        prior_rerun_key = f"prior_{widget_key}"
-        if prior_rerun_key in st.session_state:
-            st.session_state[prior_rerun_key] = ""
-            
-    if "person_select_input" in st.session_state:
-        st.session_state["person_select_input"] = "PLEASE SELECT"
-
-    # Wipe the advanced parameters panel keys completely out of state
-    advanced_keys = [
-        "f_text", "f_rel", "f_prov", "f_dist_tit", "f_sup_name", "f_in_con", 
-        "f_obj_mat", "f_status_tituli", "f_num_ins", "f_start_date", "f_end_date",
-        "f_vir_dist", "f_unit", "f_person_id", "f_inter_status", "f_interv_meth",
-        "f_interv_ext", "f_interv_tgt", "abbr_input", "author_input", "lit_dropdown_selection"
-    ]
-    for adv_key in advanced_keys:
-        if adv_key in st.session_state:
-            del st.session_state[adv_key]
-
-    # Synchronize anchors to empty values so your layout engine sees them as clean and unlocks buttons
-    for widget_key, anchor_key in tracked_fields.items():
-        st.session_state[anchor_key] = st.session_state.get(widget_key, "")
+    # 🌟 Flags the app to clear out the input widgets on the immediate next action pass safely!
+    st.session_state["clear_inputs_on_next_run"] = True
 
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
