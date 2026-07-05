@@ -38,7 +38,7 @@ main_report_sql = """
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
-                   mt.object_id, -- 🚀 Pulled Object ID straight from main tracking data
+                   mt.object_id,
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id,
                    st.status_tituli_name,
@@ -1861,3 +1861,10 @@ def teleport_to_results():
         """,
         height=0
     )
+
+__all__ = [
+    'get_db_connection',
+    'generate_person_report',
+    'generate_bulk_search_csv',
+    # Add any other core function names you moved here as strings...
+]
