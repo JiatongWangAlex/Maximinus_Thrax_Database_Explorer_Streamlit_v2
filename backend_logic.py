@@ -266,24 +266,24 @@ main_report_sql = """
 # LATIN LEMMMA MAP
 
 LATIN_LEMMA_MAP = {
-    "praesidem": "praeses", "praesidis": "praeses", "praesidi": "praeses", "praeside": "praeses",
-    "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
-    "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus", 
-    "legatum": "legatus", "legati": "legatus", "legato": "legatus",
-    "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
-    "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
-    "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
-    "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
-    "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
-    "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
-    "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
-    "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
-    "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
-    "immunem": "immunis", "immuni": "immunis", "immune": "immunis",
-    "restituit": "restituo", "restituerunt": "restituo", "restituitque": "restituo", "restituo": "restituo",
-    "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptavit": "coopto", "cooptati": "coopto", "coopto": "coopto"
-}
+    "praeses": "praeses", "praesidem": "praeses", "praesidis": "praeses", "praesidi": "praeses", "praeside": "praeses",
+    "praefectus": "praefectus", "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
+    "tribunus": "tribunus", "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus",
+    "legatus": "legatus", "legatum": "legatus", "legati": "legatus", "legato": "legatus",
+    "speculator": "speculator", "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
+    "veteranus": "veteranus", "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
+    "quaestor": "quaestor", "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
+    "procurator": "procurator", "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
+    "imperator": "imperator", "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
+    "consul": "consul", "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
+    "centurio": "centurio", "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
+    "augustus": "augustus", "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
+    "caesar": "caesar", "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
+    "immunis": "immunis", "immunem": "immunis", "immuni": "immunis", "immune": "immunis",
 
+    "restituo": "restituo", "restituit": "restituo", "restituerunt": "restituo", "restituitque": "restituo",
+    "coopto": "coopto", "cooptavit": "coopto", "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptati": "coopto",
+}
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
     st.session_state["active_search_has_run"] = False
