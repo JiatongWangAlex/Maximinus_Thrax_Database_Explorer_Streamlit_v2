@@ -261,10 +261,16 @@ tracked_fields = {
     "person_report_input": "last_searched_person"
 }
 
-any_input_has_unsearched_changes = False
+# KEYSTROKE TRACKER 
 
-# Only check for keystroke dirtiness if the app didn't JUST execute a successful search button click
-if not st.session_state.get("active_search_has_run", False) or st.session_state.get("inputs_are_dirty", False):
+if st.session_state.get("active_search_has_run", False) and not st.session_state.get("inputs_are_dirty", False):
+    for widget_key, anchor_key in tracked_fields.items():
+        if widget_key in st.session_state:
+            st.session_state[anchor_key] = st.session_state[widget_key]
+    st.session_state["inputs_are_dirty"] = False
+else:
+    # Otherwise, perform standard checking for active unsearched modifications
+    any_input_has_unsearched_changes = False
     for widget_key, anchor_key in tracked_fields.items():
         if widget_key in st.session_state:
             current_value = str(st.session_state[widget_key]).strip()
@@ -277,7 +283,7 @@ if not st.session_state.get("active_search_has_run", False) or st.session_state.
             if current_value != last_executed_value:
                 any_input_has_unsearched_changes = True
             
-            # Keystroke trigger tracker
+            # Auto-reset dropdown choice if a text search field changes
             if widget_key != "person_select_input":
                 prior_rerun_key = f"prior_{widget_key}"
                 prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
@@ -289,7 +295,6 @@ if not st.session_state.get("active_search_has_run", False) or st.session_state.
                 st.session_state[prior_rerun_key] = current_value
 
     st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
-
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
