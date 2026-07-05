@@ -426,68 +426,7 @@ with col_s3:
     pname_input_var = st.text_input(
         "Lookup Person ID by Name:", 
         placeholder="e.g. Maximinus", 
-        key="person_lookup_input",
-        on_change=reset_map_and_search_flags
-    )
-    if st.button("Find Person", use_container_width=True):
-        if pname_input_var.strip():
-            st.session_state["last_searched_lookup"] = pname_input_var.strip()
-            lookup_person_options(pname_input_var)
-            st.rerun()
-
-    # ONLY show the hint if a search ran AND the current text input matches that exact search term
-    if st.session_state.get("last_searched_lookup") and pname_input_var.strip() == st.session_state["last_searched_lookup"]:
-        if "person_matches" in st.session_state and not st.session_state.person_matches:
-            st.error("No individual in the database matched your search. Try a different individual or a different spelling.")
-        elif "person_matches" in st.session_state and st.session_state.person_matches:
-            st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
-                 
-with col_s4:
-    if st.session_state.get("person_matches"):
-        # Prepend the default "PLEASE SELECT" option to the front of the list
-        options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
-        
-        selected_option = st.selectbox(
-            "Select Person:", 
-            options_list, 
-            key="person_select_input",  # Kept original stable key
-            on_change=reset_map_and_search_flags
-        )
-        
-        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
-            # Check if they left it on the placeholder text
-            st.session_state["last_searched_lookup"] = ""
-            if selected_option == "PLEASE SELECT":
-                st.error("Please pick a person from the dropdown menu before generating a report!")
-            else:
-                st.session_state["last_searched_person"] = selected_option
-                st.session_state["csv_mode"] = "ids"
-                st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
-                
-                extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
-                generate_person_report(extracted_id)
-                st.rerun()
-    else:
-        pid_input_var = st.text_input(
-            "Person Selector / Search by Person ID:", 
-            placeholder="Select from dropdown menu/Search by ID", 
-            key="person_report_input",
-            on_change=reset_map_and_search_flags
-        )
-        
-        if st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary"):
-            if pid_input_var.strip():
-                st.session_state["last_searched_person"] = pid_input_var.strip()
-                st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
-                generate_person_report(pid_input_var)
-                st.rerun()
-with col_s3:
-    pname_input_var = st.text_input(
-        "Lookup Person ID by Name:", 
-        placeholder="e.g. Maximinus", 
-        key="person_lookup_input",
+        key="person_lookup_input_s3",  # 🚀 Assigned unique key for column 3
         on_change=reset_map_and_search_flags
     )
     if st.button("Find Person", use_container_width=True):
@@ -516,7 +455,6 @@ with col_s4:
         )
         
         if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
-            # Check if they left it on the placeholder text
             st.session_state["last_searched_lookup"] = ""
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
@@ -533,7 +471,7 @@ with col_s4:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
             placeholder="Select from dropdown menu/Search by ID", 
-            key="person_report_input",
+            key="person_report_text_s4",  # 🚀 Assigned unique key for column 4 text fallback
             on_change=reset_map_and_search_flags
         )
         
