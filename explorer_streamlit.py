@@ -82,7 +82,6 @@ FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSO
 ====================================================================
 """
 
-
 import sqlite3
 import os
 import textwrap
@@ -341,8 +340,7 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
   > **NOTE:** You must manually press the **Generate Map** button *every time* after a search or after generating a person/inscription report to display the relevant inscriptions on the map.
 * Click any dot on the map to view its details.
 * In all applicable cases, the **EDCS** record and the **Pleiades** record (for the findspot area) are hyperlinked.
-* **For milestone inscriptions:** The details popup notes that the inscription is on a milestone, names the road segment it served, and links to that segment on the **itiner-e project.** 
-    * *Note on itiner-e:* If it shows a welcome screen, click *Explore Roman Roads* to continue to the linked segment, then click *Details* on the left for more information.
+* **For milestone inscriptions:** The details popup notes that the inscription is on a milestone, names the road segment it served, and links to that segment on the **itiner-e project.** * *Note on itiner-e:* If it shows a welcome screen, click *Explore Roman Roads* to continue to the linked segment, then click *Details* on the left for more information.
 * **For non-milestone inscriptions:** The *titulorum distributio* (type of inscription) and type of support are displayed in the details popup instead of road information.
 * **For multiple inscriptions on a single object:** The popup displays the total number of inscriptions on the support and the sequence ID of your selected inscription. A sequence ID of `1` means it was the earliest inscription on the object, `2` means it was the second, etc.
   * You can see all the inscriptions on the same object in chronological order if you click on the hyperlinked inscription ID. This will open a report in a new window. 
@@ -851,7 +849,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         if converted_input != raw_input:
                             query2, params2 = build_multi_word_query(converted_input)
                             if query2:
-                                # Try strict with converted input
+                                // Try strict with converted input
                                 cursor.execute(query2, params2)
                                 results = cursor.fetchall()
                                 
@@ -1171,9 +1169,6 @@ if st.session_state.get("trigger_map_scroll"):
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
 
-# MAP VIEWER (Always Visible)
-with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
-         
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
     if st.session_state.get("map_status") == "zero_search_results":
