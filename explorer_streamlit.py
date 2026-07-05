@@ -2449,25 +2449,25 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 except Exception as e:
                     st.error(f"Database query error: {e}")
                          
-# Row 3: Dynamic Dropdown List Area & Action Hook Trigger
+    # Row 3: Dynamic Dropdown List Area & Action Hook Trigger
     if st.session_state.lit_matches:
         st.markdown("---")
         res_col1, res_col2 = st.columns(2)
         
-        # 1. Map options to their IDs
-        options_dict = {}
+        # 1. Store option metadata safely using tuples or compound keys to avoid key collisions
+        display_to_id = {}
+        
         for uc_id, exp_cit in st.session_state.lit_matches:
             if exp_cit:
-                options_dict[exp_cit.strip()] = uc_id
+                # Add the ID to the string key to guarantee uniqueness in the dictionary
+                unique_key = f"{exp_cit.strip()} (Ref ID: {uc_id})"
+                display_to_id[unique_key] = uc_id
 
-        # 2. Extract the citations and apply a Natural Sorting algorithm
-        raw_options = list(options_dict.keys())
-        
-        # Dynamic natural sorting key logic
+        # 2. Extract the unique keys and sort them using Natural Sorting
+        raw_options = list(display_to_id.keys())
         natural_sort_key = lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
         sorted_options = sorted(raw_options, key=natural_sort_key)
         
-        # Place the placeholder strictly at the front of the sorted list
         dropdown_choices = ["PLEASE SELECT"] + sorted_options
 
         with res_col1:
@@ -2482,9 +2482,10 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             is_disabled = (selected_citation == "PLEASE SELECT")
             
             if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
-                target_unique_citation_id = options_dict[selected_citation]
+                # Fetch the database ID directly using the unique dropdown string key
+                target_unique_citation_id = display_to_id.get(selected_citation)
                 
-                if target_unique_citation_id:
+                if target_unique_citation_id is not None:
                     try:
                         conn = get_db_connection()
                         cursor = conn.cursor()
@@ -2510,7 +2511,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             
                     except Exception as action_err:
                         st.error(f"Failed sourcing linked junction table IDs: {action_err}")
-                             
     elif st.session_state.lit_search_type is not None:
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
