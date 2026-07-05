@@ -2454,14 +2454,14 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
         st.markdown("---")
         res_col1, res_col2 = st.columns(2)
         
-        # 1. Bind the mapping object safely to session_state to protect it from button redraw flushes
+        # 1. Store option metadata safely using session state to protect against redrawing flushes
         st.session_state.lit_display_map = {}
         for uc_id, exp_cit in st.session_state.lit_matches:
             if exp_cit:
                 unique_key = f"{exp_cit.strip()} (Ref ID: {uc_id})"
                 st.session_state.lit_display_map[unique_key] = uc_id
 
-        # 2. Extract unique string keys and sort using Natural Sorting
+        # 2. Extract unique keys and sort using Natural Sorting
         raw_options = list(st.session_state.lit_display_map.keys())
         natural_sort_key = lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
         sorted_options = sorted(raw_options, key=natural_sort_key)
@@ -2480,9 +2480,9 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             is_disabled = (selected_citation == "PLEASE SELECT")
             
             if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
-                # Pull from session state map, with a robust regex string fallback extraction technique
                 target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
                 
+                # Backup regex parse safety strategy if map drops out
                 if target_unique_citation_id is None and "Ref ID: " in selected_citation:
                     try:
                         target_unique_citation_id = int(re.search(r'\(Ref ID:\s*(\d+)\)', selected_citation).group(1))
@@ -2494,27 +2494,53 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         conn = get_db_connection()
                         cursor = conn.cursor()
                         
+                        # Step A: Find the linked Inscription IDs
                         cursor.execute(
                             "SELECT DISTINCT inscription_id FROM inscriptions_and_citations WHERE unique_citation_id = ?",
                             (target_unique_citation_id,)
                         )
                         linked_ids = [row[0] for row in cursor.fetchall()]
-                        conn.close()
                         
                         if not linked_ids:
                             st.info("No inscriptions are currently cataloged under that specific reference text.")
+                            conn.close()
                         else:
-                            # Sets pipeline indicators to activate your main report compiling engine lower on the page
+                            # Set global list tracks for any secondary tools (like CSV exports)
                             st.session_state.active_inscription_ids = linked_ids
                             st.session_state.active_search_has_run = True
                             st.session_state["csv_mode"] = "ids"
                             
-                            # Wipe matching states clean to avoid UI artifacts
+                            # 🚀 Step B: INTERCEPT AND GENERATE THE DOSSIERS RIGHT HERE!
+                            out_str = [
+                                f"#### Found {len(linked_ids)} matching inscription(s) via Literature Search:\n", 
+                                "_" * 70 + "\n\n"
+                            ]
+                            
+                            for idx, ins_id in enumerate(linked_ids, 1):
+                                out_str.append(f"## Result {idx}\n")
+                                
+                                # Connect cleanly straight into your universal global template string variable
+                                cursor.execute(main_report_sql, (int(ins_id),))
+                                card_rows = cursor.fetchall()
+                                
+                                if card_rows:
+                                    dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
+                                    out_str.append(dossier_text)
+                                else:
+                                    out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
+                                    
+                                out_str.append("\n\n---\n\n")
+                            
+                            # Bind the compiled result blocks straight into your main dashboard UI output key!
+                            st.session_state.search_results = "".join(out_str)
+                            conn.close()
+                            
+                            # Clear temporary UI artifact states
                             st.session_state.lit_matches = []
                             st.session_state.lit_search_type = None
                             if "lit_display_map" in st.session_state:
                                 del st.session_state.lit_display_map
-                            
+                                
                             st.rerun()
                             
                     except Exception as action_err:
