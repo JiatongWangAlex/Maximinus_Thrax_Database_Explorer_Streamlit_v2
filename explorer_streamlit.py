@@ -1224,10 +1224,13 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
     else:
         st.info("No map generated yet. Make a search and click 'Generate Map' to plot inscriptions matching your query on a map.")
 
+
+
+
 # SEARCH RESULTS
 st.markdown("### Search Results")
+st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 
-# Execute the auto-scroll check immediately when the results section renders
 if st.session_state.get("active_search_has_run"):
     if st.session_state.get("skip_scroll"):
         st.session_state["skip_scroll"] = False
@@ -1335,7 +1338,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         st.warning(f"Could not render the List View container: {overview_error}")
              
 # MAIN RESULTS VIEW
-st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
 
 if st.session_state.get("active_search_has_run"):
     with st.container(height=520, border=True):
