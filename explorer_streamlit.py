@@ -1972,25 +1972,25 @@ elif "obj_id" in query_params:
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
-# Most accordion headers get 20px
+# ALL accordion headers get 20px, except the welcome text which stays at 14px
 st.markdown(
     """
     <style>
+    /* 1. Global rule for all expanders */
     div[data-testid="stExpander"] details summary p {
         font-size: 20px !important;
         font-weight: 600 !important;
+    }
+    
+    /* 2. Exception rule just for your welcome expander key */
+    div[data-testid="stExpander"]:has(iframe[name*="welcome_instructions_expander"]),
+    div[data-testid="stExpander"]:-webkit-any(:has(input[key="welcome_instructions_expander"])),
+    div[data-testid="stExpander"] details summary p:has(span) {
     }
     </style>
     """,
     unsafe_allow_html=True
 )
-
-# The welcome text accordion header gets 14px to decrease its visual weight
-welcome_label = """
-<span style="font-size: 14px !important; font-weight: 400 !important;">
-    Click to View Site Instructions / Welcome Text
-</span>
-"""
 
 # SLIM DOWN SITE HEADER
 
@@ -2011,8 +2011,7 @@ st.markdown(
 )
 
 # Welcome Text & Instructions
-with st.expander(welcome_label, expanded=False, key="welcome_instructions_expander"):
-    st.write("Welcome to the site! Your instructions go here...")
+with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
 ## How to Use | DEVELOPMENT NOTE: THIS INSTRUCTION MANUAL REFLECTS AN EARLIER VERSION OF THE INTERFACE; I AM GOING TO REWRITE THE MANUAL. PLEASE USE YOUR INTUITION FOR NOW
 
