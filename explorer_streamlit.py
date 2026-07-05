@@ -2891,7 +2891,158 @@ with st.expander("Expand/Collapse Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-                 
+
+
+# ==============================================================================
+# SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH EXPANDER
+# ==============================================================================
+with st.expander("Search by Bibliography / Literature Search", expanded=False):
+    # Initialize session state placeholders for tracking results between user interactions
+    if "lit_matches" not in st.session_state:
+        st.session_state.lit_matches = []
+    if "lit_search_type" not in st.session_state:
+        st.session_state.lit_search_type = None
+
+    # Row 1: The Input Columns
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        abbr_input = st.text_input(
+            "Search by Abbreviated Citation",
+            value="",
+            help='Please use [EDCS style](https://www.erabid.org/en/abbrev.php) abbreviated citations.'
+        )
+        
+    with col2:
+        author_input = st.text_input(
+            "Search by Author / Work name",
+            value=""
+        )
+
+    # Row 2: Independent Triggers (Duplicated buttons to prevent combined field cross-pollution)
+    btn_col1, btn_col2 = st.columns(2)
+    
+    with btn_col1:
+        if st.button("Show Matching Bibliography Records", key="lit_btn_left"):
+            if not abbr_input.strip():
+                st.warning("Please type an abbreviated citation phrase first.")
+            else:
+                try:
+                    # Supply your app's isolated connection name here
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    
+                    # Target Strategy: High-precision match against abbreviated fields
+                    query = """
+                        SELECT DISTINCT unique_citation_id, expanded_citation 
+                        FROM unique_citations 
+                        WHERE abbreviated_citation LIKE ? 
+                           OR bibliography_id IN (
+                               SELECT bibliography_id FROM master_citations_raw WHERE bibliography_name LIKE ?
+                           )
+                        ORDER BY expanded_citation ASC;
+                    """
+                    search_term = f"%{abbr_input.strip()}%"
+                    cursor.execute(query, (search_term, search_term))
+                    st.session_state.lit_matches = cursor.fetchall()
+                    st.session_state.lit_search_type = "left"
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Database query error: {e}")
+
+    with btn_col2:
+        if st.button("Show Matching Bibliography Records", key="lit_btn_right"):
+            if not author_input.strip():
+                st.warning("Please enter an author, editor, volume, or work name.")
+            else:
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    
+                    # Broad Semantic Strategy: Wildcard match through all raw and compiled bibliography targets
+                    query = """
+                        SELECT DISTINCT uc.unique_citation_id, uc.expanded_citation 
+                        FROM unique_citations uc
+                        LEFT JOIN master_citations_raw m ON uc.bibliography_id = m.bibliography_id
+                        WHERE uc.abbreviated_citation LIKE ?
+                           OR uc.expanded_citation LIKE ?
+                           OR m.bibliography_name LIKE ?
+                           OR m.chicago_translation LIKE ?
+                           OR uc.unique_citation_id IN (
+                               SELECT unique_citation_id FROM inscriptions_and_citations 
+                               WHERE inscription_id IN (
+                                   SELECT inscription_id FROM Max_Thrax WHERE expanded_bibliography LIKE ?
+                               )
+                           )
+                        ORDER BY uc.expanded_citation ASC;
+                    """
+                    search_term = f"%{author_input.strip()}%"
+                    cursor.execute(query, (search_term, search_term, search_term, search_term, search_term))
+                    st.session_state.lit_matches = cursor.fetchall()
+                    st.session_state.lit_search_type = "right"
+                    conn.close()
+                except Exception as e:
+                    st.error(f"Database query error: {e}")
+
+    # Row 3: Dynamic Dropdown List Area & Action Hook Trigger
+    if st.session_state.lit_matches:
+        st.markdown("---")
+        res_col1, res_col2 = st.columns(2)
+        
+        # Format list choices for the drop-down menu selection box
+        options_dict = {"PLEASE SELECT": None}
+        for uc_id, exp_cit in st.session_state.lit_matches:
+            if exp_cit:
+                options_dict[exp_cit.strip()] = uc_id
+
+        with res_col1:
+            selected_citation = st.selectbox(
+                "Matching Bibliography Records Found:",
+                options=list(options_dict.keys()),
+                key="lit_dropdown_selection"
+            )
+            
+        with res_col2:
+            st.markdown("<div style='padding-top:24px;'></div>", unsafe_allow_html=True)
+            
+            # Keep action button disabled until a true option item has been selected out of the list
+            is_disabled = (selected_citation == "PLEASE SELECT")
+            
+            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
+                target_unique_citation_id = options_dict[selected_citation]
+                
+                if target_unique_citation_id:
+                    try:
+                        conn = get_db_connection()
+                        cursor = conn.cursor()
+                        
+                        # Fetch all distinct inscriptions cross-referenced via the dynamic junction matrix
+                        cursor.execute(
+                            "SELECT DISTINCT inscription_id FROM inscriptions_and_citations WHERE unique_citation_id = ?",
+                            (target_unique_citation_id,)
+                        )
+                        linked_ids = [row[0] for row in cursor.fetchall()]
+                        conn.close()
+                        
+                        if not linked_ids:
+                            st.info("No inscriptions are currently cataloged under that specific reference text.")
+                        else:
+                            # PIPELINE BINDING STEP: Inject IDs directly up into your global layout state keys!
+                            st.session_state.active_inscription_ids = linked_ids
+                            st.session_state.active_search_has_run = True
+                            
+                            # Clean up local expander states to clear the canvas for the main application refresh
+                            st.session_state.lit_matches = []
+                            st.session_state.lit_search_type = None
+                            
+                            st.rerun()
+                            
+                    except Exception as action_err:
+                        st.error(f"Failed sourcing linked junction table IDs: {action_err}")
+    elif st.session_state.lit_search_type is not None:
+        st.markdown("---")
+        st.info("No matching bibliographies or references found inside the database columns.")
+             
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
 tracked_fields = {
@@ -2913,6 +3064,7 @@ for widget_key, anchor_key in tracked_fields.items():
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
             break
+                 
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
