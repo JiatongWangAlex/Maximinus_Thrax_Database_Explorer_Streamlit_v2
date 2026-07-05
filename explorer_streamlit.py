@@ -1435,7 +1435,45 @@ def fetch_metadata_by_id(inscription_id):
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata: {e}"
 
-
+def fetch_metadata_by_object_id(object_id):
+    if not str(object_id).strip():
+        st.session_state.search_results = "Please enter a valid Object ID."
+        return
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Grab all companion inscription IDs that share this specific object_id
+        cursor.execute(
+            'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
+            (object_id.strip(),)
+        )
+        sibling_ids = [row[0] for row in cursor.fetchall()]
+        
+        if not sibling_ids:
+            st.session_state.active_inscription_ids = []
+            st.session_state["active_search_where_clauses"] = []
+            st.session_state["active_search_has_run"] = True
+            st.session_state.search_results = f"No inscriptions found for Object ID: {object_id}"
+        else:
+            # 2. Compile the dossier markdown text blocks sequentially for all matched IDs
+            compiled_blocks = []
+            for sib_id in sibling_ids:
+                cursor.execute(main_report_sql, (sib_id,))
+                report_rows = cursor.fetchall()
+                compiled_blocks.append("".join([row[0] for row in report_rows if row[0] is not None]))
+            
+            conn.close()
+            
+            # 3. Update active workspace IDs and store the full dossier text string
+            st.session_state.active_inscription_ids = sibling_ids
+            st.session_state["active_search_where_clauses"] = []
+            st.session_state["active_search_has_run"] = True
+            st.session_state.search_results = "\n\n---\n\n".join(compiled_blocks)
+            
+    except Exception as e:
+        st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
+             
 # INTERACTIVE MAP
 
 def generate_active_map():
@@ -1742,10 +1780,9 @@ def generate_active_map():
             
             if overlap_count > 1:
                 popup_html += "</div>"
+                     
+        # PASS A: PLOT TO DEFAULT VIEW LAYER 
 
-        # ---------------------------------------------------------
-        # PASS A: PLOT TO DEFAULT VIEW LAYER (ALWAYS BLUES)
-        # ---------------------------------------------------------
         if overlap_count > 1:
             size = 16
             d_border = "#20304c" if is_bucket_approximate else "#001140"
@@ -1766,9 +1803,8 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-        # ---------------------------------------------------------
-        # PASS B: PLOT TO ERASURE OVERLAY LAYER (ONLY IF ERASED > 0)
-        # ---------------------------------------------------------
+        # PASS B: PLOT TO ERASURE OVERLAY LAYER
+
         if erased_count > 0:
             # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
             if overlap_count > 1:
@@ -1904,30 +1940,18 @@ elif "collective_id" in query_params:
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
 
-# 4. Object ID hyperlink SETUP (Kept completely independent)
+# Object ID hyperlink SETUP
 elif "obj_id" in query_params:
     selected_obj_id = query_params["obj_id"]
+    
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
     st.session_state["active_search_where_clauses"] = []
     st.session_state["active_search_query_params"] = {}
     
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC;', (selected_obj_id,))
-        matched_ids = [row[0] for row in cursor.fetchall()]
-        st.session_state.active_inscription_ids = matched_ids
-        
-        if matched_ids:
-            st.session_state.search_results = f"#### Filtered by Object ID: **{selected_obj_id}**\nFound {len(matched_ids)} matching inscriptions on this object."
-        else:
-            st.session_state.search_results = f"No inscriptions found linked to Object ID: **{selected_obj_id}**."
-        conn.close()
-        st.query_params.clear()
-    except Exception as e:
-        st.error(f"Error querying object parameter filter: {e}")
+    fetch_metadata_by_object_id(selected_obj_id)
+    st.query_params.clear()
 
 
 # HEADER
