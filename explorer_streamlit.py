@@ -426,7 +426,7 @@ with col_s3:
     pname_input_var = st.text_input(
         "Lookup Person ID by Name:", 
         placeholder="e.g. Maximinus", 
-        key="person_lookup_input", 
+        key="person_lookup_input",  # 🔒 Original key intact for reset triggers
         on_change=reset_map_and_search_flags
     )
     if st.button("Find Person", use_container_width=True):
@@ -465,23 +465,45 @@ with col_s4:
                 st.session_state["inputs_are_dirty"] = False
                 
                 extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
+                
+                # 🚀 FIX: Connect the specific person's profile datasets to map/csv scopes
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (extracted_id,))
+                    st.session_state["active_inscription_ids"] = [row[0] for row in cursor.fetchall()]
+                    conn.close()
+                except Exception:
+                    st.session_state["active_inscription_ids"] = []
+
                 generate_person_report(extracted_id)
                 st.rerun()
     else:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
             placeholder="Select from dropdown menu/Search by ID", 
-            key="person_report_text_fallback",  # 🚀 ONLY change this fallback key to stop the duplicate crash
+            key="person_report_text_fallback",  
             on_change=reset_map_and_search_flags
         )
         
         if st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary"):
             if pid_input_var.strip():
-                st.session_state["last_searched_person"] = pid_input_var.strip()
+                target_id = pid_input_var.strip()
+                st.session_state["last_searched_person"] = target_id
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
                 st.session_state["inputs_are_dirty"] = False
-                generate_person_report(pid_input_var)
+                
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (target_id,))
+                    st.session_state["active_inscription_ids"] = [row[0] for row in cursor.fetchall()]
+                    conn.close()
+                except Exception:
+                    st.session_state["active_inscription_ids"] = []
+
+                generate_person_report(target_id)
                 st.rerun()
                      
 # ADVANCED SEARCH
