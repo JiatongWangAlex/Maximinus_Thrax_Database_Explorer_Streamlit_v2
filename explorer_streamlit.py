@@ -447,10 +447,17 @@ with col_s4:
         # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         
+        # Determine the default index dynamically based on our safe reset marker
+        default_idx = 0
+        if st.session_state.get("reset_person_dropdown"):
+            default_idx = 0
+            st.session_state["reset_person_dropdown"] = False  # Clear marker after consuming it
+        
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
-            key="person_select_input",
+            index=default_idx,  # 🚀 Safe dynamic reset vector
+            key="person_select_input",  # 🔒 Original stable key preserved for your selection-tracking engine!
             on_change=reset_map_and_search_flags
         )
         
@@ -477,11 +484,11 @@ with col_s4:
                     p_inscription_ids = []
                     st.session_state["active_inscription_ids"] = []
 
-                # 2. Reset the dropdown selection to default state
-                st.session_state["person_select_input"] = "PLEASE SELECT"
+                # 2. Trigger the dynamic reset index path safely without touching keys directly
+                st.session_state["reset_person_dropdown"] = True
                 st.session_state["inputs_are_dirty"] = False
 
-                # 🚀 FIX: Lock in mapping tracking state so the map engine registers the dataset profile
+                # 3. Lock in mapping tracking state so the map engine registers the dataset profile
                 st.session_state["last_mapped_search"] = {
                     "where": st.session_state.get("active_search_where_clauses", []),
                     "params": st.session_state.get("active_search_query_params", {}),
@@ -519,7 +526,7 @@ with col_s4:
 
                 st.session_state["inputs_are_dirty"] = False
 
-                # 🚀 FIX: Lock in mapping tracking state so the map engine registers the dataset profile
+                # 2. Lock in mapping tracking state so the map engine registers the dataset profile
                 st.session_state["last_mapped_search"] = {
                     "where": st.session_state.get("active_search_where_clauses", []),
                     "params": st.session_state.get("active_search_query_params", {}),
