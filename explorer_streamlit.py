@@ -2954,10 +2954,13 @@ if (
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
             else:
-                unmappable_place_ids = {133, 177, 178, 227, 244}
-                
                 conn = get_db_connection()
                 cursor = conn.cursor()
+                
+                # Fetch unmappable place IDs dynamically from the database
+                cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
+                unmappable_place_ids = {row[0] for row in cursor.fetchall()}
+                
                 placeholders = ",".join("?" for _ in active_ids)
                 
                 # Fetch data for ALL inscriptions in the current search scope
