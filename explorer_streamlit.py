@@ -1843,20 +1843,15 @@ def generate_active_map():
 # ----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
 
+# LINK SETUPS
 query_params = st.query_params
-
-url_id = None
-url_per_id = None
-selected_collective_id = None
-selected_obj_id = None
 
 should_scroll = any(k in query_params for k in ["ins_id", "person_id", "collective_id", "obj_id"])
 
-# Inscription hyperlink SETUP
+# 1. Inscription hyperlink SETUP
 if "ins_id" in query_params:
     url_id = query_params["ins_id"]
     if url_id.isdigit():
-        # Set all standard validation parameters for map tracking
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
@@ -1867,23 +1862,22 @@ if "ins_id" in query_params:
         st.query_params.clear() 
         fetch_metadata_by_id(url_id)
         
-# Person hyperlink SETUP
+# 2. Person hyperlink SETUP
 elif "person_id" in query_params:
     url_per_id = query_params["person_id"]
     if url_per_id.isdigit():
-        # Set validation parameters for the person mapping tracking
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_where_clauses"] = []
         st.session_state["active_search_query_params"] = {}
+        
         st.query_params.clear() 
         generate_person_report(url_per_id)
         
-# Institutions/Groups/Military Units hyperlink SETUP
+# 3. Institutions/Groups/Military Units hyperlink SETUP
 elif "collective_id" in query_params:
     selected_collective_id = query_params["collective_id"]
-    
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
@@ -1893,33 +1887,26 @@ elif "collective_id" in query_params:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
         cursor.execute("SELECT collective_name FROM collectives WHERE collective_id = ?;", (selected_collective_id,))
         coll_name_row = cursor.fetchone()
         collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
         
-        cursor.execute("""
-            SELECT inscription_id 
-            FROM inscriptions_and_collectives 
-            WHERE collective_id = ?;
-        """, (selected_collective_id,))
-        
+        cursor.execute("SELECT inscription_id FROM inscriptions_and_collectives WHERE collective_id = ?;", (selected_collective_id,))
         matched_ids = [row[0] for row in cursor.fetchall()]
         st.session_state.active_inscription_ids = matched_ids
+        
         if matched_ids:
             st.session_state.search_results = f"#### Filtered by Institution/Group: **{collective_title}**\nFound {len(matched_ids)} matching inscriptions."
         else:
             st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
-            
         conn.close()
         st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying collective group filter: {e}")
 
-# Object ID hyperlink SETUP
+# 4. Object ID hyperlink SETUP (Kept completely independent)
 elif "obj_id" in query_params:
     selected_obj_id = query_params["obj_id"]
-    
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
@@ -1929,15 +1916,7 @@ elif "obj_id" in query_params:
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Pull all companion inscriptions sharing this monument support structure
-        cursor.execute("""
-            SELECT inscription_id 
-            FROM "Max_Thrax" 
-            WHERE object_id = ? 
-            ORDER BY sequence_id ASC, inscription_id ASC;
-        """, (selected_obj_id,))
-        
+        cursor.execute('SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC;', (selected_obj_id,))
         matched_ids = [row[0] for row in cursor.fetchall()]
         st.session_state.active_inscription_ids = matched_ids
         
@@ -1945,38 +1924,10 @@ elif "obj_id" in query_params:
             st.session_state.search_results = f"#### Filtered by Object ID: **{selected_obj_id}**\nFound {len(matched_ids)} matching inscriptions on this object."
         else:
             st.session_state.search_results = f"No inscriptions found linked to Object ID: **{selected_obj_id}**."
-            
         conn.close()
         st.query_params.clear()
     except Exception as e:
         st.error(f"Error querying object parameter filter: {e}")
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT collective_name FROM collectives WHERE collective_id = ?;", (selected_collective_id,))
-        coll_name_row = cursor.fetchone()
-        collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
-        
-        cursor.execute("""
-            SELECT inscription_id 
-            FROM inscriptions_and_collectives 
-            WHERE collective_id = ?;
-        """, (selected_collective_id,))
-        
-        matched_ids = [row[0] for row in cursor.fetchall()]
-        st.session_state.active_inscription_ids = matched_ids
-        if matched_ids:
-            st.session_state.search_results = f"#### Filtered by Institution/Group: **{collective_title}**\nFound {len(matched_ids)} matching inscriptions."
-        else:
-            st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
-            
-        conn.close()
-        st.query_params.clear()
-    except Exception as e:
-        st.error(f"Error querying collective group filter: {e}")
-
 
 
 # HEADER
