@@ -262,71 +262,23 @@ tracked_fields = {
     "person_report_input": "last_searched_person"
 }
 
-# --- SAFE TOP-OF-SCRIPT AUTOMATIC WIPER ---
-# If a wipe cycle was requested by the previous pass, clear everything out safely before widgets render
-if st.session_state.get("clear_inputs_on_next_run", False):
-    st.session_state["clear_inputs_on_next_run"] = False
-    
-    for widget_key in tracked_fields.keys():
-        if widget_key in st.session_state:
-            if widget_key == "person_select_input":
-                st.session_state[widget_key] = "PLEASE SELECT"
-            else:
-                st.session_state[widget_key] = ""
-        # Reset keystroke loop tracking memory
-        prior_key = f"prior_{widget_key}"
-        if prior_key in st.session_state:
-            st.session_state[prior_key] = ""
+# --- UNCOMMITTED CHANGES DEADLOCK TRACKER ---
+# Track live typing modifications to lock out Map and CSV if unsubmitted
+any_input_has_unsearched_changes = False
 
-    # Clear advanced query panels completely out of state memory
-    advanced_keys = [
-        "f_text", "f_rel", "f_prov", "f_dist_tit", "f_sup_name", "f_in_con", 
-        "f_obj_mat", "f_status_tituli", "f_num_ins", "f_start_date", "f_end_date",
-        "f_vir_dist", "f_unit", "f_person_id", "f_inter_status", "f_interv_meth",
-        "f_interv_ext", "f_interv_tgt", "abbr_input", "author_input", "lit_dropdown_selection"
-    ]
-    for adv_key in advanced_keys:
-        if adv_key in st.session_state:
-            del st.session_state[adv_key]
-
-    # Synchronize tracking anchors so buttons remain perfectly unlocked
-    for widget_key, anchor_key in tracked_fields.items():
-        st.session_state[anchor_key] = st.session_state.get(widget_key, "")
-    st.session_state["inputs_are_dirty"] = False
-
-# --- CONTINUOUS LIVE KEYSTROKE LOCK DETECTOR ---
-if st.session_state.get("active_search_has_run", False):
-    # Search is alive; verify tracking anchors match active inputs to unlock buttons
-    for widget_key, anchor_key in tracked_fields.items():
-        if widget_key in st.session_state:
-            # If the field is currently empty because of a wipe, sync the anchor to match it
-            if st.session_state[widget_key] == "" or st.session_state[widget_key] == "PLEASE SELECT":
-                st.session_state[anchor_key] = st.session_state[widget_key]
-    st.session_state["inputs_are_dirty"] = False
-else:
-    # Standard protection loop. Slam the deadbolt if uncommitted letters are typed!
-    any_input_has_unsearched_changes = False
-    for widget_key, anchor_key in tracked_fields.items():
-        if widget_key in st.session_state:
-            current_value = str(st.session_state[widget_key]).strip()
-            last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+for widget_key, anchor_key in tracked_fields.items():
+    if widget_key in st.session_state:
+        current_value = str(st.session_state[widget_key]).strip()
+        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+        
+        if current_value == "PLEASE SELECT": current_value = ""
+        if last_executed_value == "PLEASE SELECT": last_executed_value = ""
             
-            if current_value == "PLEASE SELECT": current_value = ""
-            if last_executed_value == "PLEASE SELECT": last_executed_value = ""
-                
-            if current_value != last_executed_value:
-                any_input_has_unsearched_changes = True
-            
-            if widget_key != "person_select_input":
-                prior_rerun_key = f"prior_{widget_key}"
-                prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
-                if prior_value == "PLEASE SELECT": prior_value = ""
-                    
-                if current_value != prior_value:
-                    st.session_state["person_select_input"] = "PLEASE SELECT"
-                st.session_state[prior_rerun_key] = current_value
+        if current_value != last_executed_value:
+            any_input_has_unsearched_changes = True
 
-    st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
@@ -1257,8 +1209,20 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     )
     st.session_state["skip_scroll"] = True
     
-    # 🌟 Flags the app to clear out the input widgets on the immediate next action pass safely!
-    st.session_state["clear_inputs_on_next_run"] = True
+    # 🌟 NOW WE CLEAN UP: Instantly clear out text boxes for the next interaction pass!
+    for widget_key in tracked_fields.keys():
+        if widget_key in st.session_state:
+            if widget_key == "person_select_input":
+                st.session_state[widget_key] = "PLEASE SELECT"
+            else:
+                st.session_state[widget_key] = ""
+                
+    # Sync anchors to the cleared empty strings so the tracker reads perfectly balanced
+    for widget_key, anchor_key in tracked_fields.items():
+        st.session_state[anchor_key] = st.session_state.get(widget_key, "")
+        
+    st.session_state["inputs_are_dirty"] = False
+
 
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
