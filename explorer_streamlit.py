@@ -2507,7 +2507,7 @@ st.markdown(
 # Welcome Text & Instructions
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
-## How to Use
+## How to Use | DEVELOPMENT NOTE: THIS INSTRUCTION MANUAL REFLECTS AN EARLIER VERSION OF THE INTERFACE; WE ARE REWRITING IT. PLEASE USE YOUR INTUITION FOR NOW
 
 ### Keyword Search
 * Enter a keyword or phrase in the top bar and press the **Search Button** (note: pressing Enter alone does not work). 
