@@ -3121,22 +3121,88 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 
 #SEARCH RESULTS
 st.markdown("### Search Results")
+
 # Check if a search has been executed and results exist
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
-    # Non-intrusive List View expander positioned right before the heavy lightbox views
-    with st.expander("Results List View)", expanded=False):
-        st.markdown(
-            """
-            ### THIS IS THE LIST VIEW
+    # Extract the active IDs found by your search functions
+    matched_ids = st.session_state.active_inscription_ids
+    
+    try:
+        # Open a completely fresh connection to keep it isolated
+        conn_overview = get_db_connection()
+        cursor_overview = conn_overview.cursor()
+        
+        # Build dynamic placeholders for safety
+        placeholders = ",".join(["?"] * len(matched_ids))
+        
+        overview_sql = f"""
+        SELECT 
+            mt.inscription_id,
+            mt.inscription_ref,
+            COALESCE(mt.line_ref, '') AS line_ref,
+            COALESCE(pr.province_name, 'N/A') AS province_name,
+            COALESCE(dt.distributio_titulorum, 'N/A') AS type_of_inscription,
+            CASE 
+                -- 1. Erasure Relevant to Maximinus Thrax
+                WHEN mt.relevance_index = 1 
+                     AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
+                     AND mt.inscription_id NOT IN (SELECT ip.inscription_id FROM "inscriptions_and_persons" ip WHERE ip.person_id = 50)
+                THEN 'Erasure relevant to Maximinus Thrax'
+                
+                -- 2. Erasure not relevant to Maximinus Thrax (Condition A & B)
+                WHEN (mt.relevance_index = 1 
+                      AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
+                      AND mt.inscription_id IN (SELECT ip.inscription_id FROM "inscriptions_and_persons" ip WHERE ip.person_id = 50))
+                     OR 
+                     (mt.relevance_index = 0 
+                      AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2))
+                THEN 'Erasure not relevant to Maximinus Thrax'
+                
+                -- 3. No Erasure
+                ELSE 'No Erasure'
+            END AS erasure_status
+        FROM "Max_Thrax" mt
+        LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
+        LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
+        WHERE mt.inscription_id IN ({placeholders})
+        ORDER BY mt.inscription_id ASC;
+        """
+        
+        cursor_overview.execute(overview_sql, [int(x) for x in matched_ids])
+        overview_rows = cursor_overview.fetchall()
+        
+        # Close connection immediately to stay completely isolated
+        conn_overview.close()
+        
+        # Non-intrusive List View expander positioned right before the heavy lightbox views
+        with st.expander("Search Results List View", expanded=False):
+            st.markdown(f"**Found {len(overview_rows)} records matching your search filters:**")
             
-            **HERE IS WHAT IT WILL LOOK LIKE:**
-            
-            * **Inscription ID:** [04900996](?ins_id=04900996) | **Quick Reference:** EDCS-04900996 line 1 | **Province:** Roma | *Erasure relevant to Maximinus Thrax*
-            * **Inscription ID:** [04901002](?ins_id=04901002) | **Quick Reference:** EDCS-04901002 | **Province:** Africa Proconsularis | *No Erasure Relevant to Maximinus Thrax*
-            * **Inscription ID:** [04901054](?ins_id=04901054) | **Quick Reference:** EDCS-04901054 lines 2-3 | **Province:** Numidia | *Erasure not relevant to Maximinus Thrax*
-            """
-        )
+            # Internal fixed-height container to cleanly scroll long result lists without page distortion
+            with st.container(height=300, border=False):
+                for row in overview_rows:
+                    ins_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
+                    
+                    # Append line reference elegantly if it exists
+                    ref_line = f" {line_ref}" if line_ref else ""
+                    
+                    # Dynamic App URL linking back to your Streamlit production domain
+                    app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
+                    
+                    # Formatted line item using your requested link structural rules
+                    st.markdown(
+                        f"* [Inscription ID: {ins_id}]({app_url}) | "
+                        f"**Quick Reference:** {ins_ref}{ref_line} | "
+                        f"**Province:** {prov_name} | "
+                        f"**Type of Inscription:** {type_of_inscription} | "
+                        f"*{erasure_status}*"
+                    )
+                
+    except Exception as overview_error:
+        # Fallback gracefully so a listing failure never breaks the underlying UI engine
+        st.warning(f"Could not render the List View container: {overview_error}")
+
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
