@@ -1970,7 +1970,20 @@ elif "obj_id" in query_params:
     st.query_params.clear()
 
 
-# HEADER
+# INCREASE FONT SIZE IN ACCORDION HEADERS    
+st.markdown(
+    """
+    <style>
+    div[data-testid="stExpander"] details summary p {
+        font-size: 20px !important;
+        font-weight: 600 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# SLIM DOWN SITE HEADER
 
 st.markdown(
     """
