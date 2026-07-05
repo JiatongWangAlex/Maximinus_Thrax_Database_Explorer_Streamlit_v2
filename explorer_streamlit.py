@@ -563,14 +563,15 @@ if "obj_id" in query_params:
         if not sibling_ids:
             st.error(f"No inscriptions found for Object ID: {selected_obj_id}")
         else:
-            st.title(f"Object ID: {selected_obj_id})")
+            st.title(f"Object ID: {selected_obj_id}")
             st.markdown(f"**{len(sibling_ids)}** inscriptions on this object.")
             st.write("---")
             
             for idx, sib_id in enumerate(sibling_ids, 1):
-                st.subheader(f" Result #{idx} — Inscription ID: {sib_id}")
+                st.subheader(f"Result #{idx} — Inscription ID: {sib_id}")
                 
-                cursor.execute(main_report_sql, (sib_id, sib_id, sib_id, sib_id, sib_id, sib_id))
+                # 🚀 FIXED: Pass only one parameter (sib_id,) to match the CTE template placeholder
+                cursor.execute(main_report_sql, (sib_id,))
                 report_rows = cursor.fetchall()
                 compiled_markdown = "".join([row[0] for row in report_rows if row[0]])
                 st.markdown(compiled_markdown)
