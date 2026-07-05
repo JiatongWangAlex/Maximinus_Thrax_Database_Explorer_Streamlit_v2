@@ -471,7 +471,6 @@ with col_s2:
             st.session_state["inputs_are_dirty"] = False
             st.session_state.active_inscription_ids = [int(id_input_var.strip())]
             fetch_metadata_by_id(id_input_var)
-            commit_search_and_wipe_inputs()
             st.rerun()
 
 with col_s3:
