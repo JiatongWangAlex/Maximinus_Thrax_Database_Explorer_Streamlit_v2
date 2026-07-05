@@ -2118,7 +2118,7 @@ with col_s4:
                 
 # ADVANCED SEARCH
 
-with st.expander("Expand/Collapse Advanced Search", expanded=False):
+with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
 
     f_text = st.text_input(
