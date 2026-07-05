@@ -2359,7 +2359,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     # Hardcoded Rule: Map ILS and Dessau interchangeably
                     cleaned_upper = raw_input.upper().replace('.', '').replace(',', '')
                     
-                    if cleaned_upper == "ILS" or cleaned_upper == "DESSAU":
+                    if cleaned_upper == "ILS" or cleaned_upper == "D":
                         # If they type either one, dynamically scan for BOTH terms across fields
                         query = """
                             SELECT DISTINCT unique_citation_id, expanded_citation 
