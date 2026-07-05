@@ -2356,19 +2356,39 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    query = """
-                        SELECT DISTINCT unique_citation_id, expanded_citation 
-                        FROM unique_citations 
-                        WHERE abbreviated_citation LIKE ? 
-                           OR bibliography_id IN (
-                               SELECT bibliography_id FROM master_citations_raw WHERE bibliography_name LIKE ?
-                           )
-                        ORDER BY expanded_citation ASC;
-                    """
+                    # Hardcoded Rule: Map ILS and Dessau interchangeably
+                    cleaned_upper = raw_input.upper().replace('.', '').replace(',', '')
                     
-
-                    search_term = f"%{raw_input}%"
-                    cursor.execute(query, (search_term, search_term))
+                    if cleaned_upper == "ILS" or cleaned_upper == "DESSAU":
+                        # If they type either one, dynamically scan for BOTH terms across fields
+                        query = """
+                            SELECT DISTINCT unique_citation_id, expanded_citation 
+                            FROM unique_citations 
+                            WHERE (abbreviated_citation LIKE ? OR abbreviated_citation LIKE ?)
+                               OR bibliography_id IN (
+                                   SELECT bibliography_id 
+                                   FROM master_citations_raw 
+                                   WHERE bibliography_name LIKE ? OR bibliography_name LIKE ?
+                               )
+                            ORDER BY expanded_citation ASC;
+                        """
+                        w1, w2 = "%ILS%", "%Dessau%"
+                        params = (w1, w2, w1, w2)
+                    else:
+                        # Standard single-term search behavior
+                        query = """
+                            SELECT DISTINCT unique_citation_id, expanded_citation 
+                            FROM unique_citations 
+                            WHERE abbreviated_citation LIKE ? 
+                               OR bibliography_id IN (
+                                   SELECT bibliography_id FROM master_citations_raw WHERE bibliography_name LIKE ?
+                               )
+                            ORDER BY expanded_citation ASC;
+                        """
+                        search_term = f"%{raw_input}%"
+                        params = (search_term, search_term)
+                    
+                    cursor.execute(query, params)
                     results = cursor.fetchall()
                     
                     st.session_state.lit_matches = results
@@ -2376,7 +2396,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn.close()
                 except Exception as e:
                     st.error(f"Database query error: {e}")
-
     with btn_col2:
         if st.button("Show Matching Bibliography Records", key="lit_btn_right"):
             raw_input = author_input.strip()
