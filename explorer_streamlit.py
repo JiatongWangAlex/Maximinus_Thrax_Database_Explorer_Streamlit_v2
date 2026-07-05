@@ -434,106 +434,44 @@ with col_s3:
             st.session_state["last_searched_lookup"] = pname_input_var.strip()
             lookup_person_options(pname_input_var)
             st.rerun()
-
-    # ONLY show the hint if a search ran AND the current text input matches that exact search term
-    if st.session_state.get("last_searched_lookup") and pname_input_var.strip() == st.session_state["last_searched_lookup"]:
-        if "person_matches" in st.session_state and not st.session_state.person_matches:
-            st.error("No individual in the database matched your search. Try a different individual or a different spelling.")
-        elif "person_matches" in st.session_state and st.session_state.person_matches:
-            st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
                  
 with col_s4:
     if st.session_state.get("person_matches"):
         # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         
-        # Determine the default index dynamically based on our safe reset marker
-        default_idx = 0
-        if st.session_state.get("reset_person_dropdown"):
-            default_idx = 0
-            st.session_state["reset_person_dropdown"] = False  # Clear marker after consuming it
-        
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
-            index=default_idx,  # 🚀 Safe dynamic reset vector
-            key="person_select_input",  # 🔒 Original stable key preserved for your selection-tracking engine!
+            key="person_select_input",
             on_change=reset_map_and_search_flags
         )
         
         if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
-            st.session_state["last_searched_lookup"] = ""
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
                 st.session_state["last_searched_person"] = selected_option
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
-                
-                extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
-                
-                # 1. Fetch the exact IDs for the map/CSV scope
-                try:
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (extracted_id,))
-                    p_inscription_ids = [row[0] for row in cursor.fetchall()]
-                    st.session_state["active_inscription_ids"] = p_inscription_ids
-                    conn.close()
-                except Exception:
-                    p_inscription_ids = []
-                    st.session_state["active_inscription_ids"] = []
-
-                # 2. Trigger the dynamic reset index path safely without touching keys directly
-                st.session_state["reset_person_dropdown"] = True
                 st.session_state["inputs_are_dirty"] = False
-
-                # 3. Lock in mapping tracking state so the map engine registers the dataset profile
-                st.session_state["last_mapped_search"] = {
-                    "where": st.session_state.get("active_search_where_clauses", []),
-                    "params": st.session_state.get("active_search_query_params", {}),
-                    "ids_count": len(p_inscription_ids)
-                }
-
+                extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
                 generate_person_report(extracted_id)
                 st.rerun()
     else:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
             placeholder="Select from dropdown menu/Search by ID", 
-            key="person_report_text_fallback",  
+            key="person_report_input",
             on_change=reset_map_and_search_flags
         )
         
         if st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary"):
             if pid_input_var.strip():
-                target_id = pid_input_var.strip()
-                st.session_state["last_searched_person"] = target_id
-                st.session_state["csv_mode"] = "ids"
+                st.session_state["last_searched_person"] = pid_input_var.strip()
                 st.session_state["active_search_has_run"] = True
-                
-                # 1. Fetch the exact IDs for the map/CSV scope
-                try:
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT inscription_id FROM Max_Thrax WHERE person_id = ?;', (target_id,))
-                    p_inscription_ids = [row[0] for row in cursor.fetchall()]
-                    st.session_state["active_inscription_ids"] = p_inscription_ids
-                    conn.close()
-                except Exception:
-                    p_inscription_ids = []
-                    st.session_state["active_inscription_ids"] = []
-
                 st.session_state["inputs_are_dirty"] = False
-
-                # 2. Lock in mapping tracking state so the map engine registers the dataset profile
-                st.session_state["last_mapped_search"] = {
-                    "where": st.session_state.get("active_search_where_clauses", []),
-                    "params": st.session_state.get("active_search_query_params", {}),
-                    "ids_count": len(p_inscription_ids)
-                }
-
-                generate_person_report(target_id)
+                generate_person_report(pid_input_var.strip())
                 st.rerun()
                      
 # ADVANCED SEARCH
