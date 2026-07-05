@@ -86,6 +86,45 @@ optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json"
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
 
+# --- PLACE 1: DETECT OBJECT ID URL PARAMS TO RENDER MULTI-REPORT VIEW ---
+query_params = st.query_params
+
+if "obj_id" in query_params:
+    selected_obj_id = query_params["obj_id"]
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Grab all inscription IDs that share this specific object_id
+        cursor.execute(
+            'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
+            (selected_obj_id,)
+        )
+        sibling_ids = [row[0] for row in cursor.fetchall()]
+        
+        if not sibling_ids:
+            st.error(f"No inscriptions found for Object ID: {selected_obj_id}")
+        else:
+            st.title(f"Object ID: {selected_obj_id})")
+            st.markdown(f"**{len(sibling_ids)}** inscriptions on this object.")
+            st.write("---")
+            
+            for idx, sib_id in enumerate(sibling_ids, 1):
+                st.subheader(f" Result #{idx} — Inscription ID: {sib_id}")
+                
+                cursor.execute(main_report_sql, (sib_id, sib_id, sib_id, sib_id, sib_id, sib_id))
+                report_rows = cursor.fetchall()
+                compiled_markdown = "".join([row[0] for row in report_rows if row[0]])
+                st.markdown(compiled_markdown)
+                st.write("---")
+                
+        conn.close()
+    except Exception as e:
+        st.error(f"Error gathering object data: {e}")
+        
+    st.stop()
+
 #SQL QUERY FOR MAIN REPORT
 
 main_report_sql = """
@@ -282,6 +321,9 @@ main_report_sql = """
             UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
+
+
+
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
     st.session_state["active_search_has_run"] = False
@@ -446,7 +488,7 @@ def generate_bulk_search_sql():
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
-    return f"""-- Copy and execute this query directly in your database platform to verify results
+    return f"""
 SELECT DISTINCT
     mt.inscription_id AS [Inscription ID],
     mt.inscription_ref AS [Quick Citation],
@@ -2811,7 +2853,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 #SEARCH RESULTS
 st.markdown("### Search Results")
 
-# Check if a search has been executed and results exist
+# RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
     # Extract the active IDs found by your search functions
@@ -2892,6 +2934,8 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         # Fallback gracefully so a listing failure never breaks the underlying UI engine
         st.warning(f"Could not render the List View container: {overview_error}")
 
+
+# MAIN RESULTS VIEW
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
