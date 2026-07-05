@@ -3121,6 +3121,22 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 
 #SEARCH RESULTS
 st.markdown("### Search Results")
+# Check if a search has been executed and results exist
+if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
+    
+    # Non-intrusive List View expander positioned right before the heavy lightbox views
+    with st.expander("Results List View)", expanded=False):
+        st.markdown(
+            """
+            ### THIS IS THE LIST VIEW
+            
+            **HERE IS WHAT IT WILL LOOK LIKE:**
+            
+            * **Inscription ID:** [04900996](?ins_id=04900996) | **Quick Reference:** EDCS-04900996 line 1 | **Province:** Roma | *Erasure relevant to Maximinus Thrax*
+            * **Inscription ID:** [04901002](?ins_id=04901002) | **Quick Reference:** EDCS-04901002 | **Province:** Africa Proconsularis | *No Erasure Relevant to Maximinus Thrax*
+            * **Inscription ID:** [04901054](?ins_id=04901054) | **Quick Reference:** EDCS-04901054 lines 2-3 | **Province:** Numidia | *Erasure not relevant to Maximinus Thrax*
+            """
+        )
 with st.container(height=520, border=True):
     raw_results = st.session_state.search_results
     clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
