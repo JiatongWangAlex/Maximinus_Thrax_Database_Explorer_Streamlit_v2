@@ -2943,102 +2943,115 @@ if (
             key="btn_global_results_csv_export"
         )
         
-    with col_exp_mid:
+with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
             # Reset previous notice parameters
             st.session_state["unmappable_html_notice"] = None
             
+            # =================================================================
+            # DIAGNOSTIC MONITOR (Temporary check to pinpoint why it skips)
+            # =================================================================
+            st.info(f"⚙️ Diagnostic: active_ids count = {len(active_ids)} | Current list = {active_ids}")
+            # =================================================================
+            
             if not active_ids:
+                st.warning("⚙️ Diagnostic: Hit the 'not active_ids' branch. Setting zero_search_results.")
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
             else:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                
-                # Fetch unmappable place IDs dynamically from the database
-                cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
-                unmappable_place_ids = {row[0] for row in cursor.fetchall()}
-                
-                placeholders = ",".join("?" for _ in active_ids)
-                
-                # Fetch data for ALL inscriptions in the current search scope
-                query = f"""
-                    SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
-                    FROM Max_Thrax m
-                    LEFT JOIN provinces p ON m.province_id = p.province_id
-                    WHERE m.inscription_id IN ({placeholders})
-                """
-                cursor.execute(query, tuple(active_ids))
-                all_rows = cursor.fetchall()
-                conn.close()
-                
-                # Separate rows using precise mapping keys
-                # FIX: Change r[2] to r[3] because place_id shifted to index 3 in the SELECT query
-                unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
-                valid_rows_count = len(all_rows) - len(unmappable_rows)
-                
-                # Scenario A Check: Are 100% of rows unmappable?
-                if len(all_rows) > 0 and valid_rows_count == 0:
-                    st.session_state["map_status"] = "unmappable_coordinates"
-                    st.session_state["trigger_map_html"] = None
-                    st.session_state["last_mapped_search"] = {
-                        "where": st.session_state.get("active_search_where_clauses", []),
-                        "params": st.session_state.get("active_search_query_params", {}),
-                        "ids_count": len(active_ids)
-                    }
-                else:
-                    st.session_state["map_status"] = "success"
-
-                    # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
-                    if len(unmappable_rows) > 0:
-                        province_groups = {}
-                        for r in unmappable_rows:
-                            ins_id, ins_ref, l_ref, place_id, p_name = r
-                            p_name = p_name if p_name else "Unknown Province"
-                            if p_name not in province_groups:
-                                province_groups[p_name] = []
-                            province_groups[p_name].append((ins_id, ins_ref, l_ref))
-                        
-                        html_alerts = []
-                        for p_name, items in province_groups.items():
-                            count_x = len(items)
-                            links = []
-                            for f_id, ref, l_ref in items:
-                                report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
-                                display_text = f"{ref} {l_ref}" if l_ref else ref
-                                links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{display_text}</a>")
-                            
-                            links_str = ", ".join(links)
-                            
-                            alert_box = f"""
-                            <div style="
-                                background-color: #fffbeb; 
-                                border-left: 4px solid #d97706; 
-                                padding: 12px 15px; 
-                                border-radius: 4px; 
-                                margin-bottom: 10px;
-                                font-family: 'Source Sans Pro', sans-serif;
-                                font-size: 13px;
-                                color: #78350f;
-                            ">
-                                <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is/are not shown.<br>
-                                The following inscriptions are in {p_name} but are not linked to modern coordinates: {links_str}
-                            </div>
-                            """
-                            html_alerts.append(alert_box)
-                        
-                        st.session_state["unmappable_html_notice"] = "".join(html_alerts)
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
                     
-                    # Lock in tracking parameters and call map renderer
-                    st.session_state["last_mapped_search"] = {
-                        "where": st.session_state.get("active_search_where_clauses", []),
-                        "params": st.session_state.get("active_search_query_params", {}),
-                        "ids_count": len(active_ids)
-                    }
-                    generate_active_map()
-            
+                    # 1. Fetch unmappable place IDs dynamically from the database
+                    cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
+                    unmappable_place_ids = {row[0] for row in cursor.fetchall()}
+                    
+                    st.info(f"⚙️ Diagnostic: Dynamic unmappable IDs built successfully: {unmappable_place_ids}")
+                    
+                    # 2. Build placeholders for primary search scope
+                    placeholders = ",".join("?" for _ in active_ids)
+                    
+                    # Fetch data for ALL inscriptions in the current search scope
+                    query = f"""
+                        SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
+                        FROM Max_Thrax m
+                        LEFT JOIN provinces p ON m.province_id = p.province_id
+                        WHERE m.inscription_id IN ({placeholders})
+                    """
+                    cursor.execute(query, tuple(active_ids))
+                    all_rows = cursor.fetchall()
+                    conn.close()
+                    
+                    # Separate rows using precise mapping keys
+                    unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
+                    valid_rows_count = len(all_rows) - len(unmappable_rows)
+                    
+                    # Scenario A Check: Are 100% of rows unmappable?
+                    if len(all_rows) > 0 and valid_rows_count == 0:
+                        st.session_state["map_status"] = "unmappable_coordinates"
+                        st.session_state["trigger_map_html"] = None
+                        st.session_state["last_mapped_search"] = {
+                            "where": st.session_state.get("active_search_where_clauses", []),
+                            "params": st.session_state.get("active_search_query_params", {}),
+                            "ids_count": len(active_ids)
+                        }
+                    else:
+                        st.session_state["map_status"] = "success"
+
+                        # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
+                        if len(unmappable_rows) > 0:
+                            province_groups = {}
+                            for r in unmappable_rows:
+                                ins_id, ins_ref, l_ref, place_id, p_name = r
+                                p_name = p_name if p_name else "Unknown Province"
+                                if p_name not in province_groups:
+                                    province_groups[p_name] = []
+                                province_groups[p_name].append((ins_id, ins_ref, l_ref))
+                            
+                            html_alerts = []
+                            for p_name, items in province_groups.items():
+                                count_x = len(items)
+                                links = []
+                                for f_id, ref, l_ref in items:
+                                    report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
+                                    display_text = f"{ref} {l_ref}" if l_ref else ref
+                                    links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{display_text}</a>")
+                                
+                                links_str = ", ".join(links)
+                                
+                                alert_box = f"""
+                                <div style="
+                                    background-color: #fffbeb; 
+                                    border-left: 4px solid #d97706; 
+                                    padding: 12px 15px; 
+                                    border-radius: 4px; 
+                                    margin-bottom: 10px;
+                                    font-family: 'Source Sans Pro', sans-serif;
+                                    font-size: 13px;
+                                    color: #78350f;
+                                ">
+                                    <strong>Warning:</strong> {count_x} inscription(s) in the province of <em>{p_name}</em> is/are not shown.<br>
+                                    The following inscriptions are in {p_name} but are not linked to modern coordinates: {links_str}
+                                </div>
+                                """
+                                html_alerts.append(alert_box)
+                            
+                            st.session_state["unmappable_html_notice"] = "".join(html_alerts)
+                        
+                        # Lock in tracking parameters and call map renderer
+                        st.session_state["last_mapped_search"] = {
+                            "where": st.session_state.get("active_search_where_clauses", []),
+                            "params": st.session_state.get("active_search_query_params", {}),
+                            "ids_count": len(active_ids)
+                        }
+                        generate_active_map()
+                
+                except Exception as db_error:
+                    st.error(f"💥 Database or syntax crash detected: {db_error}")
+        
             st.rerun()
 else:
     with col_exp_left:
