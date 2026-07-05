@@ -2853,6 +2853,8 @@ if (
                 except Exception as e:
                     st.error(f"Database setup error inside button: {e}")
             
+            # 🎯 FORCE MAP EXPANDER TO BE VISIBLE ON NEXT RUN
+            st.session_state["map_expander_open"] = True
             st.session_state["skip_scroll"] = True
             st.rerun()
 else:
@@ -2878,12 +2880,14 @@ if st.session_state.get("last_mapped_search") != current_search_fingerprint:
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
     st.session_state["unmappable_html_notice"] = None
-    
-    
     st.session_state["skip_scroll"] = True
 
-# MAP VIEWER (Always Visible)
-with st.expander("Expand/Collapse Interactive Map", expanded=True):
+# --- DYNAMIC EXPANDER CONTROL ENGINE ---
+# Check if a custom command forced the state, fallback to True (open) if uninitialized
+is_map_open = st.session_state.get("map_expander_open", True)
+
+# MAP VIEWER (Controlled Dynamically)
+with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open):
     if st.session_state.get("map_status") == "zero_search_results":
         st.warning("No inscription matched your search")
         
@@ -2920,7 +2924,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         
     else:
         st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
-
 
 # SEARCH RESULTS
 st.markdown("### Search Results")
