@@ -1,7 +1,7 @@
 """
 Jiatong Wang | SAPIENZA BA THESIS DATABASE GUI BACKEND
 --------------------------------------------------------------------
-Purpose: This file contains the constants and functions called in the GUI which allows people browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
+Purpose: This file contains the constants and functions called in the GUI; they query a relational database in SQLite. 
         
 NOTES
 --------------------------------------------------------------------
