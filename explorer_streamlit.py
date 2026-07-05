@@ -1,5 +1,5 @@
 """
-THESIS DATABASE GUI
+SAPIENZA BA THESIS DATABASE GUI
 --------------------------------------------------------------------
 Implemented By: Jiatong Wang
 Purpose: This GUI allows anyone to browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
