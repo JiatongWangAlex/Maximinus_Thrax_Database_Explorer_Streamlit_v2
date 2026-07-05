@@ -456,6 +456,7 @@ with col_s4:
         
         if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
             # Check if they left it on the placeholder text
+            st.session_state["last_searched_lookup"] = ""
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
