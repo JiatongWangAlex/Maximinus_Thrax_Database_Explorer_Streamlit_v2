@@ -2019,17 +2019,31 @@ for widget_key, anchor_key in tracked_fields.items():
         current_value = str(st.session_state[widget_key]).strip()
         last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
         
+        # --- NORMALIZE PLACEHOLDERS ---
+        if current_value == "PLEASE SELECT":
+            current_value = ""
+        if last_executed_value == "PLEASE SELECT":
+            last_executed_value = ""
+        # -------------------------------
+        
+        # 1. Standard dirty check for button states
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
-
+        
+        # 2. Keystroke detection (ignore the dropdown itself from triggering resets)
         if widget_key != "person_select_input":
             prior_rerun_key = f"prior_{widget_key}"
             prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
             
+            if prior_value == "PLEASE SELECT":
+                prior_value = ""
+                
             if current_value != prior_value:
+                # A fresh keystroke happened! Reset dropdown safely
                 st.session_state["person_select_input"] = "PLEASE SELECT"
             
             st.session_state[prior_rerun_key] = current_value
+                 
                  
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
