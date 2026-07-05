@@ -386,7 +386,8 @@ with col_text2:
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
-        st.session_state["inputs_are_dirty"] = False  # Clear the dirty flag!
+        st.session_state["inputs_are_dirty"] = False
+        st.session_state["skip_scroll"] = False
         run_standard_search(text_input_var)
         st.rerun()
         
@@ -416,6 +417,7 @@ with col_s1:
             st.session_state["active_search_has_run"] = True
             st.session_state["trigger_map_html"] = None
             st.session_state["inputs_are_dirty"] = False
+            st.session_state["skip_scroll"] = False
             run_ref_search(ref_input_var)
             st.rerun()
 
@@ -474,7 +476,7 @@ with col_s4:
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
                 st.session_state["show_lookup_hint"] = False
-                
+                st.session_state["skip_scroll"] = False
                 st.session_state["last_searched_person"] = selected_option
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
@@ -640,6 +642,7 @@ with st.expander("Advanced Search", expanded=False):
         if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
             st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
+            st.session_state["skip_scroll"] = False
             st.session_state["trigger_map_html"] = None  # Instantly wipe previous global map
             
             form_payload = {
@@ -896,7 +899,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             
             if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
                 target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
-                
+                st.session_state["skip_scroll"] = False
                 # Backup regex parse safety strategy if map drops out
                 if target_unique_citation_id is None and "Ref ID: " in selected_citation:
                     try:
