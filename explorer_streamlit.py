@@ -105,7 +105,25 @@ if streamlit_cloud_path not in sys.path:
 
 from backend_logic import *
 
-
+def commit_search_and_wipe_inputs():
+    """Wipes text fields instantly after click, keeping only active results and mapping IDs."""
+    # List of all user-facing search fields
+    inputs_to_clear = [
+        "main_text_input", "edcs_report_input", "id_report_input", 
+        "person_lookup_input", "person_report_input"
+    ]
+    for field in inputs_to_clear:
+        if field in st.session_state:
+            st.session_state[field] = ""
+            
+    if "person_select_input" in st.session_state:
+        st.session_state["person_select_input"] = "PLEASE SELECT"
+        
+    # Force your background lock anchors to match empty strings so buttons remain unlocked
+    for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
+        st.session_state[anchor] = ""
+        
+    st.session_state["inputs_are_dirty"] = False
 
 def teleport_to_results():
     st.components.v1.html(
@@ -252,55 +270,28 @@ elif "obj_id" in query_params:
 
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
-# --- ULTIMATE FACTORY-RESET CONTROLLER ---
-# If a search just ran, capture the query results, completely nuke the session state, and restore ONLY the map data and scroll commands.
-if st.session_state.get("active_search_has_run", False) and not st.session_state.get("inputs_are_dirty", False):
-    
-    # 1. Protect the exact variables required to display your map, results table, and download modes
-    saved_clean_slate = {
-        "active_inscription_ids": st.session_state.get("active_inscription_ids"),
-        "search_results": st.session_state.get("search_results"),
-        "csv_mode": st.session_state.get("csv_mode"),
-        "active_search_has_run": True,
-        "skip_scroll": False,  # Resets scroll safety to False so scrolling fires on every single search pass!
-    }
-    
-    # 2. NUKE EVERYTHING. This flushes every textbox, dropdown, and filter configuration back to pristine factory blanks.
-    st.session_state.clear()
-    
-    # 3. Restore the protected search data back into active memory
-    for state_key, state_value in saved_clean_slate.items():
-        st.session_state[state_key] = state_value
+tracked_fields = {
+    "main_text_input": "last_searched_text",
+    "edcs_report_input": "last_searched_edcs",
+    "id_report_input": "last_searched_id",
+    "person_lookup_input": "last_searched_lookup",
+    "person_select_input": "last_searched_person",
+    "person_report_input": "last_searched_person"
+}
+
+any_input_has_unsearched_changes = False
+for widget_key, anchor_key in tracked_fields.items():
+    if widget_key in st.session_state:
+        current_value = str(st.session_state[widget_key]).strip()
+        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
         
-    # Initialize empty background anchors so the app doesn't think the fresh blank fields are dirty
-    for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
-        st.session_state[anchor] = ""
-    st.session_state["inputs_are_dirty"] = False
-
-else:
-    # 4. Standard background keystroke checker. If they type uncommitted letters, slam the Map/CSV lock!
-    tracked_fields = {
-        "main_text_input": "last_searched_text",
-        "edcs_report_input": "last_searched_edcs",
-        "id_report_input": "last_searched_id",
-        "person_lookup_input": "last_searched_lookup",
-        "person_select_input": "last_searched_person",
-        "person_report_input": "last_searched_person"
-    }
-    
-    any_input_has_unsearched_changes = False
-    for widget_key, anchor_key in tracked_fields.items():
-        if widget_key in st.session_state:
-            current_value = str(st.session_state[widget_key]).strip()
-            last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+        if current_value == "PLEASE SELECT": current_value = ""
+        if last_executed_value == "PLEASE SELECT": last_executed_value = ""
             
-            if current_value == "PLEASE SELECT": current_value = ""
-            if last_executed_value == "PLEASE SELECT": last_executed_value = ""
-                
-            if current_value != last_executed_value:
-                any_input_has_unsearched_changes = True
+        if current_value != last_executed_value:
+            any_input_has_unsearched_changes = True
 
-    st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
 
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
@@ -422,7 +413,7 @@ with col_text1:
     )
 
 with col_text2:
-    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
+    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         st.session_state["last_searched_text"] = text_input_var.strip()
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
@@ -451,7 +442,7 @@ with col_s1:
         key="edcs_report_input", 
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         if ref_input_var.strip():
             st.session_state["last_searched_edcs"] = ref_input_var.strip()
             st.session_state["csv_mode"] = "ids"
@@ -469,7 +460,7 @@ with col_s2:
         key="id_report_input",
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         if id_input_var.strip():
             st.session_state["last_searched_id"] = id_input_var.strip()
             st.session_state["csv_mode"] = "ids"
@@ -511,7 +502,7 @@ with col_s4:
             on_change=reset_map_and_search_flags
         )
         
-        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
+        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
@@ -679,7 +670,7 @@ with st.expander("Advanced Search", expanded=False):
     col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
-        if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
+        if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
             st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
             st.session_state["skip_scroll"] = False
@@ -937,7 +928,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             st.markdown("<div style='padding-top:24px;'></div>", unsafe_allow_html=True)
             is_disabled = (selected_citation == "PLEASE SELECT")
             
-            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
+            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled, on_click=commit_search_and_wipe_inputs):
                 target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
                 st.session_state["skip_scroll"] = False
                 # Backup regex parse safety strategy if map drops out
