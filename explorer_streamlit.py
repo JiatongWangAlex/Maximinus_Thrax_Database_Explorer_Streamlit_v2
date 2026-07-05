@@ -1143,7 +1143,7 @@ if (
 # --- UNIFIED LAYOUT SCROLL INJECTOR ---
 # Force scrolling to results when a standard search finishes
 if st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
-    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+    # Removed the markdown anchor line from here!
     st.components.v1.html(
         """
         <script>
@@ -1167,11 +1167,7 @@ if st.session_state.get("trigger_map_scroll"):
         """,
         height=0,
     )
-
-is_map_open = st.session_state.get("map_expander_open", True)
-current_version = st.session_state.get("map_version", 0)
-
-
+         
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
     if st.session_state.get("map_status") == "zero_search_results":
