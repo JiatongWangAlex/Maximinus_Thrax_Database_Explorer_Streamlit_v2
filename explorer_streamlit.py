@@ -85,45 +85,11 @@ db_path = os.path.join(BASE_DIR, "version_58.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
-
-# --- PLACE 1: DETECT OBJECT ID URL PARAMS TO RENDER MULTI-REPORT VIEW ---
-query_params = st.query_params
-
-if "obj_id" in query_params:
-    selected_obj_id = query_params["obj_id"]
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 1. Grab all inscription IDs that share this specific object_id
-        cursor.execute(
-            'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
-            (selected_obj_id,)
-        )
-        sibling_ids = [row[0] for row in cursor.fetchall()]
-        
-        if not sibling_ids:
-            st.error(f"No inscriptions found for Object ID: {selected_obj_id}")
-        else:
-            st.title(f"Object ID: {selected_obj_id})")
-            st.markdown(f"**{len(sibling_ids)}** inscriptions on this object.")
-            st.write("---")
-            
-            for idx, sib_id in enumerate(sibling_ids, 1):
-                st.subheader(f" Result #{idx} — Inscription ID: {sib_id}")
-                
-                cursor.execute(main_report_sql, (sib_id, sib_id, sib_id, sib_id, sib_id, sib_id))
-                report_rows = cursor.fetchall()
-                compiled_markdown = "".join([row[0] for row in report_rows if row[0]])
-                st.markdown(compiled_markdown)
-                st.write("---")
-                
-        conn.close()
-    except Exception as e:
-        st.error(f"Error gathering object data: {e}")
-        
-    st.stop()
+def get_db_connection():
+    if not os.path.exists(db_path):
+        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
+        st.stop()
+    return sqlite3.connect(db_path)
 
 #SQL QUERY FOR MAIN REPORT
 
@@ -577,11 +543,44 @@ WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
 
-def get_db_connection():
-    if not os.path.exists(db_path):
-        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
-        st.stop()
-    return sqlite3.connect(db_path)
+#SETUP OBJECT ID LINK
+query_params = st.query_params
+
+if "obj_id" in query_params:
+    selected_obj_id = query_params["obj_id"]
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Grab all inscription IDs that share this specific object_id
+        cursor.execute(
+            'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
+            (selected_obj_id,)
+        )
+        sibling_ids = [row[0] for row in cursor.fetchall()]
+        
+        if not sibling_ids:
+            st.error(f"No inscriptions found for Object ID: {selected_obj_id}")
+        else:
+            st.title(f"Object ID: {selected_obj_id})")
+            st.markdown(f"**{len(sibling_ids)}** inscriptions on this object.")
+            st.write("---")
+            
+            for idx, sib_id in enumerate(sibling_ids, 1):
+                st.subheader(f" Result #{idx} — Inscription ID: {sib_id}")
+                
+                cursor.execute(main_report_sql, (sib_id, sib_id, sib_id, sib_id, sib_id, sib_id))
+                report_rows = cursor.fetchall()
+                compiled_markdown = "".join([row[0] for row in report_rows if row[0]])
+                st.markdown(compiled_markdown)
+                st.write("---")
+                
+        conn.close()
+    except Exception as e:
+        st.error(f"Error gathering object data: {e}")
+        
+    st.stop()
          
 # LATIN INFLECTED FORMS DICTIONARY
 
