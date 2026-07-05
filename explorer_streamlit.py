@@ -2947,6 +2947,9 @@ if (
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
+            # 1. ALWAYS initialize the variable as an empty set so downstream code never throws a NameError
+            unmappable_place_ids = set()
+            
             # Reset previous notice parameters
             st.session_state["unmappable_html_notice"] = None
             
@@ -2955,15 +2958,14 @@ if (
                 st.session_state["trigger_map_html"] = None
             else:
                 try:
-                    # OPEN CONNECTION FIRST so the dynamic fetch works perfectly
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Fetch unmappable place IDs dynamically from the database
+                    # Overwrite the empty set dynamically since we have data to fetch
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
                     
-                    # Prepare placeholders for your main logic
+                    # Build placeholders for primary search scope
                     placeholders = ",".join("?" for _ in active_ids)
                     
                     # Fetch data for ALL inscriptions in the current search scope
@@ -2977,7 +2979,7 @@ if (
                     all_rows = cursor.fetchall()
                     conn.close()
                     
-                    # Filter matching rows
+                    # Separate rows using precise mapping keys
                     unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                     valid_rows_count = len(all_rows) - len(unmappable_rows)
                     
