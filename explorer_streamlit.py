@@ -897,6 +897,14 @@ def generate_person_report(p_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # 1. Fetch the person's name first to build the style header
+        cursor.execute("SELECT person_name FROM persons WHERE person_id = ?;", (int(p_id),))
+        name_row = cursor.fetchone()
+        person_name = name_row[0] if name_row else f"Person ID {p_id}"
+        
+        # Build the header message in your exact requested style
+        header_message = f"### **{person_name}**\n\n---"
+        
         # Keep track of active inscriptions linked to this person for the map component
         cursor.execute("""
             SELECT mt.inscription_id 
@@ -1006,9 +1014,10 @@ def generate_person_report(p_id):
         result = cursor.fetchone()
         
         if result and result[0]:
-            st.session_state.search_results = result[0]
+            # Prepend the style header block directly to the SQL report text block
+            st.session_state.search_results = f"{header_message}\n\n{result[0]}"
         else:
-            st.session_state.search_results = f"No person dossier card compiled for Person ID {p_id}."
+            st.session_state.search_results = f"{header_message}\n\nNo person dossier card compiled for Person ID {p_id}."
     except Exception as e:
         st.session_state.search_results = f"Dossier production error: {e}"
     finally:
@@ -2907,15 +2916,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
 # SEARCH RESULTS
 st.markdown("### Search Results")
 
-# --- AUTO-SCROLL EXECUTION TARGET ---
-if st.session_state.get("active_search_has_run"):
-    # 1. Drop the explicit anchor right at the start of the results section
-    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
-    
-    # 2. Fire the smooth glide script
-    teleport_to_results()
-
-
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
@@ -2997,6 +2997,12 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 
 # MAIN RESULTS VIEW
 if st.session_state.get("active_search_has_run"):
+    
+    # 🎯 Dropped your original "results-anchor" directly above the main window
+    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+    
+    # Trigger scroll down to this anchor point
+    teleport_to_results()
 
     with st.container(height=520, border=True):
         raw_results = st.session_state.search_results
@@ -3021,14 +3027,13 @@ if st.session_state.get("active_search_has_run"):
                 process_this_block = True
 
             if cleaned_block == "**Inscription Text:**":
-                # Force standard markdown rendering so the asterisks naturally bold!
                 st.markdown(cleaned_block)
                 
             elif (
                 "RIGHT:" in cleaned_block
                 or "------ /" in cleaned_block
                 or has_dangerous_dashes
-                or process_this_block  # This catches the raw text lines cleanly
+                or process_this_block  
             ):
                 html_block = block.replace("\n", "<br>")
                 st.markdown(
@@ -3037,7 +3042,6 @@ if st.session_state.get("active_search_has_run"):
                 )
             else:
                 st.markdown(block)
-                     
                      
 # AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
