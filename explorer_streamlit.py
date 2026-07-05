@@ -435,14 +435,13 @@ with col_s3:
             lookup_person_options(pname_input_var)
             st.rerun()
 
-    if st.session_state.get("last_searched_lookup"):
-        # Case 1: Search ran, but found absolutely nothing
+    # ONLY show the hint if a search ran AND the current text input matches that exact search term
+    if st.session_state.get("last_searched_lookup") and pname_input_var.strip() == st.session_state["last_searched_lookup"]:
         if "person_matches" in st.session_state and not st.session_state.person_matches:
             st.error("No individual in the database matched your search. Try a different individual or a different spelling.")
-        
-        # Case 2: Search ran, and successfully populated matching people
         elif "person_matches" in st.session_state and st.session_state.person_matches:
             st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
+                 
 with col_s4:
     if st.session_state.person_matches:
         # Prepend the default "PLEASE SELECT" option to the front of the list
