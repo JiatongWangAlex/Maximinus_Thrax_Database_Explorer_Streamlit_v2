@@ -91,7 +91,8 @@ def get_db_connection():
         st.stop()
     return sqlite3.connect(db_path)
 
-#SQL QUERY FOR MAIN REPORTmain_report_sql = """
+#SQL QUERY FOR MAIN REPORT
+main_report_sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
