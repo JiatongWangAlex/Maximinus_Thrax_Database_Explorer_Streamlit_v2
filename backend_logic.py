@@ -40,6 +40,9 @@ IF you reuse this, make sure to change/check the following section.
                        ELSE 'unknown intervention method (' || COALESCE(iam.method_id, 'N/A') || ')' 
                    END || char(10) AS tl 
 
+
+FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
+
 ====================================================================
 """
 import sqlite3
