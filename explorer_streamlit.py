@@ -113,6 +113,22 @@ from backend_logic import *
 
 st.set_page_config(page_title="Maximinus Thrax Database Browser", layout="wide")
 
+st.components.v1.html(
+    """
+    <script>
+        window.parent.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'scroll') {
+                var target = window.parent.document.getElementById(event.data.target);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+    </script>
+    """,
+    height=0
+)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
 db_path = os.path.join(BASE_DIR, "version_58.db")
 
@@ -454,7 +470,6 @@ with col_s3:
                 st.session_state["show_lookup_hint"] = True
             st.rerun()
 
-    # 🚀 Show the message ONLY if names were found and it hasn't been turned off yet
     if st.session_state.get("show_lookup_hint") and st.session_state.get("person_matches"):
         st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
                  
@@ -1292,12 +1307,12 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 
 
 # MAIN RESULTS VIEW
+st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+
 if st.session_state.get("active_search_has_run"):
-    
     if st.session_state.get("skip_scroll"):
         st.session_state["skip_scroll"] = False
     else:
-        st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
         teleport_to_results()
 
     with st.container(height=520, border=True):
