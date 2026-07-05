@@ -2123,9 +2123,18 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-    # PROVINCES LAYER
+# PROVINCES LAYER
     from collections import Counter
+    
+    # 1. Count total inscriptions per province
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
+    
+    # 2. Count ONLY erased inscriptions per province
+    erased_counts = Counter([
+        row[9].strip() 
+        for row in matched_points 
+        if len(row) > 9 and row[9] and row[0] in erased_ids
+    ])
     
     if os.path.exists(provinces_json_path):
         with open(provinces_json_path, "r", encoding="utf-8") as f:
@@ -2136,10 +2145,16 @@ def generate_active_map():
             props = feature.setdefault("properties", {})
             geo_name = props.get("Name") or props.get("province_name")
             if geo_name:
-                count = search_counts.get(geo_name.strip(), 0)
+                geo_name_clean = geo_name.strip()
+                count = search_counts.get(geo_name_clean, 0)
+                erased_count = erased_counts.get(geo_name_clean, 0)
+                
+                # Inject both counts into the GeoJSON properties
                 props["search_count"] = f"<br>{count}"
+                props["erased_count"] = f"<br>{erased_count}"
             else:
                 props["search_count"] = "<br>0"
+                props["erased_count"] = "<br>0"
                 
         folium.GeoJson(
             provinces_data, 
@@ -2149,8 +2164,8 @@ def generate_active_map():
             control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
-                fields=["Name", "search_count"], 
-                aliases=["Province:", "Matching<br>Inscriptions:"], 
+                fields=["Name", "search_count", "erased_count"], 
+                aliases=["Province:", "Matching<br>Inscriptions:", "Relevant<br>Erasures:"], 
                 localize=True,
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
@@ -2164,7 +2179,8 @@ def generate_active_map():
                 }
             </style>
         """))
-        
+
+         
     # STACKABLE VISUAL LAYERS
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
