@@ -82,6 +82,7 @@ FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSO
 ====================================================================
 """
 
+
 import sqlite3
 import os
 import textwrap
@@ -849,7 +850,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         if converted_input != raw_input:
                             query2, params2 = build_multi_word_query(converted_input)
                             if query2:
-                                // Try strict with converted input
+                                # Try strict with converted input
                                 cursor.execute(query2, params2)
                                 results = cursor.fetchall()
                                 
