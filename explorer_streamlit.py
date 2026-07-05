@@ -3111,3 +3111,6 @@ if 'should_scroll' in locals() and should_scroll:
         """,
         height=0
     )
+st.write("### Debugging Info")
+st.write(f"Has person matches: {bool(st.session_state.get('person_matches'))}")
+st.write(f"Active search run: {st.session_state.get('active_search_has_run')}")
