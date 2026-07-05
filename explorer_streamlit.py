@@ -413,7 +413,7 @@ with col_text1:
     )
 
 with col_text2:
-    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary"):
+    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         st.session_state["last_searched_text"] = text_input_var.strip()
         st.session_state["csv_mode"] = "ids"
         st.session_state["active_search_has_run"] = True
@@ -421,7 +421,6 @@ with col_text2:
         st.session_state["inputs_are_dirty"] = False
         st.session_state["skip_scroll"] = False
         run_standard_search(text_input_var)
-        commit_search_and_wipe_inputs()
         st.rerun()
         
 # Full Reports Panel Layout Execution Shell
@@ -443,7 +442,7 @@ with col_s1:
         key="edcs_report_input", 
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         if ref_input_var.strip():
             st.session_state["last_searched_edcs"] = ref_input_var.strip()
             st.session_state["csv_mode"] = "ids"
@@ -452,7 +451,6 @@ with col_s1:
             st.session_state["inputs_are_dirty"] = False
             st.session_state["skip_scroll"] = False
             run_ref_search(ref_input_var)
-            commit_search_and_wipe_inputs()
             st.rerun()
 
 with col_s2:
@@ -462,7 +460,7 @@ with col_s2:
         key="id_report_input",
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary"):
+    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
         if id_input_var.strip():
             st.session_state["last_searched_id"] = id_input_var.strip()
             st.session_state["csv_mode"] = "ids"
@@ -504,7 +502,7 @@ with col_s4:
             on_change=reset_map_and_search_flags
         )
         
-        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
+        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
@@ -516,7 +514,6 @@ with col_s4:
                 st.session_state["inputs_are_dirty"] = False
                 extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
                 generate_person_report(extracted_id)
-                commit_search_and_wipe_inputs()
                 st.rerun()
     else:
         pid_input_var = st.text_input(
@@ -673,7 +670,7 @@ with st.expander("Advanced Search", expanded=False):
     col_btn1, col_btn2 = st.columns([1, 1])
 
     with col_btn1:
-        if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary"):
+        if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
             st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
             st.session_state["skip_scroll"] = False
@@ -716,8 +713,6 @@ with st.expander("Advanced Search", expanded=False):
                 'dating_strategy': f_dating_strategy
             }
             execute_advanced_search(form_payload)
-            commit_search_and_wipe_inputs()
-            st.rerun()
 
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
@@ -933,7 +928,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             st.markdown("<div style='padding-top:24px;'></div>", unsafe_allow_html=True)
             is_disabled = (selected_citation == "PLEASE SELECT")
             
-            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
+            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled, on_click=commit_search_and_wipe_inputs):
                 target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
                 st.session_state["skip_scroll"] = False
                 # Backup regex parse safety strategy if map drops out
@@ -991,7 +986,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             if "lit_display_map" in st.session_state:
                                 del st.session_state.lit_display_map
                                 
-                            commit_search_and_wipe_inputs()
                             st.rerun()
                             
                     except Exception as action_err:
