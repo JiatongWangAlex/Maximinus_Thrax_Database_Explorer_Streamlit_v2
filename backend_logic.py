@@ -1881,13 +1881,20 @@ def teleport_to_results():
         <script>
             // Unique execution tag: {unique_id}
             function smoothGlide() {{
-                var target = window.parent.document.getElementById("results-anchor");
-                if (target) {{
-                    target.scrollIntoView({{ behavior: "smooth", block: "start" }});
+                try {{
+                    // Try direct method first (if running locally/same-origin)
+                    var target = window.parent.document.getElementById("results-anchor");
+                    if (target) {{
+                        target.scrollIntoView({{ behavior: "smooth", block: "start" }});
+                        return;
+                    }
+                }} catch (e) {{
+                    // Fallback for Streamlit Cloud sandbox: safe cross-origin messaging
+                    window.parent.postMessage({{"type": "scroll", "target": "results-anchor"}}, "*");
                 }}
             }}
             smoothGlide();
-            setTimeout(smoothGlide, 150); // Fallback to catch slower DOM updates
+            setTimeout(smoothGlide, 150);
         </script>
         """,
         height=0
