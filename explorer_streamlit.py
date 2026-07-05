@@ -2356,20 +2356,17 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Hardcoded Rule: Map ILS and Dessau interchangeably
+                    # Hardcoded Rule: Map ILS and D/Dessau interchangeably
                     cleaned_upper = raw_input.upper().replace('.', '').replace(',', '')
                     
-                    if cleaned_upper == "ILS" or cleaned_upper == "D":
-                        # If they type either one, dynamically scan for BOTH terms across fields
+                    if cleaned_upper == "ILS" or cleaned_upper == "D" or cleaned_upper == "DESSAU":
                         query = """
                             SELECT DISTINCT unique_citation_id, expanded_citation 
                             FROM unique_citations 
-                            WHERE (abbreviated_citation LIKE ? OR abbreviated_citation LIKE ?)
-                               OR bibliography_id IN (
-                                   SELECT bibliography_id 
-                                   FROM master_citations_raw 
-                                   WHERE bibliography_name LIKE ? OR bibliography_name LIKE ?
-                               )
+                            WHERE abbreviated_citation LIKE ? 
+                               OR abbreviated_citation LIKE ?
+                               OR expanded_citation LIKE ? 
+                               OR expanded_citation LIKE ?
                             ORDER BY expanded_citation ASC;
                         """
                         w1, w2 = "%ILS%", "%Dessau%"
@@ -2380,9 +2377,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             SELECT DISTINCT unique_citation_id, expanded_citation 
                             FROM unique_citations 
                             WHERE abbreviated_citation LIKE ? 
-                               OR bibliography_id IN (
-                                   SELECT bibliography_id FROM master_citations_raw WHERE bibliography_name LIKE ?
-                               )
+                               OR expanded_citation LIKE ?
                             ORDER BY expanded_citation ASC;
                         """
                         search_term = f"%{raw_input}%"
