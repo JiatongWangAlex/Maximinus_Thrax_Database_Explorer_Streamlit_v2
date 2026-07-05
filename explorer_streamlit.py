@@ -1227,6 +1227,13 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
 # SEARCH RESULTS
 st.markdown("### Search Results")
 
+# Execute the auto-scroll check immediately when the results section renders
+if st.session_state.get("active_search_has_run"):
+    if st.session_state.get("skip_scroll"):
+        st.session_state["skip_scroll"] = False
+    else:
+        teleport_to_results()
+
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
@@ -1331,11 +1338,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
 
 if st.session_state.get("active_search_has_run"):
-    if st.session_state.get("skip_scroll"):
-        st.session_state["skip_scroll"] = False
-    else:
-        teleport_to_results()
-
     with st.container(height=520, border=True):
         raw_results = st.session_state.search_results
         clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
@@ -1354,7 +1356,7 @@ if st.session_state.get("active_search_has_run"):
 
             if process_this_block:
                 block = convert_markdown_bold_to_underline(block)
-          
+            
             if "Inscription Text:" in cleaned_block:
                 process_this_block = True
 
