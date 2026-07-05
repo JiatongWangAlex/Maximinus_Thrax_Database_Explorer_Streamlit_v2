@@ -1977,13 +1977,14 @@ elif "obj_id" in query_params:
 st.markdown(
     """
     <style>
-    /* 1. Global rule: Make ALL expanders large (20px) */
+    /* 1. Global rule: Make ALL expander headers large (20px) */
     div[data-testid="stExpander"] details summary p {
         font-size: 20px !important;
         font-weight: 600 !important;
     }
     
-    /* 2. Exception rule: Reset the welcome expander back to default (14px) */
+    /* 2. Exception rule: Target the specific expander inside your key container */
+    [class*="st-key-welcome_instructions_expander"] div[data-testid="stExpander"] details summary p,
     .st-key-welcome_instructions_expander details summary p {
         font-size: 14px !important;
         font-weight: 400 !important;
