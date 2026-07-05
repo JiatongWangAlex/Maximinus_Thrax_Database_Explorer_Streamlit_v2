@@ -2950,14 +2950,7 @@ if (
             # Reset previous notice parameters
             st.session_state["unmappable_html_notice"] = None
             
-            # =================================================================
-            # DIAGNOSTIC MONITOR (Temporary check to pinpoint why it skips)
-            # =================================================================
-            st.info(f"⚙️ Diagnostic: active_ids count = {len(active_ids)} | Current list = {active_ids}")
-            # =================================================================
-            
             if not active_ids:
-                st.warning("⚙️ Diagnostic: Hit the 'not active_ids' branch. Setting zero_search_results.")
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
             else:
@@ -2968,8 +2961,6 @@ if (
                     # 1. Fetch unmappable place IDs dynamically from the database
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
-                    
-                    st.info(f"⚙️ Diagnostic: Dynamic unmappable IDs built successfully: {unmappable_place_ids}")
                     
                     # 2. Build placeholders for primary search scope
                     placeholders = ",".join("?" for _ in active_ids)
@@ -3050,8 +3041,9 @@ if (
                         generate_active_map()
                 
                 except Exception as db_error:
-                    st.error(f"💥 Database or syntax crash detected: {db_error}")
-        
+                    st.error(f"💥 Database error: {db_error}")
+            
+            # Global button level rerun ensures UI updates instantly for both branches
             st.rerun()
 else:
     with col_exp_left:
