@@ -106,6 +106,20 @@ if streamlit_cloud_path not in sys.path:
 from backend_logic import *
 
 
+
+def teleport_to_results():
+    st.components.v1.html(
+        """
+        <script>
+            var target = window.parent.document.getElementById('results-anchor');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        </script>
+        """,
+        height=0,
+    )
+
 # ----------------------------------------------------------------------------------------------------------------------------
 # UI FRONTEND
 
@@ -1153,37 +1167,44 @@ if (
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
     st.session_state["unmappable_html_notice"] = None
-
 # --- UNIFIED LAYOUT SCROLL INJECTOR ---
-# Force scrolling to results when a standard search finishes
-if st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
-    st.components.v1.html(
-        """
-        <script>
-            window.parent.document.getElementById('results-anchor').scrollIntoView({behavior: 'smooth'});
-        </script>
-        """,
-        height=0,
-    )
-    # Lock scroll so it only runs once per button click
-    st.session_state["skip_scroll"] = True
-
-# Explicit scroll for the map button
+# Explicit scroll for the map button takes absolute priority if triggered
 if st.session_state.get("trigger_map_scroll"):
     st.session_state["trigger_map_scroll"] = False
     st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
     st.components.v1.html(
         """
         <script>
-            window.parent.document.getElementById('map-anchor').scrollIntoView({behavior: 'smooth'});
+            var target = window.parent.document.getElementById('map-anchor');
+            if (target) {
+                target.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }
         </script>
         """,
         height=0,
     )
+    # Set skip_scroll to True here so the standard search scroll is locked out on this frame
+    st.session_state["skip_scroll"] = True
+
+# Force scrolling to results when a standard search finishes (only if map wasn't just triggered)
+elif st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
+    st.components.v1.html(
+        """
+        <script>
+            var target = window.parent.document.getElementById('results-anchor');
+            if (target) {
+                target.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }
+        </script>
+        """,
+        height=0,
+    )
+    st.session_state["skip_scroll"] = True
 
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
+
 
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
@@ -1229,13 +1250,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
 st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 # SEARCH RESULTS
 st.markdown("### Search Results")
-
-
-if st.session_state.get("active_search_has_run"):
-    if st.session_state.get("skip_scroll"):
-        st.session_state["skip_scroll"] = False
-    else:
-        teleport_to_results()
 
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
