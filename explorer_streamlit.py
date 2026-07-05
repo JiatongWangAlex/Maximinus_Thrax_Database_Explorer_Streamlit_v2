@@ -37,7 +37,7 @@ in my thesis as an appendix and will be repo'd here soon.
 PORTABILITY:
 --------------------------------------------------------------------
 To Future Me: This script is just the streamlit interface
-This file itself is somewhat reusable for a different project as long as backend_logic.py and the schema of version_58.py stays the same.
+This file itself is somewhat reusable for a different project as long as backend_logic.py and the schema of version_58.db stays the same.
 
 
 HOWEVER the parts of the interface (Advanced Search, Search Results List View, and Map Viewer) which contain logic flagging inscriptions according
@@ -227,7 +227,7 @@ st.components.v1.html(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
-db_path = os.path.join(BASE_DIR, "version_58.db")
+db_path = os.path.join(BASE_DIR, "maximinus_thrax.db")
 
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
