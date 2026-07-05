@@ -47,6 +47,11 @@ from branca.element import Element
 import itertools
 import time
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
+db_path = os.path.join(BASE_DIR, "version_58.db")
+
+optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
+provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
 
 #SQL QUERY FOR MAIN REPORT
