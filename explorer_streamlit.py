@@ -1226,10 +1226,10 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
 
 
 
-
+st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 # SEARCH RESULTS
 st.markdown("### Search Results")
-st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
+
 
 if st.session_state.get("active_search_has_run"):
     if st.session_state.get("skip_scroll"):
