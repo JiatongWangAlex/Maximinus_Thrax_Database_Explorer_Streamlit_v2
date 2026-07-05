@@ -1973,19 +1973,20 @@ elif "obj_id" in query_params:
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
 # ALL accordion headers get 20px, except the welcome text which stays at 14px
+
 st.markdown(
     """
     <style>
-    /* 1. Global rule for all expanders */
+    /* 1. Global rule: Make ALL expanders large (20px) */
     div[data-testid="stExpander"] details summary p {
         font-size: 20px !important;
         font-weight: 600 !important;
     }
     
-    /* 2. Exception rule just for your welcome expander key */
-    div[data-testid="stExpander"]:has(iframe[name*="welcome_instructions_expander"]),
-    div[data-testid="stExpander"]:-webkit-any(:has(input[key="welcome_instructions_expander"])),
-    div[data-testid="stExpander"] details summary p:has(span) {
+    /* 2. Exception rule: Reset the welcome expander back to default (14px) */
+    .st-key-welcome_instructions_expander details summary p {
+        font-size: 14px !important;
+        font-weight: 400 !important;
     }
     </style>
     """,
