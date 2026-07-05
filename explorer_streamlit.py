@@ -2377,7 +2377,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 except Exception as e:
                     st.error(f"Database query error: {e}")
 
-    with btn_col2:
+with btn_col2:
         if st.button("Show Matching Bibliography Records", key="lit_btn_right"):
             raw_input = author_input.strip()
             if not raw_input:
@@ -2386,31 +2386,50 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
-                         
-                    query = """
-                        SELECT DISTINCT uc.unique_citation_id, uc.expanded_citation 
-                        FROM unique_citations uc
-                        LEFT JOIN master_citations_raw m ON uc.bibliography_id = m.bibliography_id
-                        WHERE uc.abbreviated_citation LIKE ?
-                           OR uc.expanded_citation LIKE ?
-                           OR m.bibliography_name LIKE ?
-                           OR m.chicago_translation LIKE ?
-                        ORDER BY uc.expanded_citation ASC;
-                    """
-                    search_term = f"%{author_input.strip()}%"
                     
-                    # Try 1: Exact search
-                    cursor.execute(query, (search_term, search_term, search_term, search_term))
-                    results = cursor.fetchall()
+                    # 1. Helper to build an order-independent multi-word search query
+                    def build_multi_word_query(search_text):
+                        # Split query into separate keywords (ignoring extra spaces)
+                        words = [w.strip() for w in search_text.split() if w.strip()]
+                        if not words:
+                            return None, []
+                        
+                        # Build dynamic clause checking that ALL keywords appear somewhere in the fields
+                        conditions = []
+                        params = []
+                        for word in words:
+                            wildcard = f"%{word}%"
+                            conditions.append(
+                                "(uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)"
+                            )
+                            params.extend([wildcard, wildcard, wildcard, wildcard])
+                            
+                        sql = f"""
+                            SELECT DISTINCT uc.unique_citation_id, uc.expanded_citation 
+                            FROM unique_citations uc
+                            LEFT JOIN master_citations_raw m ON uc.bibliography_id = m.bibliography_id
+                            WHERE {" AND ".join(conditions)}
+                            ORDER BY uc.expanded_citation ASC;
+                        """
+                        return sql, params
+
+                    # Try 1: Run multi-word wildcard search with their raw text inputs
+                    query1, params1 = build_multi_word_query(raw_input)
+                    if query1:
+                        cursor.execute(query1, params1)
+                        results = cursor.fetchall()
+                    else:
+                        results = []
                     
                     # Try 2: Fallback with Roman numeral conversion if first search finds nothing
                     if not results:
-                        converted_input = convert_roman_to_arabic_in_text(author_input.strip())
-                        if converted_input != author_input.strip():
-                            search_term_fallback = f"%{converted_input}%"
-                            cursor.execute(query, (search_term_fallback, search_term_fallback, search_term_fallback, search_term_fallback))
-                            results = cursor.fetchall()
-                    
+                        converted_input = convert_roman_to_arabic_in_text(raw_input)
+                        if converted_input != raw_input:
+                            query2, params2 = build_multi_word_query(converted_input)
+                            if query2:
+                                cursor.execute(query2, params2)
+                                results = cursor.fetchall()
+                            
                     st.session_state.lit_matches = results
                     st.session_state.lit_search_type = "right"
                     conn.close()
