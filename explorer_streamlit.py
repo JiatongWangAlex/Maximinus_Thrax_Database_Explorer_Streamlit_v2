@@ -1294,7 +1294,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         conn_overview.close()
 
         with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
-            st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
+            st.markdown(f"**Found {len(overview_rows)} record(s) matching your search:**")
             
             # 1. Inject custom styling to wrap elements cleanly with a dynamic ceiling cap
             st.markdown(
