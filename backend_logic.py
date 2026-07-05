@@ -1850,7 +1850,7 @@ def teleport_to_results():
         height=0
     )
 
-__all__ = [ page bottom
+__all__ = [
     
     'main_report_sql',
     'LATIN_LEMMA_MAP',
