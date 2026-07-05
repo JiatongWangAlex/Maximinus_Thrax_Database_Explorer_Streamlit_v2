@@ -1172,18 +1172,30 @@ if (
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
     st.session_state["unmappable_html_notice"] = None
-# --- UNIFIED LAYOUT SCROLL INJECTOR ---
+
+
+# SCROLL TO SEARCH RESULTS OR MAP
+
+cache_breaker = str(time.time())
+
 # Explicit scroll for the map button takes absolute priority if triggered
 if st.session_state.get("trigger_map_scroll"):
     st.session_state["trigger_map_scroll"] = False
     st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
     st.components.v1.html(
-        """
+        f"""
         <script>
-            var target = window.parent.document.getElementById('map-anchor');
-            if (target) {
-                target.scrollIntoView({behavior: 'smooth', block: 'start'});
-            }
+            // Cache breaker string: {cache_breaker}
+            function executeMapScroll() {{
+                var target = window.parent.document.getElementById('map-anchor');
+                if (target) {{
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                }} else {{
+                    setTimeout(executeMapScroll, 50);
+                }}
+            }}
+            window.addEventListener('load', executeMapScroll);
+            setTimeout(executeMapScroll, 100);
         </script>
         """,
         height=0,
@@ -1194,12 +1206,19 @@ if st.session_state.get("trigger_map_scroll"):
 # Force scrolling to results when a standard search finishes (only if map wasn't just triggered)
 elif st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
     st.components.v1.html(
-        """
+        f"""
         <script>
-            var target = window.parent.document.getElementById('results-anchor');
-            if (target) {
-                target.scrollIntoView({behavior: 'smooth', block: 'start'});
-            }
+            // Cache breaker string: {cache_breaker}
+            function executeResultsScroll() {{
+                var target = window.parent.document.getElementById('results-anchor');
+                if (target) {{
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                }} else {{
+                    setTimeout(executeResultsScroll, 50);
+                }}
+            }}
+            window.addEventListener('load', executeResultsScroll);
+            setTimeout(executeResultsScroll, 100);
         </script>
         """,
         height=0,
