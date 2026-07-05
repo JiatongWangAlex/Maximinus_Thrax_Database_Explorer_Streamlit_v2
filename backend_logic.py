@@ -1879,17 +1879,14 @@ def teleport_to_results():
     st.components.v1.html(
         f"""
         <script>
-            // Unique execution tag: {unique_id}
             function smoothGlide() {{
                 try {{
-                    // Try direct method first (if running locally/same-origin)
                     var target = window.parent.document.getElementById("results-anchor");
                     if (target) {{
                         target.scrollIntoView({{ behavior: "smooth", block: "start" }});
                         return;
-                    }
+                    }}
                 }} catch (e) {{
-                    // Fallback for Streamlit Cloud sandbox: safe cross-origin messaging
                     window.parent.postMessage({{"type": "scroll", "target": "results-anchor"}}, "*");
                 }}
             }}
@@ -1899,7 +1896,7 @@ def teleport_to_results():
         """,
         height=0
     )
-
+        
 __all__ = [
     
     'main_report_sql',
@@ -1923,5 +1920,6 @@ __all__ = [
     'generate_active_map',
     'teleport_to_results',
     
-    
 ]
+
+
