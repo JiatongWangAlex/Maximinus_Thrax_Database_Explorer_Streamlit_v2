@@ -64,6 +64,17 @@ import io
 from branca.element import Element
 import itertools
 import time
+import sys
+
+
+# HARDCODED ABSOLUTE CONTAINER PATH
+streamlit_cloud_path = "/mount/src/maximinus_thrax_database_explorer_streamlit_v2"
+
+# Force Python to inject this exact path at the top of its search grid
+if streamlit_cloud_path not in sys.path:
+    sys.path.insert(0, streamlit_cloud_path)
+
+# Run the import
 from backend_logic import *
 
 # ----------------------------------------------------------------------------------------------------------------------------
