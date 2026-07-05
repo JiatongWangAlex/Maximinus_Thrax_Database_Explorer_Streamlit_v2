@@ -1892,14 +1892,21 @@ def generate_active_map():
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
 
+
 def teleport_to_results():
+    unique_id = str(time.time()).replace(".", "")
     st.components.v1.html(
-        """
+        f"""
         <script>
-            window.parent.document.querySelector('iframe[title="st.components.v1.html"]').scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+            // Unique execution tag: {unique_id}
+            function smoothGlide() {{
+                var target = window.parent.document.getElementById("results-anchor");
+                if (target) {{
+                    target.scrollIntoView({{ behavior: "smooth", block: "start" }});
+                }}
+            }}
+            smoothGlide();
+            setTimeout(smoothGlide, 150); // Fallback to catch slower DOM updates
         </script>
         """,
         height=0
@@ -2897,8 +2904,17 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
 
 
-#SEARCH RESULTS
+# SEARCH RESULTS
 st.markdown("### Search Results")
+
+# --- AUTO-SCROLL EXECUTION TARGET ---
+if st.session_state.get("active_search_has_run"):
+    # 1. Drop the explicit anchor right at the start of the results section
+    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+    
+    # 2. Fire the smooth glide script
+    teleport_to_results()
+
 
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
@@ -2981,9 +2997,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 
 # MAIN RESULTS VIEW
 if st.session_state.get("active_search_has_run"):
-    
-    # Smoothly drag the window down to the results container on render
-    teleport_to_results()
 
     with st.container(height=520, border=True):
         raw_results = st.session_state.search_results
@@ -3024,6 +3037,7 @@ if st.session_state.get("active_search_has_run"):
                 )
             else:
                 st.markdown(block)
+                     
                      
 # AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
