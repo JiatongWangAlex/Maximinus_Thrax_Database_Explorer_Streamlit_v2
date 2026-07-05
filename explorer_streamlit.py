@@ -38,13 +38,26 @@ PORTABILITY:
 --------------------------------------------------------------------
 To Future Me: This script is just the streamlit interface
 This file itself is somewhat reusable for a different project as long as backend_logic.py and the schema of version_58.py stays the same.
+
+
 HOWEVER the parts of the interface (Advanced Search, Search Results List View, and Map Viewer) which contain logic flagging inscriptions according
 to whether they are relevant to Maximinus Thrax or whether the erasure they suffered are relevant to Maximinus Thrax need to change.
 
-FURTHERMORE, PLEASE CHECK backend_logic.py 
-The following items ARE hardcoded
+BECAUSE the logic that determines whether an erasure is relevant to Maximinus Thrax (this is hardcoded to exclude any inscription
+linked to the person_id 50,i.e. Licinnius Serenianus's monuments which are erased due to a separate memory sanction against him;on the
+inscriptions of Licinnius Serenianus which we have, the name of Maximinus Thrax and his name are never erased. Other than the milestones
+of Licinnius Serenianus, we do not have other inscriptions relevant to Maximinus Thrax which suffered an erasure as the result of a 
+different memory sanction campaign therefore for this corpus. Therefore, in this corpus, excluding all monuments linked to the person_id
+person_id 50 from being counted as a relevant erasure can safely exclude ALL erasures ON monuments relevevant to Maximinus Thrax
+BUT ARE NOT actually part of the memory sanction campaign against him)
 
-HARDCODED STUFF
+SOME OF THE FUNCTIONS IN backend_logic.py also relies on this particularity of THIS corpus. Please check those too.
+
+FURTHERMORE
+
+PLEASE CHECK backend_logic.py for the following items which are hardcoded
+
+HARDCODED STUFF IN BACKEND_LOGIC.PY
 --------------------------------------------------------------------
 In the constant main_report_sql in backend_logic.py, the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
 IF you reuse this, make sure to change/check the following section.
@@ -61,6 +74,8 @@ IF you reuse this, make sure to change/check the following section.
                        WHEN iam.method_id = 6 THEN 'reuse as support for new inscription' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
                        ELSE 'unknown intervention method (' || COALESCE(iam.method_id, 'N/A') || ')' 
                    END || char(10) AS tl 
+                   
+FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
 
 ====================================================================
 
