@@ -1386,13 +1386,13 @@ if st.session_state.get("active_search_has_run"):
 # AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
 if 'should_scroll' in locals() and should_scroll:
-    st.markdown('<div id=\"link-scroll-target\"></div>', unsafe_allow_html=True)
+    st.markdown('<div id="link-scroll-target"></div>', unsafe_allow_html=True)
     
     import time
     cache_breaker = str(time.time())
     
     st.components.v1.html(
-        f\"\"\"
+        f"""
         <script>
             function executeScroll() {{
                 var target = window.parent.document.getElementById('link-scroll-target');
@@ -1405,6 +1405,6 @@ if 'should_scroll' in locals() and should_scroll:
             window.addEventListener('load', executeScroll);
             setTimeout(executeScroll, 100);
         </script>
-        \"\"\",
+        """,
         height=0
     )
