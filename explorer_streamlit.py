@@ -91,14 +91,13 @@ def get_db_connection():
         st.stop()
     return sqlite3.connect(db_path)
 
-#SQL QUERY FOR MAIN REPORT
-
-main_report_sql = """
+#SQL QUERY FOR MAIN REPORTmain_report_sql = """
         WITH TargetInscription AS (SELECT ? AS selected_id),
         TargetObject AS (SELECT object_id AS selected_obj_id FROM "Max_Thrax" WHERE inscription_id = (SELECT selected_id FROM TargetInscription)),
         Metadata_Joined AS (
             SELECT mt.inscription_id, mt.inscription_ref, mt.line_ref, 
                    mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
+                   mt.object_id, -- 🚀 Pulled Object ID straight from main tracking data
                    ct.context_name, s.support_name, m.material_name, pr.province_name, pl.place_name, pl.pleiades_id,
                    r_roads.road_name, r_roads.itinere_id,
                    st.status_tituli_name,
@@ -134,7 +133,9 @@ main_report_sql = """
                        ELSE ''
                    END || 
                    ' | **TM Number:** ' || tm_hyperlinks ||
-                   ' | **Inscription ID:** [' || inscription_id || '](?ins_id=' || inscription_id || ')' || char(10) || char(10) AS tl FROM Metadata_Joined
+                   ' | **Inscription ID:** [' || inscription_id || '](?ins_id=' || inscription_id || ')' ||
+                   ' | **Object ID:** [' || COALESCE(object_id, 'N/A') || '](?obj_id=' || COALESCE(object_id, '') || ')' || -- 🚀 Added hyperlinked Object ID metadata badge right here
+                   char(10) || char(10) AS tl FROM Metadata_Joined
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 3 AS inner_lo, '**Nonstandard Spellings:** ' || COALESCE(corrected_lemmas, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 4 AS inner_lo, '**Context:** ' || COALESCE(context_name, 'N/A') || char(10) || char(10) AS tl FROM Metadata_Joined
@@ -166,7 +167,6 @@ main_report_sql = """
                 'N/A'
             ) || char(10) || char(10) AS tl FROM TargetInscription
             
-
             
             UNION ALL SELECT 0 AS sg, 0 AS seq_id, 8 AS inner_lo, '**Persons:** ' || COALESCE((SELECT GROUP_CONCAT('[' || p.person_name || '](?person_id=' || p.person_id || ') (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = (SELECT selected_id FROM TargetInscription)), 'N/A') || char(10) || char(10) AS tl FROM TargetInscription
 
@@ -287,7 +287,6 @@ main_report_sql = """
             UNION ALL SELECT sg, seq_id, inner_lo, tl FROM Sec2_Spacer
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
-
 
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
