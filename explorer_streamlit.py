@@ -3148,7 +3148,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 WHEN mt.relevance_index = 1 
                      AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
                      AND mt.inscription_id NOT IN (SELECT ip.inscription_id FROM "inscriptions_and_persons" ip WHERE ip.person_id = 50)
-                THEN 'Erasure relevant to Maximinus Thrax'
+                THEN '**Erasure relevant to Maximinus Thrax**'
                 
                 -- 2. Erasure not relevant to Maximinus Thrax (Condition A & B)
                 WHEN (mt.relevance_index = 1 
@@ -3157,10 +3157,10 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                      OR 
                      (mt.relevance_index = 0 
                       AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2))
-                THEN 'Erasure not relevant to Maximinus Thrax'
+                THEN '**Erasure not relevant to Maximinus Thrax**'
                 
                 -- 3. No Erasure
-                ELSE 'No Erasure'
+                ELSE '**No Erasure**'
             END AS erasure_status
         FROM "Max_Thrax" mt
         LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
