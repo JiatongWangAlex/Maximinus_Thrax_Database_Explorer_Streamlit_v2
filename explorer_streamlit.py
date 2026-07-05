@@ -1970,7 +1970,9 @@ elif "obj_id" in query_params:
     st.query_params.clear()
 
 
-# INCREASE FONT SIZE IN ACCORDION HEADERS    
+# CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
+
+# Most accordion headers get 20px
 st.markdown(
     """
     <style>
@@ -1982,6 +1984,13 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# The welcome text accordion header gets 14px to decrease its visual weight
+welcome_label = """
+<span style="font-size: 14px !important; font-weight: 400 !important;">
+    Click to View Site Instructions / Welcome Text
+</span>
+"""
 
 # SLIM DOWN SITE HEADER
 
@@ -2002,7 +2011,8 @@ st.markdown(
 )
 
 # Welcome Text & Instructions
-with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
+with st.expander(welcome_label, expanded=False, key="welcome_instructions_expander"):
+    st.write("Welcome to the site! Your instructions go here...")
     st.markdown("""
 ## How to Use | DEVELOPMENT NOTE: THIS INSTRUCTION MANUAL REFLECTS AN EARLIER VERSION OF THE INTERFACE; I AM GOING TO REWRITE THE MANUAL. PLEASE USE YOUR INTUITION FOR NOW
 
