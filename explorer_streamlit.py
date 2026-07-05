@@ -1892,6 +1892,19 @@ def generate_active_map():
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
 
+def teleport_to_results():
+    st.components.v1.html(
+        """
+        <script>
+            window.parent.document.querySelector('iframe[title="st.components.v1.html"]').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        </script>
+        """,
+        height=0
+    )
+         
 # ----------------------------------------------------------------------------------------------------------------------------
 # FRONTEND
 
@@ -2967,47 +2980,52 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 
 
 # MAIN RESULTS VIEW
-with st.container(height=520, border=True):
-    raw_results = st.session_state.search_results
-    clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
-    blocks = clean_text.split("\n\n")
-    process_this_block = False
+if st.session_state.get("active_search_has_run"):
+    
+    # Smoothly drag the window down to the results container on render
+    teleport_to_results()
 
-    for block in blocks:
-        cleaned_block = block.strip()
-        lines = cleaned_block.split("\n")
-        has_dangerous_dashes = any(
-            line.strip().startswith("---") for line in lines
-        )
+    with st.container(height=520, border=True):
+        raw_results = st.session_state.search_results
+        clean_text = raw_results.replace("\r\n", "\n").replace("\r", "\n")
+        blocks = clean_text.split("\n\n")
+        process_this_block = False
 
-        if any(header in cleaned_block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:", "Persons:"]):
-            process_this_block = False
+        for block in blocks:
+            cleaned_block = block.strip()
+            lines = cleaned_block.split("\n")
+            has_dangerous_dashes = any(
+                line.strip().startswith("---") for line in lines
+            )
 
-        if process_this_block:
-            block = convert_markdown_bold_to_underline(block)
-      
-        if "Inscription Text:" in cleaned_block:
-            process_this_block = True
+            if any(header in cleaned_block for header in ["Nonstandard Spellings:", "Context:", "Support:", "Dating:", "Material:", "Province:", "Place:", "Bibliography:", "Persons:"]):
+                process_this_block = False
 
-        if cleaned_block == "**Inscription Text:**":
-            # Force standard markdown rendering so the asterisks naturally bold!
-            st.markdown(cleaned_block)
-            
-        elif (
-            "RIGHT:" in cleaned_block
-            or "------ /" in cleaned_block
-            or has_dangerous_dashes
-            or process_this_block  # This catches the raw text lines cleanly
-        ):
-            html_block = block.replace("\n", "<br>")
-            st.markdown(
-                f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
-                unsafe_allow_html=True,
+            if process_this_block:
+                block = convert_markdown_bold_to_underline(block)
+          
+            if "Inscription Text:" in cleaned_block:
+                process_this_block = True
+
+            if cleaned_block == "**Inscription Text:**":
+                # Force standard markdown rendering so the asterisks naturally bold!
+                st.markdown(cleaned_block)
+                
+            elif (
+                "RIGHT:" in cleaned_block
+                or "------ /" in cleaned_block
+                or has_dangerous_dashes
+                or process_this_block  # This catches the raw text lines cleanly
+            ):
+                html_block = block.replace("\n", "<br>")
+                st.markdown(
+                    f'<div style="font-size:16px; font-weight:normal; margin-bottom:1rem;">{html_block}</div>',
+                    unsafe_allow_html=True,
                 )
-        else:
-            st.markdown(block)
-
-# Autoscrolling to search results when user arrives from a link
+            else:
+                st.markdown(block)
+                     
+# AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
 if 'should_scroll' in locals() and should_scroll:
     st.components.v1.html(
@@ -3017,7 +3035,6 @@ if 'should_scroll' in locals() and should_scroll:
             function executeScroll() {
                 var target = document.getElementById('scroll-target');
                 if (target) {
-                    // Native focus bypasses cross-origin iframe security blocks
                     target.focus({preventScroll: false}); 
                 } else {
                     setTimeout(executeScroll, 50);
