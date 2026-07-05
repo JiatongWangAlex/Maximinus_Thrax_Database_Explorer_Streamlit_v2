@@ -107,7 +107,6 @@ from backend_logic import *
 
 def commit_search_and_wipe_inputs():
     """Wipes text fields instantly after click, keeping only active results and mapping IDs."""
-    # List of all user-facing search fields
     inputs_to_clear = [
         "main_text_input", "edcs_report_input", "id_report_input", 
         "person_lookup_input", "person_report_input"
@@ -119,11 +118,74 @@ def commit_search_and_wipe_inputs():
     if "person_select_input" in st.session_state:
         st.session_state["person_select_input"] = "PLEASE SELECT"
         
-    # Force your background lock anchors to match empty strings so buttons remain unlocked
     for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
         st.session_state[anchor] = ""
         
     st.session_state["inputs_are_dirty"] = False
+
+# --- FIXED DEDICATED SEARCH CALLBACK FUNCTIONS ---
+
+def callback_text_search():
+    val = st.session_state.get("main_text_input", "").strip()
+    if val:
+        st.session_state["last_searched_text"] = val
+        st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
+        st.session_state["trigger_map_html"] = None
+        st.session_state["inputs_are_dirty"] = False
+        st.session_state["skip_scroll"] = False
+        run_standard_search(val)
+        commit_search_and_wipe_inputs()
+
+def callback_edcs_search():
+    val = st.session_state.get("edcs_report_input", "").strip()
+    if val:
+        st.session_state["last_searched_edcs"] = val
+        st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
+        st.session_state["trigger_map_html"] = None
+        st.session_state["inputs_are_dirty"] = False
+        st.session_state["skip_scroll"] = False
+        run_ref_search(val)
+        commit_search_and_wipe_inputs()
+
+def callback_id_search():
+    val = st.session_state.get("id_report_input", "").strip()
+    if val:
+        st.session_state["last_searched_id"] = val
+        st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
+        st.session_state["trigger_map_html"] = None
+        st.session_state["inputs_are_dirty"] = False
+        st.session_state.active_inscription_ids = [int(val)]
+        fetch_metadata_by_id(val)
+        commit_search_and_wipe_inputs()
+
+def callback_person_report_dropdown():
+    selected_option = st.session_state.get("person_select_input", "PLEASE SELECT")
+    if selected_option == "PLEASE SELECT":
+        st.session_state["person_dropdown_error"] = True
+    else:
+        st.session_state["person_dropdown_error"] = False
+        st.session_state["show_lookup_hint"] = False
+        st.session_state["skip_scroll"] = False
+        st.session_state["last_searched_person"] = selected_option
+        st.session_state["csv_mode"] = "ids"
+        st.session_state["active_search_has_run"] = True
+        st.session_state["inputs_are_dirty"] = False
+        extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
+        generate_person_report(extracted_id)
+        commit_search_and_wipe_inputs()
+
+def callback_person_report_text():
+    val = st.session_state.get("person_report_input", "").strip()
+    if val:
+        st.session_state["last_searched_person"] = val
+        st.session_state["active_search_has_run"] = True
+        st.session_state["inputs_are_dirty"] = False
+        generate_person_report(val)
+        commit_search_and_wipe_inputs()
+
 
 def teleport_to_results():
     st.components.v1.html(
@@ -398,7 +460,6 @@ The advanced search suite offers the following filters:
 st.markdown("### Key Word or Phrase Search")
 col_text1, col_text2 = st.columns([3, 1])
 
-# Run an immediate evaluation pass at render time to catch text adjustments
 if "main_text_input" in st.session_state:
     if st.session_state["main_text_input"].strip() != st.session_state.get("last_searched_text", ""):
         st.session_state["inputs_are_dirty"] = True
@@ -413,21 +474,12 @@ with col_text1:
     )
 
 with col_text2:
-    if st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
-        st.session_state["last_searched_text"] = text_input_var.strip()
-        st.session_state["csv_mode"] = "ids"
-        st.session_state["active_search_has_run"] = True
-        st.session_state["trigger_map_html"] = None
-        st.session_state["inputs_are_dirty"] = False
-        st.session_state["skip_scroll"] = False
-        run_standard_search(text_input_var)
-        st.rerun()
+    st.button("Search Text", key="btn_execute_text", use_container_width=True, type="primary", on_click=callback_text_search)
         
 # Full Reports Panel Layout Execution Shell
 st.markdown("### Search by Inscription or Person")
 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
-# Render pass validation checks to flip the trap flag if text keys don't match anchors
 if "edcs_report_input" in st.session_state and st.session_state["edcs_report_input"].strip() != st.session_state.get("last_searched_edcs", ""):
     st.session_state["inputs_are_dirty"] = True
 if "id_report_input" in st.session_state and st.session_state["id_report_input"].strip() != st.session_state.get("last_searched_id", ""):
@@ -442,16 +494,7 @@ with col_s1:
         key="edcs_report_input", 
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
-        if ref_input_var.strip():
-            st.session_state["last_searched_edcs"] = ref_input_var.strip()
-            st.session_state["csv_mode"] = "ids"
-            st.session_state["active_search_has_run"] = True
-            st.session_state["trigger_map_html"] = None
-            st.session_state["inputs_are_dirty"] = False
-            st.session_state["skip_scroll"] = False
-            run_ref_search(ref_input_var)
-            st.rerun()
+    st.button("Generate Inscription Report (EDCS)", use_container_width=True, type="primary", on_click=callback_edcs_search)
 
 with col_s2:
     id_input_var = st.text_input(
@@ -460,16 +503,7 @@ with col_s2:
         key="id_report_input",
         on_change=reset_map_and_search_flags
     )
-    if st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
-        if id_input_var.strip():
-            st.session_state["last_searched_id"] = id_input_var.strip()
-            st.session_state["csv_mode"] = "ids"
-            st.session_state["active_search_has_run"] = True
-            st.session_state["trigger_map_html"] = None
-            st.session_state["inputs_are_dirty"] = False
-            st.session_state.active_inscription_ids = [int(id_input_var.strip())]
-            fetch_metadata_by_id(id_input_var)
-            st.rerun()
+    st.button("Generate Inscription Report (ID)", use_container_width=True, type="primary", on_click=callback_id_search)
 
 with col_s3:
     pname_input_var = st.text_input(
@@ -482,7 +516,6 @@ with col_s3:
         if pname_input_var.strip():
             st.session_state["last_searched_lookup"] = pname_input_var.strip()
             lookup_person_options(pname_input_var)
-            # 🚀 Turn on the message marker when they click Find Person
             if "person_matches" in st.session_state and st.session_state.person_matches:
                 st.session_state["show_lookup_hint"] = True
             st.rerun()
@@ -492,7 +525,6 @@ with col_s3:
                  
 with col_s4:
     if st.session_state.get("person_matches"):
-        # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         
         selected_option = st.selectbox(
@@ -502,19 +534,10 @@ with col_s4:
             on_change=reset_map_and_search_flags
         )
         
-        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
-            if selected_option == "PLEASE SELECT":
-                st.error("Please pick a person from the dropdown menu before generating a report!")
-            else:
-                st.session_state["show_lookup_hint"] = False
-                st.session_state["skip_scroll"] = False
-                st.session_state["last_searched_person"] = selected_option
-                st.session_state["csv_mode"] = "ids"
-                st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
-                extracted_id = selected_option.split("(ID: ")[-1].replace(")", "").strip()
-                generate_person_report(extracted_id)
-                st.rerun()
+        st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary", on_click=callback_person_report_dropdown)
+        
+        if st.session_state.get("person_dropdown_error"):
+            st.error("Please pick a person from the dropdown menu before generating a report!")
     else:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
@@ -522,14 +545,7 @@ with col_s4:
             key="person_report_input",
             on_change=reset_map_and_search_flags
         )
-        
-        if st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary"):
-            if pid_input_var.strip():
-                st.session_state["last_searched_person"] = pid_input_var.strip()
-                st.session_state["active_search_has_run"] = True
-                st.session_state["inputs_are_dirty"] = False
-                generate_person_report(pid_input_var.strip())
-                st.rerun()
+        st.button("Generate Person Report", key="btn_person_text_submit", use_container_width=True, type="primary", on_click=callback_person_report_text)
                      
 # ADVANCED SEARCH
 
@@ -641,10 +657,8 @@ with st.expander("Advanced Search", expanded=False):
             "No later intervention"
         ]
         
-        # 1. Grab status selection first so we can use it to determine the disabled state
         f_inter_status = st.selectbox("Intervention Status:", intervention_options, on_change=reset_map_and_search_flags)
         
-        # 2. Only unlock the scope toggle if "Intervention present" is explicitly active
         is_scope_disabled = (f_inter_status != "Intervention present")
         
         f_intervention_scope_raw = st.radio(
@@ -658,7 +672,6 @@ with st.expander("Advanced Search", expanded=False):
             help="This setting only applies when 'Intervention present' is selected." if is_scope_disabled else None
         )
         
-        # 3. Clean up the payload value: if disabled, force it to None or default state so it doesn't filter the data
         intervention_scope = None if is_scope_disabled else f_intervention_scope_raw
 
         f_interv_meth = st.multiselect("Method of Intervention:", [opt for opt in get_filter_options("methods", "method_description") if opt != "All"], on_change=reset_map_and_search_flags)
@@ -674,7 +687,7 @@ with st.expander("Advanced Search", expanded=False):
             st.session_state["csv_mode"] = "advanced"
             st.session_state["active_inscription_ids"] = []
             st.session_state["skip_scroll"] = False
-            st.session_state["trigger_map_html"] = None  # Instantly wipe previous global map
+            st.session_state["trigger_map_html"] = None 
             
             form_payload = {
                 'text': f_text,
@@ -718,7 +731,6 @@ with st.expander("Advanced Search", expanded=False):
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_bulk_search_sql()
             
-            # Capture the click state of the SQL download button
             sql_clicked = st.download_button(
                 label="Download SQL Query",
                 data=dynamic_sql_query,
@@ -742,13 +754,11 @@ with st.expander("Advanced Search", expanded=False):
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
 with st.expander("Search by Bibliography / Literature Search", expanded=False):
-    # Initialize session state placeholders for tracking results between user interactions
     if "lit_matches" not in st.session_state:
         st.session_state.lit_matches = []
     if "lit_search_type" not in st.session_state:
         st.session_state.lit_search_type = None
 
-    # Row 1: The Input Columns
     col1, col2 = st.columns(2)
     
     with col1:
@@ -764,7 +774,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             value=""
         )
 
-    # Row 2: Independent Triggers
     btn_col1, btn_col2 = st.columns(2)
     
     with btn_col1:
@@ -777,7 +786,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Hardcoded Rule: Map ILS and D/Dessau interchangeably
                     cleaned_upper = raw_input.upper().replace('.', '').replace(',', '')
                     
                     if cleaned_upper == "ILS" or cleaned_upper == "D" or cleaned_upper == "DESSAU":
@@ -793,7 +801,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         w1, w2 = "%ILS%", "%Dessau%"
                         params = (w1, w2, w1, w2)
                     else:
-                        # Standard single-term search behavior
                         query = """
                             SELECT DISTINCT unique_citation_id, expanded_citation 
                             FROM unique_citations 
@@ -822,7 +829,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Helper to build an order-independent multi-word search query
                     def build_multi_word_query(search_text):
                         words = [w.strip() for w in search_text.split() if w.strip()]
                         if not words:
@@ -831,10 +837,8 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         conditions = []
                         params = []
                         for word in words:
-                            # Hardcoded Rule: Map ILS and Dessau interchangeably
                             cleaned_upper = word.upper().replace('.', '').replace(',', '')
                             if cleaned_upper == "ILS" or cleaned_upper == "DESSAU":
-                                # Allow the database fields to match EITHER term dynamically
                                 conditions.append(
                                     """(
                                         (uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)
@@ -845,7 +849,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                                 w1, w2 = "%ILS%", "%Dessau%"
                                 params.extend([w1, w1, w1, w1, w2, w2, w2, w2])
                             else:
-                                # Normal dynamic clause for any other standard words
                                 wildcard = f"%{word}%"
                                 conditions.append(
                                     "(uc.abbreviated_citation LIKE ? OR uc.expanded_citation LIKE ? OR m.bibliography_name LIKE ? OR m.chicago_translation LIKE ?)"
@@ -861,7 +864,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         """
                         return sql, params
 
-                    # Try 1: Run strict multi-word wildcard search (All words must match via AND)
                     query1, params1 = build_multi_word_query(raw_input)
                     if query1:
                         cursor.execute(query1, params1)
@@ -869,24 +871,19 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                     else:
                         results = []
                     
-                    # Try 2: General Looser Partial Match Fallback
                     if not results and query1:
-                        # Dynamically flip the strict "AND" operators to "OR" operators
                         looser_query = query1.replace(" WHERE ", " WHERE ").replace(" AND ", " OR ")
                         cursor.execute(looser_query, params1)
                         results = cursor.fetchall()
                     
-                    # Try 3: Fallback with Roman numeral conversion if still nothing found
                     if not results:
                         converted_input = convert_roman_to_arabic_in_text(raw_input)
                         if converted_input != raw_input:
                             query2, params2 = build_multi_word_query(converted_input)
                             if query2:
-                                # Try strict with converted input
                                 cursor.execute(query2, params2)
                                 results = cursor.fetchall()
                                 
-                                # Try loose with converted input if strict converted fails
                                 if not results:
                                     looser_query2 = query2.replace(" AND ", " OR ")
                                     cursor.execute(looser_query2, params2)
@@ -898,19 +895,16 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 except Exception as e:
                     st.error(f"Database query error: {e}")
                          
-# Row 3: Dynamic Dropdown List Area & Action Hook Trigger
     if st.session_state.lit_matches:
         st.markdown("---")
         res_col1, res_col2 = st.columns(2)
         
-        # 1. Store option metadata safely using session state to protect against redrawing flushes
         st.session_state.lit_display_map = {}
         for uc_id, exp_cit in st.session_state.lit_matches:
             if exp_cit:
                 unique_key = f"{exp_cit.strip()} (Ref ID: {uc_id})"
                 st.session_state.lit_display_map[unique_key] = uc_id
 
-        # 2. Extract unique keys and sort using Natural Sorting
         raw_options = list(st.session_state.lit_display_map.keys())
         natural_sort_key = lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
         sorted_options = sorted(raw_options, key=natural_sort_key)
@@ -931,7 +925,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled, on_click=commit_search_and_wipe_inputs):
                 target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
                 st.session_state["skip_scroll"] = False
-                # Backup regex parse safety strategy if map drops out
                 if target_unique_citation_id is None and "Ref ID: " in selected_citation:
                     try:
                         target_unique_citation_id = int(re.search(r'\(Ref ID:\s*(\d+)\)', selected_citation).group(1))
@@ -953,7 +946,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             st.info("No inscriptions are currently cataloged under that specific reference text.")
                             conn.close()
                         else:
-                            # Set global list tracks for any secondary tools (like CSV exports)
                             st.session_state.active_inscription_ids = linked_ids
                             st.session_state.active_search_has_run = True
                             st.session_state["csv_mode"] = "ids"
@@ -966,7 +958,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             for idx, ins_id in enumerate(linked_ids, 1):
                                 out_str.append(f"## Result {idx}\n")
                                 
-                                # Connect cleanly straight into your universal global template string variable
                                 cursor.execute(main_report_sql, (int(ins_id),))
                                 card_rows = cursor.fetchall()
                                 
@@ -1042,7 +1033,6 @@ if (
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
-                # Lock in tracking parameters so the automatic commit detector doesn't instantly wipe this out
                 st.session_state["last_mapped_search"] = {
                     "where": st.session_state.get("active_search_where_clauses", []),
                     "params": st.session_state.get("active_search_query_params", {}),
@@ -1053,14 +1043,11 @@ if (
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Overwrite the empty set dynamically since we have data to fetch
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
                     
-                    # Build placeholders for primary search scope
                     placeholders = ",".join("?" for _ in active_ids)
                     
-                    # Fetch data for ALL inscriptions in the current search scope
                     query = f"""
                         SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
                         FROM Max_Thrax m
@@ -1071,11 +1058,9 @@ if (
                     all_rows = cursor.fetchall()
                     conn.close()
                     
-                    # Separate rows using precise mapping keys
                     unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                     valid_rows_count = len(all_rows) - len(unmappable_rows)
                     
-                    # Scenario A Check: Are 100% of rows unmappable?
                     if len(all_rows) > 0 and valid_rows_count == 0:
                         st.session_state["map_status"] = "unmappable_coordinates"
                         st.session_state["trigger_map_html"] = None
@@ -1087,7 +1072,6 @@ if (
                     else:
                         st.session_state["map_status"] = "success"
 
-                        # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                         if len(unmappable_rows) > 0:
                             province_groups = {}
                             for r in unmappable_rows:
@@ -1127,7 +1111,6 @@ if (
                             
                             st.session_state["unmappable_html_notice"] = "".join(html_alerts)
                         
-                        # Lock in tracking parameters and call map renderer
                         st.session_state["last_mapped_search"] = {
                             "where": st.session_state.get("active_search_where_clauses", []),
                             "params": st.session_state.get("active_search_query_params", {}),
@@ -1162,7 +1145,6 @@ current_search_fingerprint = {
     "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
 }
 
-# Only wipe the map if last_mapped_search WAS ALREADY SET and now no longer matches
 if (
     st.session_state.get("last_mapped_search") is not None 
     and st.session_state.get("last_mapped_search") != current_search_fingerprint
@@ -1173,18 +1155,15 @@ if (
 
 
 # SCROLL TO SEARCH RESULTS OR MAP
-# --- UNIFIED LAYOUT SCROLL INJECTOR ---
 import time
 cache_breaker = str(time.time())
 
-# Explicit scroll for the map button takes absolute priority if triggered
 if st.session_state.get("trigger_map_scroll"):
     st.session_state["trigger_map_scroll"] = False
     st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
     st.components.v1.html(
         f"""
         <script>
-            // Cache breaker string: {cache_breaker}
             function executeMapScroll() {{
                 var target = window.parent.document.getElementById('map-anchor');
                 if (target) {{
@@ -1201,12 +1180,10 @@ if st.session_state.get("trigger_map_scroll"):
     )
     st.session_state["skip_scroll"] = True
 
-# Force scrolling to results when a standard search finishes (only if map wasn't just triggered)
 elif st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
     st.components.v1.html(
         f"""
         <script>
-            // Cache breaker string: {cache_breaker}
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
                 if (target) {{
@@ -1223,7 +1200,6 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     )
     st.session_state["skip_scroll"] = True
 
-# Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
 
@@ -1279,15 +1255,12 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
     if "list_view_expanded" not in st.session_state:
         st.session_state["list_view_expanded"] = True
 
-    # Extract the active IDs found by your search functions
     matched_ids = st.session_state.active_inscription_ids
     
     try:
-        # Open a completely fresh connection to keep it isolated
         conn_overview = get_db_connection()
         cursor_overview = conn_overview.cursor()
         
-        # Build dynamic placeholders for safety
         placeholders = ",".join(["?"] * len(matched_ids))
         
         overview_sql = f"""
@@ -1299,13 +1272,11 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
             COALESCE(pr.province_name, 'N/A') AS province_name,
             COALESCE(dt.distributio_titulorum, 'N/A') AS type_of_inscription,
             CASE 
-                -- 1. Erasure Relevant to Maximinus Thrax
                 WHEN mt.relevance_index = 1 
                      AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
                      AND mt.inscription_id NOT IN (SELECT ip.inscription_id FROM "inscriptions_and_persons" ip WHERE ip.person_id = 50)
                 THEN '**Erasure relevant to Maximinus Thrax**'
                 
-                -- 2. Erasure not relevant to Maximinus Thrax (Condition A & B)
                 WHEN (mt.relevance_index = 1 
                       AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
                       AND mt.inscription_id IN (SELECT ip.inscription_id FROM "inscriptions_and_persons" ip WHERE ip.person_id = 50))
@@ -1314,7 +1285,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                       AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2))
                 THEN '**Erasure not relevant to Maximinus Thrax**'
                 
-                -- 3. No Erasure
                 ELSE '**No Erasure**'
             END AS erasure_status
         FROM "Max_Thrax" mt
@@ -1332,7 +1302,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
             st.markdown(f"**Found {len(overview_rows)} record(s) matching your search:**")
             
-            # 1. Inject custom styling to wrap elements cleanly with a dynamic ceiling cap
             st.markdown(
                 """
                 <style>
@@ -1346,7 +1315,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 unsafe_allow_html=True
             )
             
-            # 2. Use a standard container (no fixed height parameter) wrapped inside our custom HTML div class
             with st.container():
                 st.markdown('<div class="dynamic-results-box">', unsafe_allow_html=True)
                 
@@ -1418,31 +1386,25 @@ if st.session_state.get("active_search_has_run"):
 # AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
 if 'should_scroll' in locals() and should_scroll:
-    # 1. Place the landing anchor that the smooth scroller will look for
     st.markdown('<div id=\"link-scroll-target\"></div>', unsafe_allow_html=True)
     
-    # 2. Execute the smooth glide script targeting the anchor above 
-    # (Using a timestamp string comment to force execution on every single pass)
     import time
     cache_breaker = str(time.time())
     
     st.components.v1.html(
-        f"""
+        f\"\"\"
         <script>
-            // Cache breaker string: {cache_breaker}
             function executeScroll() {{
-                // Look outside the iframe into the main page for our anchor element
                 var target = window.parent.document.getElementById('link-scroll-target');
                 if (target) {{
                     target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
                 }} else {{
-                    // Retry quickly if the main DOM hasn't rendered it yet
                     setTimeout(executeScroll, 50);
                 }}
             }}
             window.addEventListener('load', executeScroll);
             setTimeout(executeScroll, 100);
         </script>
-        """,
+        \"\"\",
         height=0
     )
