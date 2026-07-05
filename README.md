@@ -6,5 +6,9 @@ This dataset is made available under the **Creative Commons Attribution 4.0 Inte
 
 * **What this means:** You are free to share, copy, and adapt the records or schema for any purpose, provided you give appropriate credit by citing this project.
 
-  
+
+## Software Disclaimer
+
+I am not a software developer. The code for the user interface is provided 'as-is' for sharing, copying, and modification. The author assumes no liability for any issues or damages arising from its use.
+
 ## The full documentation for this project is being prepared
