@@ -75,6 +75,8 @@ if "active_search_where_clauses" not in st.session_state:
     st.session_state["active_search_where_clauses"] = []
 if "active_search_query_params" not in st.session_state:
     st.session_state["active_search_query_params"] = {}
+if "skip_scroll" not in st.session_state:
+    st.session_state["skip_scroll"] = False
 
 
 st.set_page_config(page_title="Maximinus Thrax Database Browser", layout="wide")
@@ -2418,7 +2420,9 @@ with st.expander("Advanced Search", expanded=False):
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_bulk_search_sql()
-            st.download_button(
+            
+            # Capture the click state of the SQL download button
+            sql_clicked = st.download_button(
                 label="Download SQL Query",
                 data=dynamic_sql_query,
                 file_name="search_results_compiled_query.sql",
@@ -2426,6 +2430,10 @@ with st.expander("Advanced Search", expanded=False):
                 use_container_width=True,
                 key="btn_download_raw_sql_query"
             )
+            
+            if sql_clicked:
+                st.session_state["skip_scroll"] = True
+                st.rerun()
         else:
             st.button(
                 label="Download SQL Query",
@@ -2434,7 +2442,6 @@ with st.expander("Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
 with st.expander("Search by Bibliography / Literature Search", expanded=False):
@@ -2735,7 +2742,7 @@ if (
         except Exception as e:
             global_csv_string = f"Error compiling dataset: {str(e)}"
 
-        st.download_button(
+        csv_clicked = st.download_button(
             label="Export Results to CSV",
             data=global_csv_string,
             file_name="search_results_export.csv",
@@ -2744,20 +2751,20 @@ if (
             key="btn_global_results_csv_export"
         )
         
+        if csv_clicked:
+            st.session_state["skip_scroll"] = True
+            st.rerun()
+        
     with col_exp_mid:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
-            # 1. ALWAYS initialize the variable as an empty set so downstream code never throws a NameError
             unmappable_place_ids = set()
-            
-            # Reset previous notice parameters
             st.session_state["unmappable_html_notice"] = None
             
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
-                # Lock in tracking parameters so the automatic commit detector doesn't instantly wipe this out
                 st.session_state["last_mapped_search"] = {
                     "where": st.session_state.get("active_search_where_clauses", []),
                     "params": st.session_state.get("active_search_query_params", {}),
@@ -2768,14 +2775,11 @@ if (
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # Overwrite the empty set dynamically since we have data to fetch
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
                     
-                    # Build placeholders for primary search scope
                     placeholders = ",".join("?" for _ in active_ids)
                     
-                    # Fetch data for ALL inscriptions in the current search scope
                     query = f"""
                         SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
                         FROM Max_Thrax m
@@ -2786,11 +2790,9 @@ if (
                     all_rows = cursor.fetchall()
                     conn.close()
                     
-                    # Separate rows using precise mapping keys
                     unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                     valid_rows_count = len(all_rows) - len(unmappable_rows)
                     
-                    # Scenario A Check: Are 100% of rows unmappable?
                     if len(all_rows) > 0 and valid_rows_count == 0:
                         st.session_state["map_status"] = "unmappable_coordinates"
                         st.session_state["trigger_map_html"] = None
@@ -2802,7 +2804,6 @@ if (
                     else:
                         st.session_state["map_status"] = "success"
 
-                        # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                         if len(unmappable_rows) > 0:
                             province_groups = {}
                             for r in unmappable_rows:
@@ -2842,7 +2843,6 @@ if (
                             
                             st.session_state["unmappable_html_notice"] = "".join(html_alerts)
                         
-                        # Lock in tracking parameters and call map renderer
                         st.session_state["last_mapped_search"] = {
                             "where": st.session_state.get("active_search_where_clauses", []),
                             "params": st.session_state.get("active_search_query_params", {}),
@@ -2852,7 +2852,8 @@ if (
                 
                 except Exception as e:
                     st.error(f"Database setup error inside button: {e}")
-        
+            
+            st.session_state["skip_scroll"] = True
             st.rerun()
 else:
     with col_exp_left:
@@ -2877,7 +2878,9 @@ if st.session_state.get("last_mapped_search") != current_search_fingerprint:
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
     st.session_state["unmappable_html_notice"] = None
-
+    
+    
+    st.session_state["skip_scroll"] = True
 
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=True):
@@ -3004,10 +3007,8 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 # MAIN RESULTS VIEW
 if st.session_state.get("active_search_has_run"):
     
-    # 🎯 Dropped your original "results-anchor" directly above the main window
     st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
     
-    # Trigger scroll down to this anchor point
     teleport_to_results()
 
     with st.container(height=520, border=True):
