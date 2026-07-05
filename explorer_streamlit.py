@@ -3142,21 +3142,3 @@ if 'should_scroll' in locals() and should_scroll:
         """,
         height=0
     )
-# --- TEMPORARY SCROLL DIAGNOSTICS MONITOR ---
-st.sidebar.markdown("### 🔍 Scroll Debug Tracker")
-st.sidebar.write(f"• `trigger_map_scroll`: **{st.session_state.get('trigger_map_scroll')}**")
-st.sidebar.write(f"• `skip_scroll`: **{st.session_state.get('skip_scroll')}**")
-st.sidebar.write(f"• `active_search_has_run`: **{st.session_state.get('active_search_has_run')}**")
-st.sidebar.write(f"• `inputs_are_dirty`: **{st.session_state.get('inputs_are_dirty')}**")
-
-# Let's inspect the exact fingerprint mismatch causing drops
-current_fingerprint = {
-    "where": st.session_state.get("active_search_where_clauses", []),
-    "params": st.session_state.get("active_search_query_params", {}),
-    "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
-}
-st.sidebar.write("• Mismatched Fingerprint?")
-st.sidebar.json({
-    "current": current_fingerprint,
-    "last_mapped": st.session_state.get("last_mapped_search")
-})
