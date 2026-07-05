@@ -2339,7 +2339,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
         
     with col2:
         author_input = st.text_input(
-            "Search by Author / Work name",
+            "Search by Author / Work / Full Citation",
             value=""
         )
 
@@ -2366,18 +2366,10 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         ORDER BY expanded_citation ASC;
                     """
                     
-                    # Try 1: Exact search
+
                     search_term = f"%{raw_input}%"
                     cursor.execute(query, (search_term, search_term))
                     results = cursor.fetchall()
-                    
-                    # Try 2: Fallback with Roman numeral conversion if first search finds nothing
-                    if not results:
-                        converted_input = convert_roman_to_arabic_in_text(raw_input)
-                        if converted_input != raw_input:
-                            search_term_fallback = f"%{converted_input}%"
-                            cursor.execute(query, (search_term_fallback, search_term_fallback))
-                            results = cursor.fetchall()
                     
                     st.session_state.lit_matches = results
                     st.session_state.lit_search_type = "left"
@@ -2394,7 +2386,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 try:
                     conn = get_db_connection()
                     cursor = conn.cursor()
-                    
+                         
                     query = """
                         SELECT DISTINCT uc.unique_citation_id, uc.expanded_citation 
                         FROM unique_citations uc
@@ -2403,28 +2395,22 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                            OR uc.expanded_citation LIKE ?
                            OR m.bibliography_name LIKE ?
                            OR m.chicago_translation LIKE ?
-                           OR uc.unique_citation_id IN (
-                               SELECT unique_citation_id FROM inscriptions_and_citations 
-                               WHERE inscription_id IN (
-                                   SELECT inscription_id FROM Max_Thrax WHERE expanded_bibliography LIKE ?
-                               )
-                           )
                         ORDER BY uc.expanded_citation ASC;
                     """
+                    search_term = f"%{author_input.strip()}%"
                     
                     # Try 1: Exact search
-                    search_term = f"%{raw_input}%"
-                    cursor.execute(query, (search_term, search_term, search_term, search_term, search_term))
+                    cursor.execute(query, (search_term, search_term, search_term, search_term))
                     results = cursor.fetchall()
                     
                     # Try 2: Fallback with Roman numeral conversion if first search finds nothing
                     if not results:
-                        converted_input = convert_roman_to_arabic_in_text(raw_input)
-                        if converted_input != raw_input:
+                        converted_input = convert_roman_to_arabic_in_text(author_input.strip())
+                        if converted_input != author_input.strip():
                             search_term_fallback = f"%{converted_input}%"
-                            cursor.execute(query, (search_term_fallback, search_term_fallback, search_term_fallback, search_term_fallback, search_term_fallback))
+                            cursor.execute(query, (search_term_fallback, search_term_fallback, search_term_fallback, search_term_fallback))
                             results = cursor.fetchall()
-                            
+                    
                     st.session_state.lit_matches = results
                     st.session_state.lit_search_type = "right"
                     conn.close()
