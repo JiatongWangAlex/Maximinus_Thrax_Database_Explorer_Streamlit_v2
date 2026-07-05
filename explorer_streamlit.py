@@ -2,7 +2,7 @@
 THESIS DATABASE GUI
 --------------------------------------------------------------------
 Implemented By: Jiatong Wang
-Purpose: This GUI allows anyone to browse my BA thesis database.
+Purpose: This GUI allows anyone to browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
          It offers an interactive map and intuitive searches & filters.
          It also offers the option to download search results as a csv file, or export advanced search settings as an sql query 
          (The WHERE clause is dynamically generated based on user input. I have provided a default SELECT statement.
