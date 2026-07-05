@@ -261,29 +261,58 @@ tracked_fields = {
     "person_report_input": "last_searched_person"
 }
 
-# KEYSTROKE TRACKER 
+# --- UNCOMMITTED PROTECTION + AUTOMATIC SEARCH WIPER ---
 
 if st.session_state.get("active_search_has_run", False) and not st.session_state.get("inputs_are_dirty", False):
+    # ACTION A: A valid search was JUST committed! 
+    # Preserve the active IDs and results, but instantly scrub all text fields and dropdowns.
+    for widget_key in list(tracked_fields.keys()):
+        if widget_key in st.session_state:
+            if widget_key == "person_select_input":
+                st.session_state[widget_key] = "PLEASE SELECT"
+            else:
+                st.session_state[widget_key] = ""
+                
+        # Clear loop memory tracking variables for the wiped elements
+        prior_rerun_key = f"prior_{widget_key}"
+        if prior_rerun_key in st.session_state:
+            st.session_state[prior_rerun_key] = ""
+
+    # Clear advanced search panel filters out of state if they exist
+    advanced_keys_to_purge = [
+        "f_text", "f_rel", "f_prov", "f_dist_tit", "f_sup_name", "f_in_con", 
+        "f_obj_mat", "f_status_tituli", "f_num_ins", "f_start_date", "f_end_date",
+        "f_vir_dist", "f_unit", "f_person_id", "f_inter_status", "f_interv_meth",
+        "f_interv_ext", "f_interv_tgt", "abbr_input", "author_input", "lit_dropdown_selection"
+    ]
+    for adv_key in advanced_keys_to_purge:
+        if adv_key in st.session_state:
+            del st.session_state[adv_key]
+
+    # Force tracking anchors to match the freshly wiped fields so the app reads as clean and unlocks buttons
     for widget_key, anchor_key in tracked_fields.items():
         if widget_key in st.session_state:
             st.session_state[anchor_key] = st.session_state[widget_key]
+        else:
+            st.session_state[anchor_key] = ""
+
     st.session_state["inputs_are_dirty"] = False
 else:
-    # Otherwise, perform standard checking for active unsearched modifications
+    # ACTION B: Standard background checking.
+    # If they touch a key or type *uncommitted input*, catch them and slam the deadbolt lock!
     any_input_has_unsearched_changes = False
     for widget_key, anchor_key in tracked_fields.items():
         if widget_key in st.session_state:
             current_value = str(st.session_state[widget_key]).strip()
             last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
             
-            # Normalize dropdown placeholders
             if current_value == "PLEASE SELECT": current_value = ""
             if last_executed_value == "PLEASE SELECT": last_executed_value = ""
                 
             if current_value != last_executed_value:
                 any_input_has_unsearched_changes = True
             
-            # Auto-reset dropdown choice if a text search field changes
+            # Reset cross-dependent dropdown elements if they alter a parallel text input
             if widget_key != "person_select_input":
                 prior_rerun_key = f"prior_{widget_key}"
                 prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
