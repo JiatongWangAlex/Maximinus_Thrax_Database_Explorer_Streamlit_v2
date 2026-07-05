@@ -1280,7 +1280,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         
         conn_overview.close()
 
-        with st.expander("Search Results List View", expanded=False):
+        with st.expander("Search Results List View", expanded=True):
             st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
             
             with st.container(height=300, border=False):
