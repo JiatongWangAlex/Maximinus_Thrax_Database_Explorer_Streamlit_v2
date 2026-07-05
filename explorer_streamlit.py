@@ -1280,33 +1280,31 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         
         conn_overview.close()
 
-        # Clean header to anchor your auto-scroll
-        st.markdown("### 🔍 Search Results List View")
-        st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
-        
-        # Use a bordered container with a fixed height to keep it scrolling internally
-        with st.container(height=300, border=True):
-            for row in overview_rows:
-                ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
-                
-                ref_line = f" {line_ref}" if line_ref else ""
-                
-                app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
-                obj_url = f"https://maximinusthraxdatabaseui.streamlit.app/?obj_id={obj_id}"
-                obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
-                
-                st.markdown(
-                    f"* [Inscription ID: {ins_id}]({app_url}) | "
-                    f"**Quick Reference:** {ins_ref}{ref_line} | "
-                    f"**Object ID:** {obj_display} | "
-                    f"**Province:** {prov_name} | "
-                    f"**Type of Inscription:** {type_of_inscription} | "
-                    f"*{erasure_status}*"
-                )
+        with st.expander("Search Results List View", expanded=False):
+            st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
+            
+            with st.container(height=300, border=False):
+                for row in overview_rows:
+                    ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
+                    
+                    ref_line = f" {line_ref}" if line_ref else ""
+                    
+                    app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
+                    obj_url = f"https://maximinusthraxdatabaseui.streamlit.app/?obj_id={obj_id}"
+                    obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
+                    
+                    st.markdown(
+                        f"* [Inscription ID: {ins_id}]({app_url}) | "
+                        f"**Quick Reference:** {ins_ref}{ref_line} | "
+                        f"**Object ID:** {obj_display} | "
+                        f"**Province:** {prov_name} | "
+                        f"**Type of Inscription:** {type_of_inscription} | "
+                        f"*{erasure_status}*"
+                    )
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
-             
+
 
 # MAIN RESULTS VIEW
 st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
