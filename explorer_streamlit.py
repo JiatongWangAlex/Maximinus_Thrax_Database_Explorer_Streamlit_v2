@@ -2955,14 +2955,15 @@ if (
                 st.session_state["trigger_map_html"] = None
             else:
                 try:
+                    # OPEN CONNECTION FIRST so the dynamic fetch works perfectly
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
-                    # 1. Fetch unmappable place IDs dynamically from the database
+                    # Fetch unmappable place IDs dynamically from the database
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
                     
-                    # 2. Build placeholders for primary search scope
+                    # Prepare placeholders for your main logic
                     placeholders = ",".join("?" for _ in active_ids)
                     
                     # Fetch data for ALL inscriptions in the current search scope
@@ -2976,7 +2977,7 @@ if (
                     all_rows = cursor.fetchall()
                     conn.close()
                     
-                    # Separate rows using precise mapping keys
+                    # Filter matching rows
                     unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                     valid_rows_count = len(all_rows) - len(unmappable_rows)
                     
@@ -3040,10 +3041,9 @@ if (
                         }
                         generate_active_map()
                 
-                except Exception as db_error:
-                    st.error(f"💥 Database error: {db_error}")
-            
-            # Global button level rerun ensures UI updates instantly for both branches
+                except Exception as e:
+                    st.error(f"Database setup error inside button: {e}")
+        
             st.rerun()
 else:
     with col_exp_left:
