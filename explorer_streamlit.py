@@ -3007,9 +3007,11 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
 # MAIN RESULTS VIEW
 if st.session_state.get("active_search_has_run"):
     
-    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
-    
-    teleport_to_results()
+    if st.session_state.get("skip_scroll"):
+        st.session_state["skip_scroll"] = False
+    else:
+        st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+        teleport_to_results()
 
     with st.container(height=520, border=True):
         raw_results = st.session_state.search_results
