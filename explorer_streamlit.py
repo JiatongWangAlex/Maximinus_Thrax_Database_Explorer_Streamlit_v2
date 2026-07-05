@@ -433,7 +433,14 @@ with col_s3:
         if pname_input_var.strip():
             st.session_state["last_searched_lookup"] = pname_input_var.strip()
             lookup_person_options(pname_input_var)
+            # 🚀 Turn on the message marker when they click Find Person
+            if "person_matches" in st.session_state and st.session_state.person_matches:
+                st.session_state["show_lookup_hint"] = True
             st.rerun()
+
+    # 🚀 Show the message ONLY if names were found and it hasn't been turned off yet
+    if st.session_state.get("show_lookup_hint") and st.session_state.get("person_matches"):
+        st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
                  
 with col_s4:
     if st.session_state.get("person_matches"):
@@ -451,6 +458,8 @@ with col_s4:
             if selected_option == "PLEASE SELECT":
                 st.error("Please pick a person from the dropdown menu before generating a report!")
             else:
+                st.session_state["show_lookup_hint"] = False
+                
                 st.session_state["last_searched_person"] = selected_option
                 st.session_state["csv_mode"] = "ids"
                 st.session_state["active_search_has_run"] = True
