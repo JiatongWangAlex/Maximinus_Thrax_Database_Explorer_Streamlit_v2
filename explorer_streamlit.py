@@ -2014,36 +2014,33 @@ tracked_fields = {
 
 any_input_has_unsearched_changes = False
 
-for widget_key, anchor_key in tracked_fields.items():
-    if widget_key in st.session_state:
-        current_value = str(st.session_state[widget_key]).strip()
-        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
-        
-        # --- NORMALIZE DRUPLOWNS TO PREVENT COOLDOWN LOCKS ---
-        if current_value == "PLEASE SELECT":
-            current_value = ""
-        if last_executed_value == "PLEASE SELECT":
-            last_executed_value = ""
+# Only check for keystroke dirtiness if the app didn't JUST execute a successful search button click
+if not st.session_state.get("active_search_has_run", False) or st.session_state.get("inputs_are_dirty", False):
+    for widget_key, anchor_key in tracked_fields.items():
+        if widget_key in st.session_state:
+            current_value = str(st.session_state[widget_key]).strip()
+            last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
             
-        # 1. Update the master dirty flag
-        if current_value != last_executed_value:
-            any_input_has_unsearched_changes = True
-        
-        # 2. Keystroke detection for auto-wiping the dropdown
-        if widget_key != "person_select_input":
-            prior_rerun_key = f"prior_{widget_key}"
-            prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
+            # Normalize dropdown placeholders
+            if current_value == "PLEASE SELECT": current_value = ""
+            if last_executed_value == "PLEASE SELECT": last_executed_value = ""
+                
+            if current_value != last_executed_value:
+                any_input_has_unsearched_changes = True
             
-            if prior_value == "PLEASE SELECT":
-                prior_value = ""
+            # Keystroke trigger tracker
+            if widget_key != "person_select_input":
+                prior_rerun_key = f"prior_{widget_key}"
+                prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
+                if prior_value == "PLEASE SELECT": prior_value = ""
+                    
+                if current_value != prior_value:
+                    st.session_state["person_select_input"] = "PLEASE SELECT"
                 
-            if current_value != prior_value:
-                # Fresh keystroke! Wipe the selector
-                st.session_state["person_select_input"] = "PLEASE SELECT"
-                
-            st.session_state[prior_rerun_key] = current_value
+                st.session_state[prior_rerun_key] = current_value
 
-st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+    st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
@@ -2909,12 +2906,31 @@ current_search_fingerprint = {
     "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
 }
 
-if st.session_state.get("last_mapped_search") != current_search_fingerprint:
+# Only wipe the map if last_mapped_search WAS ALREADY SET and now no longer matches
+if (
+    st.session_state.get("last_mapped_search") is not None 
+    and st.session_state.get("last_mapped_search") != current_search_fingerprint
+):
     st.session_state["map_status"] = None
     st.session_state["trigger_map_html"] = None
     st.session_state["unmappable_html_notice"] = None
+
+# --- UNIFIED LAYOUT SCROLL INJECTOR ---
+# Force scrolling to results when a standard search finishes
+if st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
+    st.markdown('<div id="results-anchor"></div>', unsafe_allow_html=True)
+    st.components.v1.html(
+        """
+        <script>
+            window.parent.document.getElementById('results-anchor').scrollIntoView({behavior: 'smooth'});
+        </script>
+        """,
+        height=0,
+    )
+    # Lock scroll so it only runs once per button click
     st.session_state["skip_scroll"] = True
 
+# Explicit scroll for the map button
 if st.session_state.get("trigger_map_scroll"):
     st.session_state["trigger_map_scroll"] = False
     st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
@@ -2929,6 +2945,7 @@ if st.session_state.get("trigger_map_scroll"):
 
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
+
 
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
