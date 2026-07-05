@@ -252,30 +252,55 @@ elif "obj_id" in query_params:
 
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
-tracked_fields = {
-    "main_text_input": "last_searched_text",
-    "edcs_report_input": "last_searched_edcs",
-    "id_report_input": "last_searched_id",
-    "person_lookup_input": "last_searched_lookup",
-    "person_select_input": "last_searched_person",
-    "person_report_input": "last_searched_person"
-}
-
-# --- STABLE LIVE KEYSTROKE LOCK DETECTOR ---
-any_input_has_unsearched_changes = False
-
-for widget_key, anchor_key in tracked_fields.items():
-    if widget_key in st.session_state:
-        current_value = str(st.session_state[widget_key]).strip()
-        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+# --- ULTIMATE FACTORY-RESET CONTROLLER ---
+# If a search just ran, capture the query results, completely nuke the session state, and restore ONLY the map data and scroll commands.
+if st.session_state.get("active_search_has_run", False) and not st.session_state.get("inputs_are_dirty", False):
+    
+    # 1. Protect the exact variables required to display your map, results table, and download modes
+    saved_clean_slate = {
+        "active_inscription_ids": st.session_state.get("active_inscription_ids"),
+        "search_results": st.session_state.get("search_results"),
+        "csv_mode": st.session_state.get("csv_mode"),
+        "active_search_has_run": True,
+        "skip_scroll": False,  # Resets scroll safety to False so scrolling fires on every single search pass!
+    }
+    
+    # 2. NUKE EVERYTHING. This flushes every textbox, dropdown, and filter configuration back to pristine factory blanks.
+    st.session_state.clear()
+    
+    # 3. Restore the protected search data back into active memory
+    for state_key, state_value in saved_clean_slate.items():
+        st.session_state[state_key] = state_value
         
-        if current_value == "PLEASE SELECT": current_value = ""
-        if last_executed_value == "PLEASE SELECT": last_executed_value = ""
-            
-        if current_value != last_executed_value:
-            any_input_has_unsearched_changes = True
+    # Initialize empty background anchors so the app doesn't think the fresh blank fields are dirty
+    for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
+        st.session_state[anchor] = ""
+    st.session_state["inputs_are_dirty"] = False
 
-st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
+else:
+    # 4. Standard background keystroke checker. If they type uncommitted letters, slam the Map/CSV lock!
+    tracked_fields = {
+        "main_text_input": "last_searched_text",
+        "edcs_report_input": "last_searched_edcs",
+        "id_report_input": "last_searched_id",
+        "person_lookup_input": "last_searched_lookup",
+        "person_select_input": "last_searched_person",
+        "person_report_input": "last_searched_person"
+    }
+    
+    any_input_has_unsearched_changes = False
+    for widget_key, anchor_key in tracked_fields.items():
+        if widget_key in st.session_state:
+            current_value = str(st.session_state[widget_key]).strip()
+            last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+            
+            if current_value == "PLEASE SELECT": current_value = ""
+            if last_executed_value == "PLEASE SELECT": last_executed_value = ""
+                
+            if current_value != last_executed_value:
+                any_input_has_unsearched_changes = True
+
+    st.session_state["inputs_are_dirty"] = any_input_has_unsearched_changes
 
 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
@@ -1206,10 +1231,6 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
         height=0,
     )
     st.session_state["skip_scroll"] = True
-         
-    for widget_key, anchor_key in tracked_fields.items():
-        st.session_state[anchor_key] = ""
-    st.session_state["inputs_are_dirty"] = False
 
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
