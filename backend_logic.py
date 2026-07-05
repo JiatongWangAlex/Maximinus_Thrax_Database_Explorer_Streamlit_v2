@@ -12,24 +12,7 @@ from branca.element import Element
 import itertools
 import time
 
-if "inputs_are_dirty" not in st.session_state:
-    st.session_state["inputs_are_dirty"] = False
-if "active_search_has_run" not in st.session_state:
-    st.session_state["active_search_has_run"] = False
-if "active_search_where_clauses" not in st.session_state:
-    st.session_state["active_search_where_clauses"] = []
-if "active_search_query_params" not in st.session_state:
-    st.session_state["active_search_query_params"] = {}
-if "skip_scroll" not in st.session_state:
-    st.session_state["skip_scroll"] = False
-if "reset_selectbox" not in st.session_state:
-    st.session_state["reset_selectbox"] = False
 
-def get_db_connection():
-    if not os.path.exists(db_path):
-        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
-        st.stop()
-    return sqlite3.connect(db_path)
 
 #SQL QUERY FOR MAIN REPORT
 main_report_sql = """
@@ -229,6 +212,26 @@ main_report_sql = """
         ) ORDER BY sg ASC, seq_id ASC, inner_lo ASC;
         """
 
+# LATIN LEMMMA MAP
+
+LATIN_LEMMA_MAP = {
+    "praesidem": "praeses", "praesidis": "praeses", "praesidi": "praeses", "praeside": "praeses",
+    "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
+    "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus", 
+    "legatum": "legatus", "legati": "legatus", "legato": "legatus",
+    "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
+    "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
+    "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
+    "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
+    "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
+    "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
+    "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
+    "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
+    "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
+    "immunem": "immunis", "immuni": "immunis", "immune": "immunis",
+    "restituit": "restituo", "restituerunt": "restituo", "restituitque": "restituo", "restituo": "restituo",
+    "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptavit": "coopto", "cooptati": "coopto", "coopto": "coopto"
+}
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
@@ -482,28 +485,13 @@ LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distrib
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
-         
-# LATIN INFLECTED FORMS DICTIONARY
 
+def get_db_connection():
+    if not os.path.exists(db_path):
+        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
+        st.stop()
+    return sqlite3.connect(db_path)
 
-LATIN_LEMMA_MAP = {
-    "praesidem": "praeses", "praesidis": "praeses", "praesidi": "praeses", "praeside": "praeses",
-    "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
-    "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus", 
-    "legatum": "legatus", "legati": "legatus", "legato": "legatus",
-    "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
-    "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
-    "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
-    "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
-    "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
-    "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
-    "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
-    "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
-    "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
-    "immunem": "immunis", "immuni": "immunis", "immune": "immunis",
-    "restituit": "restituo", "restituerunt": "restituo", "restituitque": "restituo", "restituo": "restituo",
-    "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptavit": "coopto", "cooptati": "coopto", "coopto": "coopto"
-}
 
 
 def convert_markdown_bold_to_underline(text):
@@ -1862,9 +1850,28 @@ def teleport_to_results():
         height=0
     )
 
-__all__ = [
+__all__ = [ page bottom
+    
+    'main_report_sql',
+    'LATIN_LEMMA_MAP',
     'get_db_connection',
-    'generate_person_report',
+    'reset_map_and_search_flags',
     'generate_bulk_search_csv',
-    # Add any other core function names you moved here as strings...
+    'generate_bulk_search_sql',
+    'convert_markdown_bold_to_underline',
+    'lemmatize_query',
+    'clean_epigraphic_text',
+    'convert_roman_to_arabic_in_text',
+    'run_standard_search',
+    'run_ref_search',
+    'lookup_person_options',
+    'generate_person_report',
+    'get_filter_options',
+    'execute_advanced_search',
+    'fetch_metadata_by_id',
+    'fetch_metadata_by_object_id',
+    'generate_active_map',
+    'teleport_to_results',
+    
+    
 ]
