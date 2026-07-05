@@ -2765,6 +2765,7 @@ if (
             if not active_ids:
                 st.session_state["map_status"] = "zero_search_results"
                 st.session_state["trigger_map_html"] = None
+                # Lock in tracking parameters so the automatic commit detector doesn't instantly wipe this out
                 st.session_state["last_mapped_search"] = {
                     "where": st.session_state.get("active_search_where_clauses", []),
                     "params": st.session_state.get("active_search_query_params", {}),
@@ -2775,11 +2776,14 @@ if (
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     
+                    # Overwrite the empty set dynamically since we have data to fetch
                     cursor.execute('SELECT place_id FROM "places" WHERE "longitude" IS NULL;')
                     unmappable_place_ids = {row[0] for row in cursor.fetchall()}
                     
+                    # Build placeholders for primary search scope
                     placeholders = ",".join("?" for _ in active_ids)
                     
+                    # Fetch data for ALL inscriptions in the current search scope
                     query = f"""
                         SELECT m.inscription_id, m.inscription_ref, m.line_ref, m.place_id, p.province_name
                         FROM Max_Thrax m
@@ -2790,9 +2794,11 @@ if (
                     all_rows = cursor.fetchall()
                     conn.close()
                     
+                    # Separate rows using precise mapping keys
                     unmappable_rows = [r for r in all_rows if r[3] in unmappable_place_ids]
                     valid_rows_count = len(all_rows) - len(unmappable_rows)
                     
+                    # Scenario A Check: Are 100% of rows unmappable?
                     if len(all_rows) > 0 and valid_rows_count == 0:
                         st.session_state["map_status"] = "unmappable_coordinates"
                         st.session_state["trigger_map_html"] = None
@@ -2804,6 +2810,7 @@ if (
                     else:
                         st.session_state["map_status"] = "success"
 
+                        # Scenario B Check: Are SOME rows unmappable? If yes, group and link them
                         if len(unmappable_rows) > 0:
                             province_groups = {}
                             for r in unmappable_rows:
@@ -2843,6 +2850,7 @@ if (
                             
                             st.session_state["unmappable_html_notice"] = "".join(html_alerts)
                         
+                        # Lock in tracking parameters and call map renderer
                         st.session_state["last_mapped_search"] = {
                             "where": st.session_state.get("active_search_where_clauses", []),
                             "params": st.session_state.get("active_search_query_params", {}),
@@ -2853,8 +2861,9 @@ if (
                 except Exception as e:
                     st.error(f"Database setup error inside button: {e}")
             
-            # 🎯 FORCE MAP EXPANDER TO BE VISIBLE ON NEXT RUN
             st.session_state["map_expander_open"] = True
+            st.session_state["map_version"] = st.session_state.get("map_version", 0) + 1
+            st.session_state["trigger_map_scroll"] = True
             st.session_state["skip_scroll"] = True
             st.rerun()
 else:
@@ -2882,12 +2891,23 @@ if st.session_state.get("last_mapped_search") != current_search_fingerprint:
     st.session_state["unmappable_html_notice"] = None
     st.session_state["skip_scroll"] = True
 
-# --- DYNAMIC EXPANDER CONTROL ENGINE ---
-# Check if a custom command forced the state, fallback to True (open) if uninitialized
-is_map_open = st.session_state.get("map_expander_open", True)
+if st.session_state.get("trigger_map_scroll"):
+    st.session_state["trigger_map_scroll"] = False
+    st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
+    st.components.v1.html(
+        """
+        <script>
+            window.parent.document.getElementById('map-anchor').scrollIntoView({behavior: 'smooth'});
+        </script>
+        """,
+        height=0,
+    )
 
-# MAP VIEWER (Controlled Dynamically)
-with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open):
+is_map_open = st.session_state.get("map_expander_open", True)
+current_version = st.session_state.get("map_version", 0)
+
+# MAP VIEWER (Always Visible)
+with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
     if st.session_state.get("map_status") == "zero_search_results":
         st.warning("No inscription matched your search")
         
@@ -2923,7 +2943,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open):
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
     else:
-        st.info("No map generated yet. If you have yet to make a search, do so. Then click 'Generate Map' to plot inscriptions matching your query on a map.")
+        st.info("No map generated yet. Click 'Generate Map' to plot inscriptions matching your query on a map.")
 
 # SEARCH RESULTS
 st.markdown("### Search Results")
