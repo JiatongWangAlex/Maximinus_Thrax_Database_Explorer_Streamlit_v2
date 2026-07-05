@@ -1686,13 +1686,9 @@ def generate_active_map():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-        # Calculate exactly how many inscriptions in this specific bucket are erased
         bucket_erased_rows = [row for row in rows if row[0] in erased_ids]
         erased_count = len(bucket_erased_rows)
-        
-        # ---------------------------------------------------------
-        # 1. BUILD THE POPUP HTML (SHARED SYSTEM)
-        # ---------------------------------------------------------
+            
         popup_html = ""
         if is_bucket_approximate:
             popup_html += """
@@ -1727,7 +1723,6 @@ def generate_active_map():
             ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text.replace("EDCS-", "")}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
-            # Structural Header Line for Multi-Record Clusters
             if overlap_count > 1:
                 item_border = "#7f8c8d" if is_approx == 1 else "#001140"
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
