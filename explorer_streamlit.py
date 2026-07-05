@@ -426,7 +426,7 @@ with col_s3:
     pname_input_var = st.text_input(
         "Lookup Person ID by Name:", 
         placeholder="e.g. Maximinus", 
-        key="person_lookup_input_s3",  # 🚀 Assigned unique key for column 3
+        key="person_lookup_input", 
         on_change=reset_map_and_search_flags
     )
     if st.button("Find Person", use_container_width=True):
@@ -471,7 +471,7 @@ with col_s4:
         pid_input_var = st.text_input(
             "Person Selector / Search by Person ID:", 
             placeholder="Select from dropdown menu/Search by ID", 
-            key="person_report_text_s4",  # 🚀 Assigned unique key for column 4 text fallback
+            key="person_report_text_fallback",  # 🚀 ONLY change this fallback key to stop the duplicate crash
             on_change=reset_map_and_search_flags
         )
         
