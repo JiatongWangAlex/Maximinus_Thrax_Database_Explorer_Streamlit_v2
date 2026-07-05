@@ -1230,7 +1230,6 @@ st.markdown("### Search Results")
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
-    # Track the expander state in session state so it doesn't force a layout shift loop
     if "list_view_expanded" not in st.session_state:
         st.session_state["list_view_expanded"] = True
 
@@ -1284,11 +1283,27 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         
         conn_overview.close()
 
-        # Driving expanded via session state allows it to open smoothly without fighting the scroll injector
         with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
             st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
             
-            with st.container(height=300, border=False):
+            # 1. Inject custom styling to wrap elements cleanly with a dynamic ceiling cap
+            st.markdown(
+                """
+                <style>
+                .dynamic-results-box {
+                    max-height: 300px;
+                    overflow-y: auto;
+                    padding-right: 5px;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            # 2. Use a standard container (no fixed height parameter) wrapped inside our custom HTML div class
+            with st.container():
+                st.markdown('<div class="dynamic-results-box">', unsafe_allow_html=True)
+                
                 for row in overview_rows:
                     ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
                     
@@ -1306,6 +1321,8 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                         f"**Type of Inscription:** {type_of_inscription} | "
                         f"*{erasure_status}*"
                     )
+                
+                st.markdown('</div>', unsafe_allow_html=True)
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
