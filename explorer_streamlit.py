@@ -1,7 +1,6 @@
 """
-SAPIENZA BA THESIS DATABASE GUI
+Jiatong Wang | SAPIENZA BA THESIS DATABASE GUI
 --------------------------------------------------------------------
-Implemented By: Jiatong Wang
 Purpose: This GUI allows anyone to browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
          It offers an interactive map and intuitive searches & filters.
          It also offers the option to download search results as a csv file, or export advanced search settings as an sql query 
@@ -38,15 +37,32 @@ in my thesis as an appendix and will be repo'd here soon.
 PORTABILITY:
 --------------------------------------------------------------------
 To Future Me: This script is just the streamlit interface
-It is mostly reusable as long as the backend logic, and the db schema that those functions rely on stay the same...
+This file itself is somewhat reusable for a different project as long as backend_logic.py and the schema of version_58.py stays the same.
+HOWEVER the parts of the interface (Advanced Search, Search Results List View, and Map Viewer) which contain logic flagging inscriptions according
+to whether they are relevant to Maximinus Thrax or whether the erasure they suffered are relevant to Maximinus Thrax need to change.
 
-EXCEPT FOR the sql queries used in backend_logic that ARE hardcoded 
-(This hardcode warning is repeated in the comments in backend_logic)
+FURTHERMORE, PLEASE CHECK backend_logic.py 
+The following items ARE hardcoded
 
 HARDCODED STUFF
 --------------------------------------------------------------------
-For interventions, the text output for each method_id and 
-extent_id are hardcoded.
+In the constant main_report_sql in backend_logic.py, the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
+IF you reuse this, make sure to change/check the following section.
+
+
+ Sec2_Intervention_Nested_Details AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
+                   CASE 
+                       WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
+                       WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 5 THEN 'restoration of erased text' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 6 THEN 'reuse as support for new inscription' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       ELSE 'unknown intervention method (' || COALESCE(iam.method_id, 'N/A') || ')' 
+                   END || char(10) AS tl 
+
+====================================================================
 
 ====================================================================
 """
