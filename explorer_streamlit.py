@@ -66,7 +66,6 @@ from branca.element import Element
 import itertools
 import time
 
-
 if "inputs_are_dirty" not in st.session_state:
     st.session_state["inputs_are_dirty"] = False
 if "active_search_has_run" not in st.session_state:
@@ -77,7 +76,8 @@ if "active_search_query_params" not in st.session_state:
     st.session_state["active_search_query_params"] = {}
 if "skip_scroll" not in st.session_state:
     st.session_state["skip_scroll"] = False
-
+if "reset_selectbox" not in st.session_state:
+    st.session_state["reset_selectbox"] = False
 
 st.set_page_config(page_title="Maximinus Thrax Database Browser", layout="wide")
 
@@ -2001,7 +2001,29 @@ elif "obj_id" in query_params:
     fetch_metadata_by_object_id(selected_obj_id)
     st.query_params.clear()
 
+# STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
+tracked_fields = {
+    "main_text_input": "last_searched_text",
+    "edcs_report_input": "last_searched_edcs",
+    "id_report_input": "last_searched_id",
+    "person_lookup_input": "last_searched_lookup",
+    "person_select_input": "last_searched_person",
+    "person_report_input": "last_searched_person"
+}
+
+any_input_has_unsearched_changes = False
+
+for widget_key, anchor_key in tracked_fields.items():
+    if widget_key in st.session_state:
+        current_value = str(st.session_state[widget_key]).strip()
+        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
+        
+        if current_value != last_executed_value:
+            any_input_has_unsearched_changes = True
+            st.session_state["reset_selectbox"] = True
+            break
+                 
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
 # ALL accordion headers get 20px, except the welcome text which stays at 14px
@@ -2199,10 +2221,18 @@ with col_s4:
     if st.session_state.person_matches:
         # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
+        
+        # --- DYNAMIC KEY LOGIC ---
+        # If there are changes, we append a suffix to the key to force Streamlit to recreate it at index 0
+        selectbox_key = "person_select_input"
+        if any_input_has_unsearched_changes:
+            selectbox_key = "person_select_input_reset"
+        # -------------------------
+
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
-            key="person_select_input",
+            key=selectbox_key,
             on_change=reset_map_and_search_flags
         )
         
@@ -2234,7 +2264,7 @@ with col_s4:
                 st.session_state["inputs_are_dirty"] = False
                 generate_person_report(pid_input_var)
                 st.rerun()
-                
+                     
 # ADVANCED SEARCH
 
 with st.expander("Advanced Search", expanded=False):
@@ -2700,27 +2730,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
              
-# STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
-tracked_fields = {
-    "main_text_input": "last_searched_text",
-    "edcs_report_input": "last_searched_edcs",
-    "id_report_input": "last_searched_id",
-    "person_lookup_input": "last_searched_lookup",
-    "person_select_input": "last_searched_person",
-    "person_report_input": "last_searched_person"
-}
-
-any_input_has_unsearched_changes = False
-
-for widget_key, anchor_key in tracked_fields.items():
-    if widget_key in st.session_state:
-        current_value = str(st.session_state[widget_key]).strip()
-        last_executed_value = str(st.session_state.get(anchor_key, "")).strip()
-        
-        if current_value != last_executed_value:
-            any_input_has_unsearched_changes = True
-            break
                  
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
