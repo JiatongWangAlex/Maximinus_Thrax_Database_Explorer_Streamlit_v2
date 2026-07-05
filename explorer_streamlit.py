@@ -1172,62 +1172,6 @@ if (
     st.session_state["unmappable_html_notice"] = None
 
 
-# SCROLL TO SEARCH RESULTS OR MAP
-# --- UNIFIED LAYOUT SCROLL INJECTOR ---
-import time
-cache_breaker = str(time.time())
-
-# Explicit scroll for the map button takes absolute priority if triggered
-if st.session_state.get("trigger_map_scroll"):
-    st.session_state["trigger_map_scroll"] = False
-    st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
-    st.components.v1.html(
-        f"""
-        <script>
-            function executeMapScroll() {{
-                var target = window.parent.document.getElementById('map-anchor');
-                if (target) {{
-                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
-                }} else {{
-                    setTimeout(executeMapScroll, 50);
-                }}
-            }}
-            window.addEventListener('load', executeMapScroll);
-            setTimeout(executeMapScroll, 100);
-        </script>
-        """,
-        height=0,
-    )
-    st.session_state["skip_scroll"] = True
-
-# Force scrolling to results when a standard search finishes (only if map wasn't just triggered)
-elif st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
-    st.components.v1.html(
-        f"""
-        <script>
-            // Cache breaker: {cache_breaker}
-            function executeResultsScroll() {{
-                var target = window.parent.document.getElementById('results-anchor');
-                if (target) {{
-                    // Force a minor 150ms structural paint delay so Streamlit's container fully stabilizes its height
-                    setTimeout(function() {{
-                        target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
-                    }}, 150);
-                }} else {{
-                    setTimeout(executeResultsScroll, 50);
-                }}
-            }}
-            if (document.readyState === 'complete') {{
-                executeResultsScroll();
-            }} else {{
-                window.addEventListener('load', executeResultsScroll);
-            }}
-        </script>
-        """,
-        height=0,
-    )
-    st.session_state["skip_scroll"] = True
-
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
@@ -1420,17 +1364,68 @@ if st.session_state.get("active_search_has_run"):
             else:
                 st.markdown(block)
 
-                     
-# AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
+# ====================================================================
+# SCROLL ACTIONS PANEL (PLACED AT BOTTOM TO ELIMINATE DOM RACE CONDITIONS)
+# ====================================================================
+
+import time
+cache_breaker = str(time.time())
+
+# 1. Map Navigation Action Trigger (Takes absolute priority)
+if st.session_state.get("trigger_map_scroll"):
+    st.session_state["trigger_map_scroll"] = False
+    st.markdown('<div id="map-anchor"></div>', unsafe_allow_html=True)
+    st.components.v1.html(
+        f"""
+        <script>
+            function executeMapScroll() {{
+                var target = window.parent.document.getElementById('map-anchor');
+                if (target) {{
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                }} else {{
+                    setTimeout(executeMapScroll, 50);
+                }}
+            }}
+            if (document.readyState === 'complete') {{
+                executeMapScroll();
+            }} else {{
+                window.addEventListener('load', executeMapScroll);
+            }}
+        </script>
+        """,
+        height=0,
+    )
+    st.session_state["skip_scroll"] = True
+
+# 2. Results Anchor Navigation Trigger (For standard searches)
+elif st.session_state.get("active_search_has_run") and not st.session_state.get("skip_scroll", False):
+    st.components.v1.html(
+        f"""
+        <script>
+            // Cache breaker string: {cache_breaker}
+            function executeResultsScroll() {{
+                var target = window.parent.document.getElementById('results-anchor');
+                if (target) {{
+                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                }} else {{
+                    setTimeout(executeResultsScroll, 50);
+                }}
+            }}
+            if (document.readyState === 'complete') {{
+                executeResultsScroll();
+            }} else {{
+                window.addEventListener('load', executeResultsScroll);
+            }}
+        </script>
+        """,
+        height=0,
+    )
+    st.session_state["skip_scroll"] = True
+
+# 3. Direct URL Link Anchor Target Scroller
 if 'should_scroll' in locals() and should_scroll:
-    # 1. Place the landing anchor that the smooth scroller will look for
     st.markdown('<div id="link-scroll-target"></div>', unsafe_allow_html=True)
-    
-    # 2. Execute the smooth glide script targeting the anchor above 
-    import time
-    cache_breaker = str(time.time())
-    
     st.components.v1.html(
         f"""
         <script>
@@ -1443,8 +1438,11 @@ if 'should_scroll' in locals() and should_scroll:
                     setTimeout(executeScroll, 50);
                 }}
             }}
-            window.addEventListener('load', executeScroll);
-            setTimeout(executeScroll, 100);
+            if (document.readyState === 'complete') {{
+                executeScroll();
+            }} else {{
+                window.addEventListener('load', executeScroll);
+            }}
         </script>
         """,
         height=0
