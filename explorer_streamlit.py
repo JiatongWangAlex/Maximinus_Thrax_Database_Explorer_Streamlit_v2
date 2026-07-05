@@ -122,6 +122,9 @@ def commit_search_and_wipe_inputs():
         st.session_state[anchor] = ""
         
     st.session_state["inputs_are_dirty"] = False
+    
+    # TELL THE APP: A fresh search button was clicked, so do NOT skip scrolling on the next render pass!
+    st.session_state["skip_scroll"] = False
 
 # --- FIXED DEDICATED SEARCH CALLBACK FUNCTIONS ---
 
@@ -1184,6 +1187,7 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     st.components.v1.html(
         f"""
         <script>
+            // Cache breaker pass: {cache_breaker}
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
                 if (target) {{
@@ -1198,7 +1202,9 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
         """,
         height=0,
     )
+    # Lock the scroll after it runs once, until commit_search_and_wipe_inputs drops it back to False!
     st.session_state["skip_scroll"] = True
+
 
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
