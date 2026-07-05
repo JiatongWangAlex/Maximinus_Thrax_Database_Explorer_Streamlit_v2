@@ -2817,7 +2817,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
         st.warning("None of the inscriptions matching your search has a findspot linked to modern coordinates")
         
     elif st.session_state.get("trigger_map_html"):
-        # 1. Standard Info Box (Always on Top)
+     
         st.markdown(
             """
             <div style="
@@ -2839,11 +2839,9 @@ with st.expander("Expand/Collapse Interactive Map", expanded=True):
             unsafe_allow_html=True
         )
         
-        # 2. Scenario B Province Warning Insertion
         if st.session_state.get("unmappable_html_notice"):
             st.markdown(st.session_state["unmappable_html_notice"], unsafe_allow_html=True)
             
-        # 3. Interactive Map Canvas Frame
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
     else:
@@ -2870,6 +2868,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         overview_sql = f"""
         SELECT 
             mt.inscription_id,
+            mt.object_id,
             mt.inscription_ref,
             COALESCE(mt.line_ref, '') AS line_ref,
             COALESCE(pr.province_name, 'N/A') AS province_name,
@@ -2903,35 +2902,31 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         cursor_overview.execute(overview_sql, [int(x) for x in matched_ids])
         overview_rows = cursor_overview.fetchall()
         
-        # Close connection immediately to stay completely isolated
         conn_overview.close()
-        
-        # Non-intrusive List View expander positioned right before the heavy lightbox views
+
         with st.expander("Search Results List View", expanded=False):
             st.markdown(f"**Found {len(overview_rows)} records matching your search:**")
             
-            # Internal fixed-height container to cleanly scroll long result lists without page distortion
             with st.container(height=300, border=False):
                 for row in overview_rows:
-                    ins_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
+                    ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
                     
-                    # Append line reference elegantly if it exists
                     ref_line = f" {line_ref}" if line_ref else ""
                     
-                    # Dynamic App URL linking back to your Streamlit production domain
                     app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
+                    obj_url = f"https://maximinusthraxdatabaseui.streamlit.app/?obj_id={obj_id}"
+                    obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
                     
-                    # Formatted line item using your requested link structural rules
                     st.markdown(
                         f"* [Inscription ID: {ins_id}]({app_url}) | "
                         f"**Quick Reference:** {ins_ref}{ref_line} | "
+                        f"**Object ID:** {obj_display} | "
                         f"**Province:** {prov_name} | "
                         f"**Type of Inscription:** {type_of_inscription} | "
                         f"*{erasure_status}*"
                     )
                 
     except Exception as overview_error:
-        # Fallback gracefully so a listing failure never breaks the underlying UI engine
         st.warning(f"Could not render the List View container: {overview_error}")
 
 
