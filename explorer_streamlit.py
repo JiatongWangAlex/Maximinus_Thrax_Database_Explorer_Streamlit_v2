@@ -1419,15 +1419,15 @@ if st.session_state.get("active_search_has_run"):
                 )
             else:
                 st.markdown(block)
+
                      
 # AUTOSCROLLING TO RESULTS IF USER ARRIVES FROM A LINK
 
 if 'should_scroll' in locals() and should_scroll:
     # 1. Place the landing anchor that the smooth scroller will look for
-    st.markdown('<div id=\"link-scroll-target\"></div>', unsafe_allow_html=True)
+    st.markdown('<div id="link-scroll-target"></div>', unsafe_allow_html=True)
     
     # 2. Execute the smooth glide script targeting the anchor above 
-    # (Using a timestamp string comment to force execution on every single pass)
     import time
     cache_breaker = str(time.time())
     
@@ -1436,12 +1436,10 @@ if 'should_scroll' in locals() and should_scroll:
         <script>
             // Cache breaker string: {cache_breaker}
             function executeScroll() {{
-                // Look outside the iframe into the main page for our anchor element
                 var target = window.parent.document.getElementById('link-scroll-target');
                 if (target) {{
                     target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
                 }} else {{
-                    // Retry quickly if the main DOM hasn't rendered it yet
                     setTimeout(executeScroll, 50);
                 }}
             }}
