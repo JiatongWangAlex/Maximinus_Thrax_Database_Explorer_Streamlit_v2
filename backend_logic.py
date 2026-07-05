@@ -558,14 +558,6 @@ def convert_roman_to_arabic_in_text(text):
             converted_words.append(word)
     return " ".join(converted_words)
 
-if 'active_inscription_ids' not in st.session_state:
-    st.session_state.active_inscription_ids = []
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = ""
-if 'person_matches' not in st.session_state:
-    st.session_state.person_matches = []
-if 'trigger_map_html' not in st.session_state:
-    st.session_state.trigger_map_html = None
 
 # KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
