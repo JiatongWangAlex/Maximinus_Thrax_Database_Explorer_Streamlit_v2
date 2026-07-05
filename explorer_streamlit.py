@@ -2449,22 +2449,20 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                 except Exception as e:
                     st.error(f"Database query error: {e}")
                          
-    # Row 3: Dynamic Dropdown List Area & Action Hook Trigger
+# Row 3: Dynamic Dropdown List Area & Action Hook Trigger
     if st.session_state.lit_matches:
         st.markdown("---")
         res_col1, res_col2 = st.columns(2)
         
-        # 1. Store option metadata safely using tuples or compound keys to avoid key collisions
-        display_to_id = {}
-        
+        # 1. Bind the mapping object safely to session_state to protect it from button redraw flushes
+        st.session_state.lit_display_map = {}
         for uc_id, exp_cit in st.session_state.lit_matches:
             if exp_cit:
-                # Add the ID to the string key to guarantee uniqueness in the dictionary
                 unique_key = f"{exp_cit.strip()} (Ref ID: {uc_id})"
-                display_to_id[unique_key] = uc_id
+                st.session_state.lit_display_map[unique_key] = uc_id
 
-        # 2. Extract the unique keys and sort them using Natural Sorting
-        raw_options = list(display_to_id.keys())
+        # 2. Extract unique string keys and sort using Natural Sorting
+        raw_options = list(st.session_state.lit_display_map.keys())
         natural_sort_key = lambda s: [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
         sorted_options = sorted(raw_options, key=natural_sort_key)
         
@@ -2482,8 +2480,14 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             is_disabled = (selected_citation == "PLEASE SELECT")
             
             if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled):
-                # Fetch the database ID directly using the unique dropdown string key
-                target_unique_citation_id = display_to_id.get(selected_citation)
+                # Pull from session state map, with a robust regex string fallback extraction technique
+                target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
+                
+                if target_unique_citation_id is None and "Ref ID: " in selected_citation:
+                    try:
+                        target_unique_citation_id = int(re.search(r'\(Ref ID:\s*(\d+)\)', selected_citation).group(1))
+                    except Exception:
+                        target_unique_citation_id = None
                 
                 if target_unique_citation_id is not None:
                     try:
@@ -2500,17 +2504,24 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         if not linked_ids:
                             st.info("No inscriptions are currently cataloged under that specific reference text.")
                         else:
+                            # Sets pipeline indicators to activate your main report compiling engine lower on the page
                             st.session_state.active_inscription_ids = linked_ids
                             st.session_state.active_search_has_run = True
                             st.session_state["csv_mode"] = "ids"
                             
+                            # Wipe matching states clean to avoid UI artifacts
                             st.session_state.lit_matches = []
                             st.session_state.lit_search_type = None
+                            if "lit_display_map" in st.session_state:
+                                del st.session_state.lit_display_map
                             
                             st.rerun()
                             
                     except Exception as action_err:
                         st.error(f"Failed sourcing linked junction table IDs: {action_err}")
+                else:
+                    st.error("Could not resolve reference citation ID choice. Please pick an item again.")
+                    
     elif st.session_state.lit_search_type is not None:
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
