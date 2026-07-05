@@ -1422,18 +1422,22 @@ def fetch_metadata_by_id(inscription_id):
         cursor.execute(main_report_sql, (int(inscription_id),))
         rows = cursor.fetchall()
         conn.close()
+        
+        header_message = f"### Inscription ID {inscription_id.strip()}\n\n"
+        
         if not rows:
-            
             st.session_state.active_inscription_ids = [int(inscription_id.strip())]
             st.session_state["active_search_where_clauses"] = []  # Mode 2 explicit ID handling
             st.session_state["active_search_has_run"] = True      # Displays the button
 
-            st.session_state.search_results = f"No metadata entries discovered for ID: {inscription_id}"
+            st.session_state.search_results = f"{header_message}No metadata entries discovered for ID: {inscription_id}"
             
         else:
-            st.session_state.search_results = "\n".join([row[0] for row in rows if row[0] is not None])
+            dossier_body = "\n".join([row[0] for row in rows if row[0] is not None])
+            st.session_state.search_results = f"{header_message}{dossier_body}"
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata: {e}"
+             
 
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
