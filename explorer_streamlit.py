@@ -486,7 +486,7 @@ def run_standard_search(user_input):
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
                    '**Quick Reference:** ' || 
                    CASE 
-                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || inscription_ref || ')' 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || REPLACE(inscription_ref, 'EDCS-', '') || ')'
                        ELSE '' 
                    END || 
                    CASE 
@@ -853,7 +853,7 @@ def run_ref_search(ref_query):
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
                    '**Quick Reference:** ' || 
                    CASE 
-                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || inscription_ref || ')' 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || REPLACE(inscription_ref, 'EDCS-', '') || ')'
                        ELSE '' 
                    END || 
                    CASE 
@@ -1609,7 +1609,7 @@ def execute_advanced_search(f_dict):
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
                    '**Quick Reference:** ' || 
                    CASE 
-                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || inscription_ref || ')' 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || REPLACE(inscription_ref, 'EDCS-', '') || ')'
                        ELSE '' 
                    END || 
                    CASE 
@@ -1830,7 +1830,7 @@ def fetch_metadata_by_id(inscription_id):
             SELECT 0 AS sg, 0 AS seq_id, 1 AS inner_lo, 
                    '**Quick Reference:** ' || 
                    CASE 
-                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || inscription_ref || ')' 
+                       WHEN inscription_ref IS NOT NULL THEN '[' || inscription_ref || '](https://edcs.hist.uzh.ch/monument/' || REPLACE(inscription_ref, 'EDCS-', '') || ')'
                        ELSE '' 
                    END || 
                    CASE 
@@ -2261,7 +2261,7 @@ def generate_active_map():
             else:
                 pleiades_link = 'N/A'
                 
-            ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
+            ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text.replace("EDCS-", "")}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
             # Structural Header Line for Multi-Record Clusters
@@ -3016,7 +3016,7 @@ if (
                                 links = []
                                 for f_id, ref, l_ref in items:
                                     report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
-                                    display_text = f"{ref} {l_ref}" if l_ref else ref
+                                    display_text = f"{ref} | {l_ref}" if (ref and l_ref) else (ref if ref else l_ref)
                                     links.append(f"<a href='{report_url}' target='_blank' style='color: #b45309; font-weight: bold; text-decoration: underline;'>{display_text}</a>")
                                 
                                 links_str = ", ".join(links)
