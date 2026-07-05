@@ -1184,7 +1184,6 @@ if st.session_state.get("trigger_map_scroll"):
     st.components.v1.html(
         f"""
         <script>
-            // Cache breaker string: {cache_breaker}
             function executeMapScroll() {{
                 var target = window.parent.document.getElementById('map-anchor');
                 if (target) {{
@@ -1206,17 +1205,23 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     st.components.v1.html(
         f"""
         <script>
-            // Cache breaker string: {cache_breaker}
+            // Cache breaker: {cache_breaker}
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
                 if (target) {{
-                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    // Force a minor 150ms structural paint delay so Streamlit's container fully stabilizes its height
+                    setTimeout(function() {{
+                        target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+                    }}, 150);
                 }} else {{
                     setTimeout(executeResultsScroll, 50);
                 }}
             }}
-            window.addEventListener('load', executeResultsScroll);
-            setTimeout(executeResultsScroll, 100);
+            if (document.readyState === 'complete') {{
+                executeResultsScroll();
+            }} else {{
+                window.addEventListener('load', executeResultsScroll);
+            }}
         </script>
         """,
         height=0,
