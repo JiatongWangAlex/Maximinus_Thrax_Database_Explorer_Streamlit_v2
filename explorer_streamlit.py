@@ -2021,8 +2021,15 @@ for widget_key, anchor_key in tracked_fields.items():
         
         if current_value != last_executed_value:
             any_input_has_unsearched_changes = True
-            st.session_state["reset_selectbox"] = True
-            break
+
+        if widget_key != "person_select_input":
+            prior_rerun_key = f"prior_{widget_key}"
+            prior_value = str(st.session_state.get(prior_rerun_key, "")).strip()
+            
+            if current_value != prior_value:
+                st.session_state["person_select_input"] = "PLEASE SELECT"
+            
+            st.session_state[prior_rerun_key] = current_value
                  
 # CUSTOMIZE FONT SIZE IN ACCORDION HEADERS    
 
@@ -2222,17 +2229,10 @@ with col_s4:
         # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         
-        # --- DYNAMIC KEY LOGIC ---
-        # If there are changes, we append a suffix to the key to force Streamlit to recreate it at index 0
-        selectbox_key = "person_select_input"
-        if any_input_has_unsearched_changes:
-            selectbox_key = "person_select_input_reset"
-        # -------------------------
-
         selected_option = st.selectbox(
             "Select Person:", 
             options_list, 
-            key=selectbox_key,
+            key="person_select_input",  # Kept original stable key
             on_change=reset_map_and_search_flags
         )
         
