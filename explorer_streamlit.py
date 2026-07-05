@@ -443,7 +443,7 @@ with col_s3:
             st.info("Please select a person from the dropdown menu in 'Select Person', then click Generate Person Report.")
                  
 with col_s4:
-    if st.session_state.person_matches:
+    if st.session_state.get("person_matches"):
         # Prepend the default "PLEASE SELECT" option to the front of the list
         options_list = ["PLEASE SELECT"] + [f"{row[1]} (ID: {row[0]})" for row in st.session_state.person_matches]
         
@@ -454,7 +454,7 @@ with col_s4:
             on_change=reset_map_and_search_flags
         )
         
-if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
+        if st.button("Generate Person Report", key="btn_person_select_submit", use_container_width=True, type="primary"):
             # Check if they left it on the placeholder text
             st.session_state["last_searched_lookup"] = ""
             if selected_option == "PLEASE SELECT":
@@ -483,7 +483,6 @@ if st.button("Generate Person Report", key="btn_person_select_submit", use_conta
                 st.session_state["inputs_are_dirty"] = False
                 generate_person_report(pid_input_var)
                 st.rerun()
-
 
 # ADVANCED SEARCH
 
