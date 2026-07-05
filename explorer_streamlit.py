@@ -883,10 +883,11 @@ def lookup_person_options(name_query):
         cursor.execute('SELECT person_id, person_name FROM "persons" WHERE person_name LIKE ? ORDER BY person_name ASC;', (f"%{name_query.strip()}%",))
         st.session_state.person_matches = cursor.fetchall()
         conn.close()
+        
         if not st.session_state.person_matches:
-            st.session_state.search_results = "No individuals matching that name found in database records."
+            st.session_state.search_results = "" 
     except Exception as e:
-        st.error(f"Person parsing failure: {e}")
+        st.error(f"Person search failed: {e}")
         
 # GENERATE PERSON REPORT
 def generate_person_report(p_id):
@@ -922,7 +923,7 @@ def generate_person_report(p_id):
             SELECT ? AS selected_person_id
         )
         SELECT 
-            'Name: ' || p.person_name || ' | person id: ' || p.person_id || char(10) || char(10) ||
+            '**Name:** ' || p.person_name || ' | **person id:** ' || p.person_id || char(10) || char(10) ||
             
             '**Attested positions in inscriptions:**' || char(10) || 
                 COALESCE((
@@ -2187,6 +2188,11 @@ with col_s3:
             st.session_state["last_searched_lookup"] = pname_input_var.strip()
             lookup_person_options(pname_input_var)
             st.rerun()
+
+    if st.session_state.get("last_searched_lookup"):
+        if "person_matches" in st.session_state and not st.session_state.person_matches:
+            st.error("No individual in the database matched your search. Try a different individual or a different spelling.")
+                 
 with col_s4:
     if st.session_state.person_matches:
         # Prepend the default "PLEASE SELECT" option to the front of the list
