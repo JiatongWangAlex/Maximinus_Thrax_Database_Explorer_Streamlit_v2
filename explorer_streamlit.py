@@ -3125,40 +3125,21 @@ if 'should_scroll' in locals() and should_scroll:
         """,
         height=0
     )
-st.markdown("---")
-st.write("### 🔍 Global Scroll Debug Monitor")
+# --- TEMPORARY SCROLL DIAGNOSTICS MONITOR ---
+st.sidebar.markdown("### 🔍 Scroll Debug Tracker")
+st.sidebar.write(f"• `trigger_map_scroll`: **{st.session_state.get('trigger_map_scroll')}**")
+st.sidebar.write(f"• `skip_scroll`: **{st.session_state.get('skip_scroll')}**")
+st.sidebar.write(f"• `active_search_has_run`: **{st.session_state.get('active_search_has_run')}**")
+st.sidebar.write(f"• `inputs_are_dirty`: **{st.session_state.get('inputs_are_dirty')}**")
 
-# 1. Check if the element is actually on the page
-import re
-# Quick check to see if the anchor is being rendered in the current script run
-st.write(f"1. Is `#results-anchor` in the DOM layout? **{st.session_state.get('active_search_has_run', False)}**")
-
-# 2. Track the button execution state
-st.write(f"2. `active_search_has_run` value: `{st.session_state.get('active_search_has_run')}`")
-st.write(f"3. `inputs_are_dirty` value: `{st.session_state.get('inputs_are_dirty')}`")
-
-# 4. Check if the keystroke tracker is constantly forcing resets
-st.write("4. Current Widget State vs Prior Rerun Values:")
-tracked_fields_debug = {
-    "main_text_input": "last_searched_text",
-    "edcs_report_input": "last_searched_edcs",
-    "id_report_input": "last_searched_id",
-    "person_lookup_input": "last_searched_lookup",
-    "person_select_input": "last_searched_person",
-    "person_report_input": "last_searched_person"
+# Let's inspect the exact fingerprint mismatch causing drops
+current_fingerprint = {
+    "where": st.session_state.get("active_search_where_clauses", []),
+    "params": st.session_state.get("active_search_query_params", {}),
+    "ids_count": len(st.session_state.get("active_inscription_ids", [])) if st.session_state.get("active_inscription_ids") else 0
 }
-
-debug_table = []
-for widget_key, anchor_key in tracked_fields_debug.items():
-    if widget_key in st.session_state:
-        cur = str(st.session_state[widget_key]).strip()
-        last = str(st.session_state.get(anchor_key, "")).strip()
-        prior = str(st.session_state.get(f"prior_{widget_key}", "")).strip()
-        debug_table.append({
-            "Widget": widget_key, 
-            "Current Value": cur, 
-            "Last Executed": last, 
-            "Prior Rerun Value": prior,
-            "Is Dirty?": cur != last
-        })
-st.table(debug_table)
+st.sidebar.write("• Mismatched Fingerprint?")
+st.sidebar.json({
+    "current": current_fingerprint,
+    "last_mapped": st.session_state.get("last_mapped_search")
+})
