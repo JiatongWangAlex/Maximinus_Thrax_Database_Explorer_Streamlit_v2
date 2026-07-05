@@ -1,4 +1,39 @@
+"""
+Jiatong Wang | SAPIENZA BA THESIS DATABASE GUI BACKEND
+--------------------------------------------------------------------
+Purpose: This file contains the constants and functions called in the GUI which allows people browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
+        
+NOTES
+--------------------------------------------------------------------
 
+
+PORTABILITY:
+--------------------------------------------------------------------
+To Future Me: This script provides the db queries and other constants and functions for the streamlit interface
+It is mostly reusable as long as the db schema that those queries rely on stay the same...
+
+EXCEPT FOR the following items which ARE hardcoded
+
+HARDCODED STUFF
+--------------------------------------------------------------------
+In main_report_sql, the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
+IF you reuse this, make sure to change/check the following section.
+
+
+ Sec2_Intervention_Nested_Details AS (
+            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
+                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
+                   CASE 
+                       WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
+                       WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 5 THEN 'restoration of erased text' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       WHEN iam.method_id = 6 THEN 'reuse as support for new inscription' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
+                       ELSE 'unknown intervention method (' || COALESCE(iam.method_id, 'N/A') || ')' 
+                   END || char(10) AS tl 
+
+====================================================================
+"""
 import sqlite3
 import os
 import textwrap
