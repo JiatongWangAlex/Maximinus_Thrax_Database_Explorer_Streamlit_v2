@@ -542,46 +542,6 @@ LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distrib
 WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
-
-#SETUP OBJECT ID LINK
-query_params = st.query_params
-
-if "obj_id" in query_params:
-    selected_obj_id = query_params["obj_id"]
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 1. Grab all inscription IDs that share this specific object_id
-        cursor.execute(
-            'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
-            (selected_obj_id,)
-        )
-        sibling_ids = [row[0] for row in cursor.fetchall()]
-        
-        if not sibling_ids:
-            st.error(f"No inscriptions found for Object ID: {selected_obj_id}")
-        else:
-            st.title(f"Object ID: {selected_obj_id}")
-            st.markdown(f"**{len(sibling_ids)}** inscriptions on this object.")
-            st.write("---")
-            
-            for idx, sib_id in enumerate(sibling_ids, 1):
-                st.subheader(f"Result #{idx} — Inscription ID: {sib_id}")
-                
-                # 🚀 FIXED: Pass only one parameter (sib_id,) to match the CTE template placeholder
-                cursor.execute(main_report_sql, (sib_id,))
-                report_rows = cursor.fetchall()
-                compiled_markdown = "".join([row[0] for row in report_rows if row[0]])
-                st.markdown(compiled_markdown)
-                st.write("---")
-                
-        conn.close()
-    except Exception as e:
-        st.error(f"Error gathering object data: {e}")
-        
-    st.stop()
          
 # LATIN INFLECTED FORMS DICTIONARY
 
@@ -1885,8 +1845,7 @@ def generate_active_map():
 
 query_params = st.query_params
 
-# Check if they arrived via ANY deep-link before we clear the params
-should_scroll = any(k in st.query_params or k in query_params for k in ["ins_id", "person_id", "collective_id"])
+should_scroll = any(k in query_params for k in ["ins_id", "person_id", "collective_id", "obj_id"])
 
 # Inscription hyperlink SETUP
 if "ins_id" in query_params:
@@ -1917,14 +1876,75 @@ elif "person_id" in query_params:
         generate_person_report(url_per_id)
         
 # Institutions/Groups/Military Units hyperlink SETUP
-if "collective_id" in st.query_params:
-    selected_collective_id = st.query_params["collective_id"]
+elif "collective_id" in query_params:
+    selected_collective_id = query_params["collective_id"]
     
     st.session_state["active_search_has_run"] = True
     st.session_state["inputs_are_dirty"] = False
     st.session_state["csv_mode"] = "ids"
     st.session_state["active_search_where_clauses"] = []
     st.session_state["active_search_query_params"] = {}
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT collective_name FROM collectives WHERE collective_id = ?;", (selected_collective_id,))
+        coll_name_row = cursor.fetchone()
+        collective_title = coll_name_row[0] if coll_name_row else f"ID {selected_collective_id}"
+        
+        cursor.execute("""
+            SELECT inscription_id 
+            FROM inscriptions_and_collectives 
+            WHERE collective_id = ?;
+        """, (selected_collective_id,))
+        
+        matched_ids = [row[0] for row in cursor.fetchall()]
+        st.session_state.active_inscription_ids = matched_ids
+        if matched_ids:
+            st.session_state.search_results = f"#### Filtered by Institution/Group: **{collective_title}**\nFound {len(matched_ids)} matching inscriptions."
+        else:
+            st.session_state.search_results = f"No inscriptions found linked to group: **{collective_title}**."
+            
+        conn.close()
+        st.query_params.clear()
+    except Exception as e:
+        st.error(f"Error querying collective group filter: {e}")
+
+# Object ID hyperlink SETUP
+elif "obj_id" in query_params:
+    selected_obj_id = query_params["obj_id"]
+    
+    st.session_state["active_search_has_run"] = True
+    st.session_state["inputs_are_dirty"] = False
+    st.session_state["csv_mode"] = "ids"
+    st.session_state["active_search_where_clauses"] = []
+    st.session_state["active_search_query_params"] = {}
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Pull all companion inscriptions sharing this monument support structure
+        cursor.execute("""
+            SELECT inscription_id 
+            FROM "Max_Thrax" 
+            WHERE object_id = ? 
+            ORDER BY sequence_id ASC, inscription_id ASC;
+        """, (selected_obj_id,))
+        
+        matched_ids = [row[0] for row in cursor.fetchall()]
+        st.session_state.active_inscription_ids = matched_ids
+        
+        if matched_ids:
+            st.session_state.search_results = f"#### Filtered by Object ID: **{selected_obj_id}**\nFound {len(matched_ids)} matching inscriptions on this object."
+        else:
+            st.session_state.search_results = f"No inscriptions found linked to Object ID: **{selected_obj_id}**."
+            
+        conn.close()
+        st.query_params.clear()
+    except Exception as e:
+        st.error(f"Error querying object parameter filter: {e}")
     
     try:
         conn = get_db_connection()
@@ -2564,7 +2584,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                         conn = get_db_connection()
                         cursor = conn.cursor()
                         
-                        # Step A: Find the linked Inscription IDs
                         cursor.execute(
                             "SELECT DISTINCT inscription_id FROM inscriptions_and_citations WHERE unique_citation_id = ?",
                             (target_unique_citation_id,)
@@ -2580,7 +2599,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             st.session_state.active_search_has_run = True
                             st.session_state["csv_mode"] = "ids"
                             
-                            # 🚀 Step B: INTERCEPT AND GENERATE THE DOSSIERS RIGHT HERE!
                             out_str = [
                                 f"#### Found {len(linked_ids)} matching inscription(s) via Literature Search:\n", 
                                 "_" * 70 + "\n\n"
@@ -2601,11 +2619,9 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                                     
                                 out_str.append("\n\n---\n\n")
                             
-                            # Bind the compiled result blocks straight into your main dashboard UI output key!
                             st.session_state.search_results = "".join(out_str)
                             conn.close()
                             
-                            # Clear temporary UI artifact states
                             st.session_state.lit_matches = []
                             st.session_state.lit_search_type = None
                             if "lit_display_map" in st.session_state:
