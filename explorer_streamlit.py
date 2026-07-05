@@ -250,7 +250,6 @@ elif "obj_id" in query_params:
     fetch_metadata_by_object_id(selected_obj_id)
     st.query_params.clear()
 
-
 # STOP PEOPLE FROM TRYING TO GENERATE MAP OR EXPORT TO CSV WITHOUT ACTUALLY CLICKING SEARCH AND GETTING MAD ABOUT HAVING THE WRONG RESULTS
 
 tracked_fields = {
@@ -262,8 +261,7 @@ tracked_fields = {
     "person_report_input": "last_searched_person"
 }
 
-# --- UNCOMMITTED CHANGES DEADLOCK TRACKER ---
-# Track live typing modifications to lock out Map and CSV if unsubmitted
+# --- STABLE LIVE KEYSTROKE LOCK DETECTOR ---
 any_input_has_unsearched_changes = False
 
 for widget_key, anchor_key in tracked_fields.items():
@@ -1208,21 +1206,10 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
         height=0,
     )
     st.session_state["skip_scroll"] = True
-    
-    # 🌟 NOW WE CLEAN UP: Instantly clear out text boxes for the next interaction pass!
-    for widget_key in tracked_fields.keys():
-        if widget_key in st.session_state:
-            if widget_key == "person_select_input":
-                st.session_state[widget_key] = "PLEASE SELECT"
-            else:
-                st.session_state[widget_key] = ""
-                
-    # Sync anchors to the cleared empty strings so the tracker reads perfectly balanced
+         
     for widget_key, anchor_key in tracked_fields.items():
-        st.session_state[anchor_key] = st.session_state.get(widget_key, "")
-        
+        st.session_state[anchor_key] = ""
     st.session_state["inputs_are_dirty"] = False
-
 
 # Ensure these variables are completely unindented (aligned to the far-left margin)
 is_map_open = st.session_state.get("map_expander_open", True)
