@@ -6,6 +6,10 @@ This dataset is made available under the **Creative Commons Attribution 4.0 Inte
 
 * **What this means:** You are free to share, copy, and adapt the records or schema for any purpose, provided you give appropriate credit by citing this project.
 
+The data in itinere_land_roads_optimized.json is derived from the data published by the Itiner-e project; all rights and credits go to them.
+
+The roman provinces polygons in roman_provinces.json are created by me based on coastline data from the Ancient World Mapping Center and province border data for 200 CE from the Digital Atalas of the Roman Empire; all rights and credits go to them.
+
 
 ## Software Disclaimer
 
