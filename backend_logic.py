@@ -774,16 +774,17 @@ def run_standard_search(user_input):
         out_str.append(header)
         
         for ins_id in all_matched_ids:
+
             out_str.append(f"## Inscription ID {ins_id}\n")
             
-            cursor.execute(main_report_sql, (int(ins_id),))
-            card_rows = cursor.fetchall()
+            # Call your function directly to grab the compiled report text
+            dossier_text = get_inscription_report(cursor, int(ins_id))
             
-            if card_rows:
-                dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
-                out_str.append(dossier_text)
+            # If the ID wasn't found, the function returns "No inscription data found."
+            if dossier_text == "No inscription data found.":
+                out_str.append(f"_Warning: This ID does not exist: {ins_id}_")
             else:
-                out_str.append(f"_Warning: This ID not exist: {ins_id}_")
+                out_str.append(dossier_text)
                 
             out_str.append("\n\n---\n\n")
             
@@ -791,6 +792,8 @@ def run_standard_search(user_input):
         conn.close()
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
+
+
 
 # LOOK UP INSCRIPTION BY EDCS NUMBER OR TM NUMBER
 
@@ -840,14 +843,11 @@ def run_ref_search(ref_query):
         ]
         
         for ins_id in matched_ids:
-            # Updated header format here
             out_str.append(f"## Inscription ID {ins_id}\n")
             
-            cursor.execute(main_report_sql, (int(ins_id),))
-            card_rows = cursor.fetchall()
+            dossier_text = get_inscription_report(cursor, int(ins_id))
             
-            if card_rows:
-                dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
+            if dossier_text != "No inscription data found.":
                 out_str.append(dossier_text)
             else:
                 out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
@@ -1418,14 +1418,13 @@ def execute_advanced_search(f_dict):
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
             
-            cursor.execute(main_report_sql, (int(ins_id),))
-            card_rows = cursor.fetchall()
+            # Call your new function to get the complete text report
+            dossier_text = get_inscription_report(cursor, int(ins_id))
             
-            if card_rows:
-                dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
+            if dossier_text:
                 out_str.append(dossier_text)
             else:
-                out_str.append(f"_Warning: Could not compile advanced dossier data for ID: {ins_id}_")
+                out_str.append(f"_Warning: Could not find data for ID: {ins_id}_")
                 
             out_str.append("\n\n---\n\n")
             
@@ -1433,7 +1432,7 @@ def execute_advanced_search(f_dict):
         
         conn.close()
     except Exception as e:
-        st.session_state.search_results = f"Advanced Search System Failure: {e}"
+        st.session_state.search_results = f"Advanced Search Failed: {e}"
 
 def fetch_metadata_by_id(inscription_ids_input):
     if not inscription_ids_input.strip():
@@ -1457,35 +1456,35 @@ def fetch_metadata_by_id(inscription_ids_input):
 
         out_str = []
         missing_ids = []
-        
+        valid_reports = []
+            
         for ins_id in valid_ids:
-            out_str.append(f"### Inscription ID {ins_id}\n\n")
+            dossier_body = get_inscription_report(cursor, int(ins_id))
             
-            cursor.execute(main_report_sql, (ins_id,))
-            rows = cursor.fetchall()
-            
-            if not rows:
-                out_str.append(f"These ID(s) do not exist: {ins_id}\n\n")
+            if dossier_body == "No inscription data found.":
                 missing_ids.append(str(ins_id))
             else:
-                dossier_body = "\n".join([row[0] for row in rows if row[0] is not None])
-                out_str.append(f"{dossier_body}\n\n")
+                valid_reports.append((ins_id, dossier_body))
                 
+        if missing_ids:
+            out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
+            
+        for ins_id, dossier_body in valid_reports:
+            out_str.append(f"### Inscription ID {ins_id}\n\n")
+            out_str.append(f"{dossier_body}\n\n")
             out_str.append("---\n\n")
             
         conn.close()
         
-        final_output = "".join(out_str).rstrip("-\n ")
-      
-        if missing_ids:
-            warning_msg = f"**Warning:** The following ID(s) do not exist in the database: {', '.join(missing_ids)}\n\n"
-            final_output = warning_msg + final_output
-        st.session_state.search_results = final_output
+        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
         
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata: {e}"
         if 'conn' in locals():
-            conn.close()
+            try:
+                conn.close()
+            except:
+                pass
                 
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
@@ -1940,6 +1939,7 @@ def generate_active_map():
 __all__ = [
     
     'LATIN_LEMMA_MAP',
+    'get_inscription_report',
     'get_db_connection',
     'reset_map_and_search_flags',
     'generate_bulk_search_csv',
