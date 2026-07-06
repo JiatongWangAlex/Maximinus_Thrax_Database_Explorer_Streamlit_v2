@@ -735,7 +735,7 @@ def exact_search(cursor, user_input, base_where_clauses=None, base_query_params=
     if base_query_params is None: base_query_params = {}
     
     text_rows = []
-    fallback_rows = []  # Kept empty for exact match strategy
+    fallback_rows = []  # Explicitly kept empty for exact match tracking
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
 
     # ==========================================
@@ -796,8 +796,7 @@ def exact_search(cursor, user_input, base_where_clauses=None, base_query_params=
             if not any(r[0] == ins_id for r in text_rows):
                 text_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons))
 
-    return text_rows, fallback_rows, 0
-
+    return text_rows, fallback_rows, len(text_rows)
 
 # KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
@@ -1135,6 +1134,7 @@ def get_filter_options(table, col):
 
 
 # SET UP ADVANCED SEARCH
+# SET UP ADVANCED SEARCH
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -1334,9 +1334,12 @@ def execute_advanced_search(f_dict):
                     WHERE ip_sub.inscription_id = mt.inscription_id AND vd_sub.virorum_distributio IN ({', '.join(vd_params)}))
         """)
 
-# ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+    # ==========================================================================
+    # ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+    # ==========================================================================
     phrase = f_dict.get('text', '').strip()
-    search_mode = f_dict.get('text_search_mode', 'Exact Match')
+    # SAFE LOOKUP: aligned explicitly to the exact key used by your st.radio widget
+    search_mode = f_dict.get('adv_text_search_mode', 'Exact Match') 
     applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {search_mode}]")
 
     text_rows = []
@@ -1348,17 +1351,21 @@ def execute_advanced_search(f_dict):
         cursor = conn.cursor()
 
         if phrase:
-            # Determine if we should exit early based on the radio button choice
-            exact_flag = (search_mode == "Exact Match")
-            
-            # Both strategies now use the unified engine!
-            text_rows, fallback_rows, direct_count = assisted_search(
-                cursor=cursor,
-                user_input=phrase,
-                base_where_clauses=where_clauses,
-                base_query_params=query_params,
-                exact_match_only=exact_flag
-            )
+            # Route directly to the corresponding target execution strategy
+            if search_mode == "Exact Match":
+                text_rows, fallback_rows, direct_count = exact_search(
+                    cursor=cursor,
+                    user_input=phrase,
+                    base_where_clauses=where_clauses,
+                    base_query_params=query_params
+                )
+            else:
+                text_rows, fallback_rows, direct_count = assisted_search(
+                    cursor=cursor,
+                    user_input=phrase,
+                    base_where_clauses=where_clauses,
+                    base_query_params=query_params
+                )
         else:
             # If no phrase was provided, fallback to running the base filters matching standard sql loops
             final_sql = base_sql + (" AND " + " AND ".join(where_clauses) if where_clauses else "")
@@ -1395,7 +1402,6 @@ def execute_advanced_search(f_dict):
                 unique_objects.add(row[0])
 
         # STITCH VISUAL DOSSIER LAYOUT FOR DISPLAY
-        # SAFE: Use the direct_count variable we tracked natively above, completely removing getattr()
         total_inscriptions = len(all_matched_ids)
         indirect_count = total_inscriptions - direct_count
 
