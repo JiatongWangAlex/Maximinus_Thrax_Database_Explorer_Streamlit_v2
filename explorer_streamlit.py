@@ -59,21 +59,38 @@ PLEASE CHECK backend_logic.py for the following items which are hardcoded
 
 HARDCODED STUFF IN BACKEND_LOGIC.PY
 --------------------------------------------------------------------
-In the constant main_report_sql in backend_logic.py, the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
+
+--------------------------------------------------------------------
+In get_inscription_report the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
 IF you reuse this, make sure to change/check the following section.
 
+            else:
+                report.append(f"**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
+                for _, interv_id, idx, note, m_id, ext_desc, meth_desc in item_interv:
+                    idx_lbl = idx if idx else 1
+                    note_str = f" {note}" if note else ""
+                    
+                    if m_id == 2:
+                        cursor.execute("""
+                            SELECT t.target_description 
+                            FROM interventions_and_targets iat 
+                            JOIN targets t ON iat.target_id = t.target_id 
+                            WHERE iat.intervention_id = ?
+                        """, (interv_id,))
+                        targets = ", ".join([r[0] for r in cursor.fetchall()])
+                        report.append(f"  * _intervention {idx_lbl} :_ {ext_desc or ''} {meth_desc or ''} of inscription, targeting {targets}")
+                    elif m_id == 3:
+                        report.append(f"  * _intervention {idx_lbl} :_ reuse of monument{note_str}")
+                    elif m_id == 4:
+                        report.append(f"  * _intervention {idx_lbl} :_ monument damage{note_str}")
+                    elif m_id == 5:
+                        report.append(f"  * _intervention {idx_lbl} :_ restoration of erased text{note_str}")
+                    elif m_id == 6:
+                        report.append(f"  * _intervention {idx_lbl} :_ reuse as support for new inscription{note_str}")
+                    else:
+                        report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
 
- Sec2_Intervention_Nested_Details AS (
-            SELECT 2 AS sg, mt.sequence_id AS seq_id, 1 AS inner_lo, 
-                   '* _intervention ' || COALESCE(i.intervention_index, 1) || ' :_ ' || 
-                   CASE 
-                       WHEN iam.method_id = 2 THEN COALESCE(e.extent_description, '') || ' ' || COALESCE(m.method_description, '') || ' of inscription, ' || COALESCE(m.method_description, '') || ' targeting ' || (SELECT GROUP_CONCAT(t.target_description, ', ') FROM "interventions_and_targets" iat JOIN "targets" t ON iat.target_id = t.target_id WHERE iat.intervention_id = i.intervention_id) 
-                       WHEN iam.method_id = 3 THEN 'reuse of monument' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
-                       WHEN iam.method_id = 4 THEN 'monument damage' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
-                       WHEN iam.method_id = 5 THEN 'restoration of erased text' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
-                       WHEN iam.method_id = 6 THEN 'reuse as support for new inscription' || CASE WHEN i.note IS NOT NULL AND i.note <> '' THEN ' ' || i.note ELSE '' END 
-                       ELSE 'unknown intervention method (' || COALESCE(iam.method_id, 'N/A') || ')' 
-                   END || char(10) AS tl 
+
                    
 FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
 
