@@ -641,13 +641,14 @@ with col_s4:
 
 with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
+    st.text("Scroll down and click Execute Advanced Search to search!")
 
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatum",
         on_change=reset_map_and_search_flags
     )
-    st.text("Scroll down and click Execute Advanced Search to search!")
+         
     st.caption(
         "Supported logic operators", 
         help=(
@@ -655,6 +656,7 @@ with st.expander("Advanced Search", expanded=False):
             "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
         )
     )
+         
     
     text_search_mode = st.radio(
         "Text Search Strategy:",
