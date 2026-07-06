@@ -266,24 +266,71 @@ main_report_sql = """
 # LATIN LEMMMA MAP
 
 LATIN_LEMMA_MAP = {
-    "praeses": "praeses", "praesidem": "praeses", "praesidis": "praeses", "praesidi": "praeses", "praeside": "praeses",
+
+    "praeses provinciae": "praeses provinciae", "praesidem provinciae": "praeses provinciae",
+    "tribunicia potestate": "tribunicia potestate", "tribuniciae potestate": "tribuniciae potestate",
     "praefectus": "praefectus", "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
     "tribunus": "tribunus", "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus",
-    "legatus": "legatus", "legatum": "legatus", "legati": "legatus", "legato": "legatus",
+    "legatus": "legatus", "legati": "legatus", "legatum": "legatus", "legato": "legatus",
     "speculator": "speculator", "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
     "veteranus": "veteranus", "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
     "quaestor": "quaestor", "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
     "procurator": "procurator", "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
     "imperator": "imperator", "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
     "consul": "consul", "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
+    "proconsul": "proconsul", "proconsulem": "proconsul", "proconsulis": "proconsul", "proconsuli": "proconsul", "proconsule": "proconsul",
     "centurio": "centurio", "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
     "augustus": "augustus", "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
     "caesar": "caesar", "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
-    "immunis": "immunis", "immunem": "immunis", "immuni": "immunis", "immune": "immunis",
-
-    "restituo": "restituo", "restituit": "restituo", "restituerunt": "restituo", "restituitque": "restituo",
-    "coopto": "coopto", "cooptavit": "coopto", "cooptaverunt": "coopto", "cooptatus": "coopto", "cooptati": "coopto",
+    "nobilissimus": "nobilissimus", "nobilissimum": "nobilissimus", "nobilissimo": "nobilissimus"
+    "immunis": "immunis", "immunem": "immunis", "immuni": "immunis", "immune": "immunis"
 }
+
+
+# --- sql query constants ---
+
+
+sql_get_person_details = "SELECT person_name, person_notes FROM persons WHERE person_id = ?;"
+
+
+sql_get_all_person_inscriptions = """
+    SELECT DISTINCT mt.inscription_id, mt.inscription_ref
+    FROM "Max_Thrax" mt 
+    JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id 
+    WHERE ip.person_id = ?;
+"""
+
+
+sql_get_positions = """
+    SELECT pos.position_description, m2.inscription_ref, m2.inscription_id
+    FROM inscriptions_and_persons ip2
+    JOIN Max_Thrax m2 ON ip2.inscription_id = m2.inscription_id
+    JOIN position_attestations pa2 ON ip2.inscription_person_id = pa2.inscription_person_id
+    JOIN positions pos ON pa2.position_id = pos.position_id
+    WHERE ip2.person_id = ?;
+"""
+
+
+sql_get_status = """
+    SELECT sd.status_designation, m3.inscription_ref, m3.inscription_id
+    FROM inscriptions_and_persons ip3
+    JOIN Max_Thrax m3 ON ip3.inscription_id = m3.inscription_id
+    JOIN status_designation_attestations sda2 ON ip3.inscription_person_id = sda2.inscription_person_id
+    JOIN status_designations sd ON sda2.status_designation_id = sd.status_designation_id
+    WHERE ip3.person_id = ?;
+"""
+
+
+sql_get_units = """
+    SELECT col.collective_name, m4.inscription_ref, m4.inscription_id
+    FROM inscriptions_and_persons ip4
+    JOIN Max_Thrax m4 ON ip4.inscription_id = m4.inscription_id
+    JOIN unit_affiliation_attestations uaa ON ip4.inscription_person_id = uaa.inscription_person_id
+    JOIN collectives col ON uaa.collective_id = col.collective_id
+    WHERE ip4.person_id = ?;
+"""
+
+
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
     st.session_state["active_search_has_run"] = False
@@ -882,134 +929,118 @@ def generate_person_report(p_id):
     if not str(p_id).strip().isdigit():
         st.session_state.search_results = "Please enter a valid numerical Person ID."
         return
+        
+    person_id_int = int(p_id)
+    conn = None
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 1. Fetch the person's name first to build the style header
-        cursor.execute("SELECT person_name FROM persons WHERE person_id = ?;", (int(p_id),))
+        # 1. Fetch Name and Notes
+        cursor.execute(sql_get_person_details, (person_id_int,))
         name_row = cursor.fetchone()
-        person_name = name_row[0] if name_row else f"Person ID {p_id}"
-        
-        # Build the header message in your exact requested style
+        if not name_row:
+            st.session_state.search_results = f"### **Person ID {p_id}**\n\n---\n\nNo person dossier card compiled for Person ID {p_id}."
+            return
+            
+        person_name, person_notes = name_row[0], name_row[1]
         header_message = f"### **{person_name}**\n\n---"
         
-        # Keep track of active inscriptions linked to this person for the map component
-        cursor.execute("""
-            SELECT mt.inscription_id 
-            FROM "Max_Thrax" mt 
-            JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id 
-            WHERE ip.person_id = ?;
-        """, (int(p_id),))
-        st.session_state.active_inscription_ids = [r[0] for r in cursor.fetchall()]
+        # 2. Fetch all overall unique inscriptions linked to this person
+        cursor.execute(sql_get_all_person_inscriptions, (person_id_int,))
+        all_inscriptions = cursor.fetchall()  
         
-        st.session_state["active_search_where_clauses"] = []  # Tells exporter: Mode 2 Active
-        st.session_state["active_search_has_run"] = True      # Lights up the button globally
+        # Keep track of active inscriptions for the map component
+        st.session_state.active_inscription_ids = [r[0] for r in all_inscriptions]
+        st.session_state["active_search_where_clauses"] = []  
+        st.session_state["active_search_has_run"] = True      
         
-        sql = """
-        WITH TargetPerson AS (
-            SELECT ? AS selected_person_id
-        )
-        SELECT 
-            '**Name:** ' || p.person_name || ' | **person id:** ' || p.person_id || char(10) || char(10) ||
+        # Maps & sets to keep track of unique IDs and translate ID -> Ref
+        all_insc_ids = {r[0] for r in all_inscriptions}
+        all_insc_id_to_ref = {r[0]: r[1] for r in all_inscriptions}
+        
+        # Helper to group raw rows and count duplicate attestations per inscription
+        def process_rows(rows):
+            grouped = {}
+            for item_name, ref, ins_id in rows:
+                if item_name not in grouped:
+                    grouped[item_name] = {}
+                grouped[item_name][ins_id] = grouped[item_name].get(ins_id, 0) + 1
+            return grouped
+
+        # 3. Fetch specific attestation datasets using lowercase constants
+        cursor.execute(sql_get_positions, (person_id_int,))
+        positions_data = process_rows(cursor.fetchall())
+        
+        cursor.execute(sql_get_status, (person_id_int,))
+        status_data = process_rows(cursor.fetchall())
+        
+        cursor.execute(sql_get_units, (person_id_int,))
+        units_data = process_rows(cursor.fetchall())
+        
+        # Track every unique inscription ID accounted for across all 3 groupings
+        attested_insc_ids = set()
+        for dataset in [positions_data, status_data, units_data]:
+            for category in dataset:
+                attested_insc_ids.update(dataset[category].keys())
+                
+        has_any_attestations = len(attested_insc_ids) > 0
+
+
+        report_lines = [f"**Name:** {person_name} | **Person ID:** {person_id_int}\n"]
+        
+        # ALTERNATIVE OUTPUT 1: Completely un-affiliated person
+        if not has_any_attestations:
+            insc_strings = [f"{ref} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id, ref in all_insc_id_to_ref.items()]
+            insc_display = ", ".join(insc_strings) if insc_strings else "None"
             
-            -- FIX 1: Added double newline after category title
-            '**Attested positions in inscriptions:**' || char(10) || char(10) || 
-                COALESCE((
-                    SELECT GROUP_CONCAT(pos_grp.pos_summary, char(10) || char(10))
-                    FROM (
-                        SELECT '• **' || pos.position_description || ':**' || char(10) || '  ' || 
-                               GROUP_CONCAT(inner_pos.ref_with_id, ', ') AS pos_summary
-                        FROM (
-                            SELECT DISTINCT ip2.person_id, pa2.position_id, m2.inscription_ref || ' (id: [' || m2.inscription_id || '](?ins_id=' || m2.inscription_id || '))' AS ref_with_id
-                            FROM inscriptions_and_persons ip2
-                            JOIN Max_Thrax m2 ON ip2.inscription_id = m2.inscription_id
-                            JOIN position_attestations pa2 ON ip2.inscription_person_id = pa2.inscription_person_id
-                        ) inner_pos
-                        JOIN positions pos ON inner_pos.position_id = pos.position_id
-                        CROSS JOIN TargetPerson
-                        WHERE inner_pos.person_id = TargetPerson.selected_person_id
-                        GROUP BY pos.position_id
-                    ) pos_grp
-                ), 'None') || char(10) || char(10) ||
-                
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM inscriptions_and_persons ip3
-                    JOIN status_designation_attestations sda2 ON ip3.inscription_person_id = sda2.inscription_person_id
-                    CROSS JOIN TargetPerson
-                    WHERE ip3.person_id = TargetPerson.selected_person_id
-                ) THEN 
-                    -- FIX 2: Added double newline after category title
-                    '**Attested status in inscriptions:**' || char(10) || char(10) ||
-                    (
-                        SELECT GROUP_CONCAT(sd_grp.sd_summary, char(10) || char(10))
-                        FROM (
-                            SELECT '• **' || sd.status_designation || ':**' || char(10) || '  ' || 
-                                   GROUP_CONCAT(inner_sd.ref_with_id, ', ') AS sd_summary
-                            FROM (
-                                SELECT DISTINCT ip3.person_id, sda2.status_designation_id, m3.inscription_ref || ' (id: [' || m3.inscription_id || '](?ins_id=' || m3.inscription_id || '))' AS ref_with_id
-                                FROM inscriptions_and_persons ip3
-                                JOIN Max_Thrax m3 ON ip3.inscription_id = m3.inscription_id
-                                JOIN status_designation_attestations sda2 ON ip3.inscription_person_id = sda2.inscription_person_id
-                            ) inner_sd
-                            JOIN status_designations sd ON inner_sd.status_designation_id = sd.status_designation_id
-                            CROSS JOIN TargetPerson
-                            WHERE inner_sd.person_id = TargetPerson.selected_person_id
-                            GROUP BY sd.status_designation_id
-                        ) sd_grp
-                    ) || char(10) || char(10)
-                ELSE ''
-            END ||
+            # Appends the IDs explicitly here since there are no status/position/unit items
+            report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s):** {insc_display}\n")
+            report_lines.append(f"**Notes:** {person_notes if person_notes else 'None'}")
+            
+            st.session_state.search_results = f"{header_message}\n\n" + "\n".join(report_lines)
+            return
 
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM inscriptions_and_persons ip4
-                    JOIN unit_affiliation_attestations uaa ON ip4.inscription_person_id = uaa.inscription_person_id
-                    CROSS JOIN TargetPerson
-                    WHERE ip4.person_id = TargetPerson.selected_person_id
-                ) THEN 
-                    -- FIX 3: Added double newline after category title
-                    '**Attested unit in inscription:**' || char(10) || char(10) ||
-                    (
-                        SELECT GROUP_CONCAT(unit_grp.unit_summary, char(10) || char(10))
-                        FROM (
-                            SELECT '• **' || col.collective_name || ':**' || char(10) || '  ' || 
-                                   GROUP_CONCAT(inner_unit.ref_with_id, ', ') AS unit_summary
-                            FROM (
-                                SELECT DISTINCT ip4.person_id, uaa.collective_id, m4.inscription_ref || ' (id: [' || m4.inscription_id || '](?ins_id=' || m4.inscription_id || '))' AS ref_with_id
-                                FROM inscriptions_and_persons ip4
-                                JOIN Max_Thrax m4 ON ip4.inscription_id = m4.inscription_id
-                                JOIN unit_affiliation_attestations uaa ON ip4.inscription_person_id = uaa.inscription_person_id
-                            ) inner_unit
-                            JOIN collectives col ON inner_unit.collective_id = col.collective_id
-                            CROSS JOIN TargetPerson
-                            WHERE inner_unit.person_id = TargetPerson.selected_person_id
-                            GROUP BY col.collective_id
-                        ) unit_grp
-                    ) || char(10) || char(10)
-                ELSE ''
-            END ||
-                
-            '**Notes:** ' || COALESCE(p.person_notes, 'None') AS "Dossier Card"
+        # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 
 
-        FROM persons p
-        LEFT JOIN persons_and_virorum_distributio pvd ON p.person_id = pvd.person_id
-        LEFT JOIN virorum_distributio vd ON pvd.virorum_distributio_id = vd.virorum_distributio_id
-        CROSS JOIN TargetPerson
-        WHERE p.person_id = TargetPerson.selected_person_id
-        GROUP BY p.person_id;
-        """
-        cursor.execute(sql, (int(p_id),))
-        result = cursor.fetchone()
+        report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s)**\n")
         
-        if result and result[0]:
-            # Prepend the style header block directly to the SQL report text block
-            st.session_state.search_results = f"{header_message}\n\n{result[0]}"
-        else:
-            st.session_state.search_results = f"{header_message}\n\nNo person dossier card compiled for Person ID {p_id}."
+        def format_section(title, dataset):
+            if not dataset:
+                return ""
+            lines = [f"**{title}**"]
+            for item_name, ins_counts in dataset.items():
+                ref_strings = []
+                total_attestations = sum(ins_counts.values())
+                
+                for ins_id in ins_counts.keys():
+                    ref = all_insc_id_to_ref.get(ins_id, f"ID: {ins_id}")
+                    ref_strings.append(f"{ref} (id: [{ins_id}](?ins_id={ins_id}))")
+                
+                refs_display = ", ".join(ref_strings)
+                lines.append(f"• {item_name} ({total_attestations} attestations): {refs_display}")
+            return "\n".join(lines) + "\n\n"
+
+        # Append blocks dynamically (removes blank sections entirely)
+        if positions_data:
+            report_lines.append(format_section("Attested positions in inscriptions:", positions_data))
+        if status_data:
+            report_lines.append(format_section("Attested status in inscriptions:", status_data))
+        if units_data:
+            report_lines.append(format_section("Attested unit in inscription:", units_data))
+            
+        # ALTERNATIVE OUTPUT 2:
+        leftover_insc_ids = all_insc_ids - attested_insc_ids
+        if leftover_insc_ids:
+            leftover_strings = [f"{all_insc_id_to_ref[ins_id]} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id in leftover_insc_ids]
+            leftover_display = " ".join(leftover_strings)
+            report_lines.append(f"**Other inscriptions mentioning {person_name}:** {leftover_display}\n")
+            
+        report_lines.append(f"**Notes:** {person_notes if person_notes else 'None'}")
+        
+        st.session_state.search_results = f"{header_message}\n\n" + "\n".join(report_lines)
+
     except Exception as e:
         st.session_state.search_results = f"Dossier production error: {e}"
     finally:
@@ -1919,6 +1950,11 @@ def generate_active_map():
 __all__ = [
     
     'main_report_sql',
+    'sql_get_person_details',
+    'sql_get_all_person_inscriptions',
+    'sql_get_positions',
+    'sql_get_status'
+    'sql_get_units',
     'LATIN_LEMMA_MAP',
     'get_db_connection',
     'reset_map_and_search_flags',
@@ -1939,5 +1975,6 @@ __all__ = [
     'generate_active_map',
     
 ]
+
 
 
