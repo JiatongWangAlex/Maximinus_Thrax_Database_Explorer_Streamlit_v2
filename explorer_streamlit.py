@@ -764,7 +764,7 @@ with st.expander("Advanced Search", expanded=False):
             
             form_payload = {
                 'text': f_text,
-                'text_search_mode': text_search_mode,  # Captured perfectly here later!
+                'adv_text_search_mode': text_search_mode,  # <-- FIXED HERE
                 'relevance_index': (
                     "All" if f_rel == "All inscriptions regardless of relevance" 
                     else 1 if f_rel == "Relevant" 
@@ -800,7 +800,7 @@ with st.expander("Advanced Search", expanded=False):
                 'dating_strategy': f_dating_strategy
             }
             execute_advanced_search(form_payload)
-
+                 
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_bulk_search_sql()
@@ -825,6 +825,8 @@ with st.expander("Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
+
+
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
 with st.expander("Search by Bibliography / Literature Search", expanded=False):
