@@ -1261,12 +1261,21 @@ def execute_advanced_search(f_dict):
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
 
-        # STRATEGY 2: ASSISTED MATCH (Calls the multi-tiered cascading fallback utility)
+        # STRATEGY 2: ASSISTED MATCH (Call the compartmentalized shell engine directly)
         else:
-            text_rows, fallback_rows = assisted_search(cursor, phrase, base_where_clauses=where_clauses, base_query_params=query_params)
+            local_clauses = list(where_clauses)
+            local_params = dict(query_params)
+            
+            text_rows, fallback_rows = assisted_search(
+                cursor, 
+                phrase, 
+                base_where_clauses=local_clauses, 
+                base_query_params=local_params
+            )
+            
+            # Standardize records structure down to primary row metadata length safely
             text_rows = [r[:6] for r in text_rows]
             fallback_rows = [r[:6] if len(r) == 6 else (r[:6] + (r[6], r[7]) if len(r) == 8 else r[:6] + ('assisted_fallback', 'Match found')) for r in fallback_rows]
-
         # DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
