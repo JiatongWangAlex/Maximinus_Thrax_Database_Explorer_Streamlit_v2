@@ -517,7 +517,7 @@ with col_s2:
 
 with col_s3:
     pname_input_var = st.text_input(
-        "Lookup Person by Name:", 
+        "Look up Person by Name:", 
         placeholder="e.g. Maximinus", 
         key="person_lookup_input",
         on_change=reset_map_and_search_flags
