@@ -1276,13 +1276,14 @@ def execute_advanced_search(f_dict):
                     WHERE ip_sub.inscription_id = mt.inscription_id AND vd_sub.virorum_distributio IN ({', '.join(vd_params)}))
         """)
 
-    # ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+# ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
     phrase = f_dict.get('text', '').strip()
     search_mode = f_dict.get('text_search_mode', 'Exact Match')
     applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {search_mode}]")
 
     text_rows = []
     fallback_rows = []
+    direct_count = 0  # Initialize variable safely here to hold our integer counter
 
     try:
         conn = get_db_connection()
@@ -1308,8 +1309,8 @@ def execute_advanced_search(f_dict):
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
             
-            # Since Strategy 1 doesn't use tiers, total text_rows length is the direct match count
-            setattr(text_rows, "direct_match_count", len(text_rows))
+            # SAFE: Store the count in our independent variable instead of using setattr() on the list
+            direct_count = len(text_rows)
 
         # STRATEGY 2: ASSISTED MATCH (Call the compartmentalized shell engine directly)
         else:
@@ -1319,17 +1320,13 @@ def execute_advanced_search(f_dict):
                 if not k.startswith("exact_word_") and not k.startswith("fts_phrase_")
             }
             
-            # This calls the updated function that sets .direct_match_count
-            raw_text_rows, raw_fallback_rows = assisted_search(
+            # SAFE: Unpack all 3 variables explicitly returned by your assisted_search engine
+            text_rows, fallback_rows, direct_count = assisted_search(
                 cursor, 
                 phrase, 
                 base_where_clauses=local_clauses, 
                 base_query_params=local_params
             )
-            
-            # FIX: Retain custom attributes by modifying/reassigning lists without re-slicing away metadata tracking
-            text_rows = raw_text_rows
-            fallback_rows = raw_fallback_rows
 
         # DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
@@ -1360,8 +1357,7 @@ def execute_advanced_search(f_dict):
                 unique_objects.add(row[0])
 
         # STITCH VISUAL DOSSIER LAYOUT FOR DISPLAY
-        # Safe extraction of the direct matches without loss due to sequence copying
-        direct_count = getattr(text_rows, "direct_match_count", 0)
+        # SAFE: Use the direct_count variable we tracked natively above, completely removing getattr()
         total_inscriptions = len(all_matched_ids)
         indirect_count = total_inscriptions - direct_count
 
@@ -1381,6 +1377,7 @@ def execute_advanced_search(f_dict):
         conn.close()
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
+
 
 def fetch_metadata_by_id(inscription_ids_input):
     if not inscription_ids_input.strip():
