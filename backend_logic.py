@@ -913,7 +913,8 @@ def generate_person_report(p_id):
         SELECT 
             '**Name:** ' || p.person_name || ' | **person id:** ' || p.person_id || char(10) || char(10) ||
             
-            '**Attested positions in inscriptions:**' || char(10) || 
+            -- FIX 1: Added double newline after category title
+            '**Attested positions in inscriptions:**' || char(10) || char(10) || 
                 COALESCE((
                     SELECT GROUP_CONCAT(pos_grp.pos_summary, char(10) || char(10))
                     FROM (
@@ -940,7 +941,8 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip3.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    '**Attested status in inscriptions:**' || char(10) ||
+                    -- FIX 2: Added double newline after category title
+                    '**Attested status in inscriptions:**' || char(10) || char(10) ||
                     (
                         SELECT GROUP_CONCAT(sd_grp.sd_summary, char(10) || char(10))
                         FROM (
@@ -969,7 +971,8 @@ def generate_person_report(p_id):
                     CROSS JOIN TargetPerson
                     WHERE ip4.person_id = TargetPerson.selected_person_id
                 ) THEN 
-                    '**Attested unit in inscription:**' || char(10) ||
+                    -- FIX 3: Added double newline after category title
+                    '**Attested unit in inscription:**' || char(10) || char(10) ||
                     (
                         SELECT GROUP_CONCAT(unit_grp.unit_summary, char(10) || char(10))
                         FROM (
@@ -1012,6 +1015,8 @@ def generate_person_report(p_id):
     finally:
         if conn:
             conn.close()
+
+
 
 # SET UP BASIC DROPDOWN MENU FROM DATABASE (for Advanced Search)
 def get_filter_options(table, col):
