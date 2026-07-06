@@ -965,8 +965,8 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                                 "_" * 70 + "\n\n"
                             ]
                             
-                            for idx, ins_id in enumerate(linked_ids, 1):
-                                out_str.append(f"## Result {idx}\n")
+                            for ins_id in linked_ids:
+                                out_str.append(f"## Inscription ID {ins_id}\n")
                                 
                                 cursor.execute(main_report_sql, (int(ins_id),))
                                 card_rows = cursor.fetchall()
