@@ -404,9 +404,7 @@ st.markdown(
 with st.expander("Click to View Site Instructions / Welcome Text", expanded=False, key="welcome_instructions_expander"):
     st.markdown("""
 ## How to Use | 
-### DEVELOPMENT NOTE: THIS INSTRUCTION MANUAL REFLECTS AN EARLIER VERSION OF THE INTERFACE; I AM GOING TO REWRITE THE MANUAL.
-### FOR NOW, JUST REMEMBER, IF YOU CLICK ON A LINK TO AN ITINER-E ROAD SEGMENT, YOU MAY ENCOUNTER THE ITINER-E WELCOME SCREEN FIRST INSTEAD OF BEING SHOWN THE ROAD SEGMENT
-### CLICK EXPLORE ROMAN ROADS TO SKIP THE WELCOME SCREEN AND SEE THE ROAD SEGMENT
+### DEVELOPMENT NOTE: This instruction manual was written for an earlier version of the webapp. I am working on a new one.
 
 ### Keyword Search
 * Enter a keyword or phrase in the top bar and press the **Search Button** (note: pressing Enter alone does not work). 
