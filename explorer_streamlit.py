@@ -159,7 +159,8 @@ def callback_id_search():
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
         st.session_state["inputs_are_dirty"] = False
-        
+        st.session_state["skip_scroll"] = False 
+             
         parsed_ids = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
         
         if parsed_ids:
@@ -169,7 +170,7 @@ def callback_id_search():
         else:
             st.session_state.search_results = "Please enter Inscription ID(s) as pure numbers."
             st.session_state.active_inscription_ids = []
-
+                 
 def callback_person_report_dropdown():
     selected_option = st.session_state.get("person_select_input", "PLEASE SELECT")
     if selected_option == "PLEASE SELECT":
@@ -192,11 +193,11 @@ def callback_person_report_text():
         st.session_state["last_searched_person"] = val
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
+        st.session_state["skip_scroll"] = False 
         generate_person_report(val)
         commit_search_and_wipe_inputs()
 
 def callback_literature_search():
-    # 1. Grab the selected option from session state before anything gets wiped
     selected_option = st.session_state.get("lit_dropdown_selection", "PLEASE SELECT")
     
     if selected_option != "PLEASE SELECT":
