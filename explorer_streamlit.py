@@ -1320,7 +1320,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 """
                 <style>
                 .dynamic-results-box {
-                    height: 200px;
+                    height: 50px;
                     overflow-y: auto;
                     padding-right: 5px;
                 }
