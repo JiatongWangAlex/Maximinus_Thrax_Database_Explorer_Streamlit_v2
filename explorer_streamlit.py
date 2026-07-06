@@ -1316,7 +1316,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
             st.markdown(f"**Found {len(overview_rows)} record(s) matching your search:**")
             
-            # The CSS injector for your 300px block height
             st.markdown(
                 """
                 <style>
@@ -1330,40 +1329,33 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 unsafe_allow_html=True
             )
             
-            # Construct a single unified Markdown text block inside the container
-            markdown_content = []
-            for row in overview_rows:
-                ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
+            with st.container():
+                st.markdown('<div class="dynamic-results-box">', unsafe_allow_html=True)
                 
-                ref_line = f" {line_ref}" if line_ref else ""
+                for row in overview_rows:
+                    ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
+                    
+                    ref_line = f" {line_ref}" if line_ref else ""
+                    
+                    app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
+                    obj_url = f"https://maximinusthraxdatabaseui.streamlit.app/?obj_id={obj_id}"
+                    obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
+                    
+                    st.markdown(
+                        f"* [Ins. ID: {ins_id}]({app_url}) | "
+                        f"**Reference:** {ins_ref}{ref_line} | "
+                        f"**Object ID:** {obj_display} | "
+                        f"**Province:** {prov_name} | "
+                        f"**Type of Inscription:** {type_of_inscription} | "
+                        f"**Dating:** {dating_val} | "
+                        f"*{erasure_status}*"
+                    )
                 
-                app_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={ins_id}"
-                obj_url = f"https://maximinusthraxdatabaseui.streamlit.app/?obj_id={obj_id}"
-                obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
-                
-                markdown_content.append(
-                    f"* [Ins. ID: {ins_id}]({app_url}) | "
-                    f"**Reference:** {ins_ref}{ref_line} | "
-                    f"**Object ID:** {obj_display} | "
-                    f"**Province:** {prov_name} | "
-                    f"**Type of Inscription:** {type_of_inscription} | "
-                    f"**Dating:** {dating_val} | "
-                    f"*{erasure_status}*"
-                )
-            
-            # Join everything with double newlines so the Markdown parser formats them correctly
-            full_markdown_string = "\n\n".join(markdown_content)
-            
-            # Render the self-contained container block
-            st.markdown(
-                f'<div class="dynamic-results-box">\n\n{full_markdown_string}\n\n</div>', 
-                unsafe_allow_html=True
-            )
+                st.markdown('</div>', unsafe_allow_html=True)
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
-
-
+             
 # MAIN RESULTS VIEW
 
 if st.session_state.get("active_search_has_run"):
