@@ -638,21 +638,17 @@ with st.expander("Advanced Search", expanded=False):
         )
     )
     
-    text_search_mode = st.radio(
-        "Text Search Strategy:",
-        options=[
-            "Exact Match",
-            "Assisted Match"
-        ],
-        index=0,
-        on_change=reset_map_and_search_flags,
-        help=("'Exact Match' searches your exact string. "
-              "'Assisted Match' also looks for spelling variants of your search term, "
-              "and sees whether your search term matches the name of a person or group "
-              "identified in the corpus. We cannot automatically check all inflected "
-              "forms of your search term at this moment")
-    )
-
+text_search_mode = st.radio(
+    "Text Search Strategy:",
+    options=[
+        "Exact Match",
+        "Assisted Match"
+    ],
+    index=0,
+    key="adv_text_search_mode",
+    on_change=reset_map_and_search_flags,
+    help=("'Exact Match' searches your exact string...")
+)
     st.markdown("---")
     st.markdown("### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
