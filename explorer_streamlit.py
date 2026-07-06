@@ -477,7 +477,7 @@ if "main_text_input" in st.session_state:
 with col_text1:    
     text_input_var = st.text_input(
         "Enter search text:", 
-        placeholder="e.g., Quintus Decius",
+        placeholder="e.g., munivit ac restituit",
         key="main_text_input",
         label_visibility="collapsed",
         on_change=reset_map_and_search_flags
@@ -518,7 +518,7 @@ with col_s2:
 with col_s3:
     pname_input_var = st.text_input(
         "Look up Person by Name:", 
-        placeholder="e.g. Maximinus", 
+        placeholder="e.g. Quintus Decius", 
         key="person_lookup_input",
         on_change=reset_map_and_search_flags
     )
