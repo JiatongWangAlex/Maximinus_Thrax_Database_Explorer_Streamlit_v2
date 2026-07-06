@@ -790,41 +790,56 @@ def run_standard_search(user_input):
         st.error(f"An unexpected database error occurred: {e}")
 
 # LOOK UP INSCRIPTION BY EDCS NUMBER 
+import re
 
 def run_ref_search(ref_query):
     if not ref_query.strip():
-        st.session_state.search_results = "Please enter an EDCS ID."
+        st.session_state.search_results = "Please enter an EDCS ID or TM Number."
         return
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 1. Look up which inscription IDs match your reference text query pattern
-        scout_sql = 'SELECT inscription_id FROM "Max_Thrax" WHERE inscription_ref LIKE ?;'
-        cursor.execute(scout_sql, (f"%{ref_query.strip()}%",))
+        clean_digits = "".join(filter(str.isdigit, ref_query))
+        
+        if not clean_digits:
+            st.session_state.search_results = f"No valid identification digits found in query: {ref_query}"
+            st.session_state.active_inscription_ids = []
+            conn.close()
+            return
+                
+        scout_sql = '''
+            SELECT DISTINCT m.inscription_id 
+            FROM "Max_Thrax" m
+            LEFT JOIN "inscriptions_and_TM_numbers" tm ON m.inscription_id = tm.inscription_id
+            WHERE m.inscription_ref LIKE ? 
+               OR tm.TM_number = ?;
+        '''
+        
+        edcs_param = f"%{clean_digits}%"
+        tm_param = int(clean_digits)
+        
+        cursor.execute(scout_sql, (edcs_param, tm_param))
         rows = cursor.fetchall()
         
         if not rows:
-            st.session_state.search_results = f"No inscriptions in this database matches: {ref_query}"
+            st.session_state.search_results = f"No inscriptions match reference/TM ID: {clean_digits}"
             st.session_state.active_inscription_ids = []
             conn.close()
             return
 
-        # Gather all matching IDs
         matched_ids = [row[0] for row in rows]
         st.session_state.active_inscription_ids = matched_ids
         st.session_state["csv_mode"] = "ids"
         
-        # 2. Loop through those IDs and compile the rich dossier text blocks
         out_str = [
-            f"#### Found {len(matched_ids)} matching inscription(s) by reference:\n", 
+            f"#### Found {len(matched_ids)} matching inscription(s) by identification lookup:\n", 
             "_" * 70 + "\n\n"
         ]
         
         for idx, ins_id in enumerate(matched_ids, 1):
             out_str.append(f"## Result {idx}\n")
             
-            # Direct the execution to your single global main query constant
             cursor.execute(main_report_sql, (int(ins_id),))
             card_rows = cursor.fetchall()
             
@@ -840,8 +855,10 @@ def run_ref_search(ref_query):
         conn.close()
         
     except Exception as e:
-        st.session_state.search_results = f"Reference Search Error: {e}"
-             
+        st.error(f"An error occurred during lookup: {e}")
+        if 'conn' in locals():
+            conn.close()
+                
 # LOOK UP PERSON BY NAME (to see if the user query matches any individual logged in the database so they may select the correct individual in the next box)
 
 def lookup_person_options(name_query):
