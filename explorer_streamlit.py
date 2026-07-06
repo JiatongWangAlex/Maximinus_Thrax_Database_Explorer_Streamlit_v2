@@ -195,7 +195,64 @@ def callback_person_report_text():
         generate_person_report(val)
         commit_search_and_wipe_inputs()
 
-
+def callback_literature_search():
+    # 1. Grab the selected option from session state before anything gets wiped
+    selected_option = st.session_state.get("lit_dropdown_selection", "PLEASE SELECT")
+    
+    if selected_option != "PLEASE SELECT":
+        target_unique_citation_id = st.session_state.lit_display_map.get(selected_option)
+        st.session_state["skip_scroll"] = False
+        
+        if target_unique_citation_id is None and "Ref ID: " in selected_option:
+            try:
+                target_unique_citation_id = int(re.search(r'\(Ref ID:\s*(\d+)\)', selected_option).group(1))
+            except Exception:
+                target_unique_citation_id = None
+                
+        if target_unique_citation_id is not None:
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                
+                cursor.execute(
+                    "SELECT DISTINCT inscription_id FROM inscriptions_and_citations WHERE unique_citation_id = ?",
+                    (target_unique_citation_id,)
+                )
+                linked_ids = [row[0] for row in cursor.fetchall()]
+                
+                if not linked_ids:
+                    st.session_state.search_results = "No inscriptions are currently cataloged under that specific reference text."
+                else:
+                    st.session_state.active_inscription_ids = linked_ids
+                    st.session_state.active_search_has_run = True
+                    st.session_state["csv_mode"] = "ids"
+                    
+                    out_str = [
+                        f"#### Found {len(linked_ids)} matching inscription(s) via Literature Search:\n", 
+                        "_" * 70 + "\n\n"
+                    ]
+                    
+                    for ins_id in linked_ids:
+                        out_str.append(f"## Inscription ID {ins_id}\n")
+                        dossier_text = get_inscription_report(cursor, int(ins_id))
+                        
+                        if dossier_text != "No inscription data found.":
+                            out_str.append(dossier_text)
+                        else:
+                            out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
+                            
+                        out_str.append("\n\n---\n\n")
+                    
+                    st.session_state.search_results = "".join(out_str)
+                
+                conn.close()
+                
+                # 2. RUN YOUR WIPE FUNCTION AT THE END! Exactly like the other callbacks do
+                commit_search_and_wipe_inputs()
+                
+            except Exception as action_err:
+                st.error(f"Failed sourcing linked junction table IDs: {action_err}")
+                     
 def teleport_to_results():
     st.components.v1.html(
         """
@@ -934,71 +991,20 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             st.markdown("<div style='padding-top:24px;'></div>", unsafe_allow_html=True)
             is_disabled = (selected_citation == "PLEASE SELECT")
             
-            if st.button("Show Linked Inscriptions", key="lit_action_execute", disabled=is_disabled, on_click=commit_search_and_wipe_inputs):
-                target_unique_citation_id = st.session_state.lit_display_map.get(selected_citation)
-                st.session_state["skip_scroll"] = False
-                if target_unique_citation_id is None and "Ref ID: " in selected_citation:
-                    try:
-                        target_unique_citation_id = int(re.search(r'\(Ref ID:\s*(\d+)\)', selected_citation).group(1))
-                    except Exception:
-                        target_unique_citation_id = None
-                
-                if target_unique_citation_id is not None:
-                    try:
-                        conn = get_db_connection()
-                        cursor = conn.cursor()
-                        
-                        cursor.execute(
-                            "SELECT DISTINCT inscription_id FROM inscriptions_and_citations WHERE unique_citation_id = ?",
-                            (target_unique_citation_id,)
-                        )
-                        linked_ids = [row[0] for row in cursor.fetchall()]
-                        
-                        if not linked_ids:
-                            st.info("No inscriptions are currently cataloged under that specific reference text.")
-                            conn.close()
-                        else:
-                            st.session_state.active_inscription_ids = linked_ids
-                            st.session_state.active_search_has_run = True
-                            st.session_state["csv_mode"] = "ids"
-                            
-                            out_str = [
-                                f"#### Found {len(linked_ids)} matching inscription(s) via Literature Search:\n", 
-                                "_" * 70 + "\n\n"
-                            ]
-                            
-                            for ins_id in linked_ids:
-                                out_str.append(f"## Inscription ID {ins_id}\n")
-                                
-                                # Use the clean decoupled backend function here
-                                dossier_text = get_inscription_report(cursor, int(ins_id))
-                                
-                                if dossier_text != "No inscription data found.":
-                                    out_str.append(dossier_text)
-                                else:
-                                    out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
-                                    
-                                out_str.append("\n\n---\n\n")
-                            
-                            st.session_state.search_results = "".join(out_str)
-                            conn.close()
-                            
-                            st.session_state.lit_matches = []
-                            st.session_state.lit_search_type = None
-                            if "lit_display_map" in st.session_state:
-                                del st.session_state.lit_display_map
-                                
-                            st.rerun()
-                            
-                    except Exception as action_err:
-                        st.error(f"Failed sourcing linked junction table IDs: {action_err}")
-                else:
-                    st.error("Could not resolve reference citation ID choice. Please pick an item again.")
+            # Look how tiny this is now! No "if" condition statement needed anymore.
+            st.button(
+                "Show Linked Inscriptions", 
+                key="lit_action_execute", 
+                disabled=is_disabled, 
+                on_click=callback_literature_search
+            )
                     
     elif st.session_state.lit_search_type is not None:
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
-                 
+
+
+
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
 
