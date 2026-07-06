@@ -627,22 +627,24 @@ def convert_roman_to_arabic_in_text(text):
             converted_words.append(word)
     return " ".join(converted_words)
 
-
 def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base_query_params):
-
+    """
+    Core ID resolver. Dynamically narrows down or expands its search matrix
+    using a single unified wildcard string match.
+    """
     # Base Exact Layers (Tiers 1 & 2A)
     where_clauses = """
-        mt.inscription_text_stripped LIKE :w_u OR mt.inscription_text_stripped LIKE :w_v OR
-        mt.cleaned_text LIKE :w_u OR mt.cleaned_text LIKE :w_v
+        mt.inscription_text_stripped LIKE :w OR 
+        mt.cleaned_text LIKE :w
     """
     
     # Extended Fallback Layers added ONLY for Assisted Strategy (Tiers 2B, 3, & 4)
     if is_assisted:
         where_clauses += """ OR
-            mt.reconstituted_text LIKE :w_u OR mt.reconstituted_text LIKE :w_v OR
-            c.collective_name LIKE :w_u OR c.collective_name LIKE :w_v OR
-            c.collective_name_search LIKE :w_u OR c.collective_name_search LIKE :w_v OR
-            p.person_name LIKE :w_u OR p.person_name LIKE :w_v
+            mt.reconstituted_text LIKE :w OR
+            c.collective_name LIKE :w OR 
+            c.collective_name_search LIKE :w OR
+            p.person_name LIKE :w
         """
 
     match_sql = f"""
