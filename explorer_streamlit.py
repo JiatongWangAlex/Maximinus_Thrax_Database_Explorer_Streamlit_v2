@@ -263,7 +263,7 @@ def teleport_to_results():
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-            }, 50);
+            }, 300);
         </script>
         """,
         height=0,
