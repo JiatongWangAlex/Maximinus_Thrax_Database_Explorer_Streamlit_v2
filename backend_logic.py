@@ -561,8 +561,7 @@ def convert_roman_to_arabic_in_text(text):
             converted_words.append(word)
     return " ".join(converted_words)
 
-import re
-import itertools
+
 
 def assisted_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
     """
@@ -577,21 +576,21 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
     if base_where_clauses is None: base_where_clauses = []
     if base_query_params is None: base_query_params = {}
     
+    # Safely convert parameter values into a list for execution binding
+    extra_params = list(base_query_params.values()) if isinstance(base_query_params, dict) else list(base_query_params)
+    
     converted_input = convert_roman_to_arabic_in_text(user_input)
     is_unit_query = bool(re.search(r'\b(legio|cohors|ala|numerus|classis)\b', user_input, re.IGNORECASE) and re.search(r'\d+|[ivxl]+', user_input, re.IGNORECASE))
     
     text_rows = []
     fallback_rows = []
     
-    # Track "Direct Matches" (Tier 1 + Tier 2A) explicitly
     direct_match_count = 0
-    
-    # We dynamically weave in extra structural criteria if called by Advanced Search
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
 
-
-    # TIER 1: DIRECT TEXT SEARCH (SEARCH THROUGH A FIELD WHERE ONLY SIGLA ARE STRIPPED OUT OF INSCRIPTION TEXT)
-        
+    # =========================================================================
+    # TIER 1: DIRECT TEXT SUBSTRING SCANNING
+    # =========================================================================
     clean_query = clean_epigraphic_text(user_input).strip().lower()
     query_u = clean_query.replace('v', 'u')
     query_v = clean_query.replace('u', 'v')
@@ -605,7 +604,9 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
         FROM "Max_Thrax" mt WHERE ({like_clauses}) {advanced_intersect_sql} ORDER BY mt.inscription_id DESC;
     """
     params = [f"%{syn}%" for syn in synonyms]
-    cursor.execute(text_sql, params)
+    
+    # FIX: Concatenate baseline search params with extra Advanced Search parameters
+    cursor.execute(text_sql, params + extra_params)
     
     for row in cursor.fetchall():
         ins_id, ins_text, ins_ref, line_ref, linked_persons, text_stripped = row
@@ -617,19 +618,19 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
         else:
             fallback_rows.append(base_data + ("spelling_variant_cluster", clean_query))
     
-  
-    # SEARCH THROUGH TEXT FIELDS WHERE THE TEXT IS CONTINUOUS (IN CASE LINE BREAK BROKE WORD)
-
+    # =========================================================================
+    # CHARACTER SQUEEZING PREPARATION (TIER 2A & TIER 2B)
+    # =========================================================================
     continuous_term = user_input.lower().replace(" ", "")
-    # Strip crazy epigraphic sigla from user input to protect searches
     continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_term)
     
     if continuous_term:
         continuous_term_u = continuous_term.replace('v', 'u')
         continuous_term_v = continuous_term.replace('u', 'v')
-      
-        # TIER 2A: THE TEXT AS IT IS ON THE INSCRIPTION
-
+        
+        # ---------------------------------------------------------------------
+        # TIER 2A: CLEANED TEXT (DIRECT MATCH)
+        # ---------------------------------------------------------------------
         if not text_rows and not fallback_rows:
             sql_2a = f"""
                 SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref,
@@ -638,15 +639,16 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 WHERE (mt.cleaned_text LIKE ? OR mt.cleaned_text LIKE ?) {advanced_intersect_sql}
                 ORDER BY mt.inscription_id DESC;
             """
-            cursor.execute(sql_2a, (f"%{continuous_term_u}%", f"%{continuous_term_v}%"))
+            # FIX: Bind the two string search variables alongside Advanced filters
+            cursor.execute(sql_2a, [f"%{continuous_term_u}%", f"%{continuous_term_v}%"] + extra_params)
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 text_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons))
                 direct_match_count += 1
 
-       
-        # TIER 2B: THE TEXT IF NON STANDARD SPELLINGS ARE CORRECTED
-      
+        # ---------------------------------------------------------------------
+        # TIER 2B: RECONSTITUTED TEXT (INDIRECT MATCH FALLBACK)
+        # ---------------------------------------------------------------------
         if not text_rows and not fallback_rows:
             sql_2b = f"""
                 SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref,
@@ -655,14 +657,15 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 WHERE (mt.reconstituted_text LIKE ? OR mt.reconstituted_text LIKE ?) {advanced_intersect_sql}
                 ORDER BY mt.inscription_id DESC;
             """
-            cursor.execute(sql_2b, (f"%{continuous_term_u}%", f"%{continuous_term_v}%"))
+            # FIX: Bind the two search variables alongside Advanced filters
+            cursor.execute(sql_2b, [f"%{continuous_term_u}%", f"%{continuous_term_v}%"] + extra_params)
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "squeezed_reconstituted_text", continuous_term))
 
-  
-    # TIER 3: MILITARY UNIT NAME MATCH
-  
+    # =========================================================================
+    # TIER 3: MILITARY UNIT CLAUSE MATCHING
+    # =========================================================================
     if not text_rows and not fallback_rows and is_unit_query:
         raw_tokens = re.findall(r'\w+', converted_input.lower())
         expanded_token_clusters = []
@@ -696,15 +699,15 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
                 WHERE ic.collective_id IN ({','.join(['?']*len(c_ids))}) {advanced_intersect_sql};
             """
-            cursor.execute(c_sql, c_ids)
-            # Map into fallback_rows to treat military unit clusters as indirect matches
+            # FIX: Append advanced structural criteria bindings here too
+            cursor.execute(c_sql, c_ids + extra_params)
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "military_unit", user_input))
 
-   
-    # TIER 4: PERSON NAME MATCH
-
+    # =========================================================================
+    # TIER 4: PARTIAL PERSON NAME SUBSTRING CROSS-REFERENCE
+    # =========================================================================
     if not text_rows and not fallback_rows:
         like_query = f"%{re.sub(r'\s+', '%', clean_query)}%"
         cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_query,))
@@ -717,14 +720,13 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id 
                 WHERE ip.person_id IN ({','.join(['?']*len(p_ids))}) {advanced_intersect_sql};
             """
-            cursor.execute(p_sql, p_ids)
+            # FIX: Pass advanced filter elements alongside historical identifiers
+            cursor.execute(p_sql, p_ids + extra_params)
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "person", "Person names match"))
 
-    # Dynamically inject the direct match count onto the object wrapper
     setattr(text_rows, "direct_match_count", direct_match_count)
-
     return text_rows, fallback_rows
 
 # KEY WORD OR PHRASE SEARCH
