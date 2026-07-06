@@ -905,6 +905,20 @@ def run_ref_search(ref_query):
         st.error(f"An error occurred during lookup: {e}")
         if 'conn' in locals():
             conn.close()
+
+def process_attestation_rows(rows):
+    """
+    Groups raw SQL data entries by item name and tracks occurrences per inscription.
+    Output format: { item_name: { inscription_id: frequency_count } }
+    """
+    grouped = {}
+    for item_name, ref, ins_id in rows:
+        if item_name is None or ins_id is None:
+            continue
+        if item_name not in grouped:
+            grouped[item_name] = {}
+        grouped[item_name][ins_id] = grouped[item_name].get(ins_id, 0) + 1
+    return grouped
                 
 # LOOK UP PERSON BY NAME (to see if the user query matches any individual logged in the database so they may select the correct individual in the next box)
 
@@ -960,29 +974,18 @@ def generate_person_report(p_id):
         # Maps & sets to keep track of unique IDs and translate ID -> Ref
         all_insc_ids = {r[0] for r in all_inscriptions if r[0] is not None}
         all_insc_id_to_ref = {r[0]: (r[1] if r[1] else f"Insc ID {r[0]}") for r in all_inscriptions if r[0] is not None}
-        
-        # Helper to group raw rows and count duplicate attestations per inscription
-        def process_rows(rows):
-            grouped = {}
-            for item_name, ref, ins_id in rows:
-                if item_name is None or ins_id is None:
-                    continue
-                if item_name not in grouped:
-                    grouped[item_name] = {}
-                grouped[item_name][ins_id] = grouped[item_name].get(ins_id, 0) + 1
-            return grouped
 
-        # 3. Fetch specific attestation datasets
+        # 3. Fetch data sets using the clean standalone helper function
         cursor.execute(sql_get_positions, (person_id_int,))
-        positions_data = process_rows(cursor.fetchall())
+        positions_data = process_attestation_rows(cursor.fetchall())
         
         cursor.execute(sql_get_status, (person_id_int,))
-        status_data = process_rows(cursor.fetchall())
+        status_data = process_attestation_rows(cursor.fetchall())
         
         cursor.execute(sql_get_units, (person_id_int,))
-        units_data = process_rows(cursor.fetchall())
+        units_data = process_attestation_rows(cursor.fetchall())
         
-        # Track every unique inscription ID accounted for across all 3 groupings
+        # Track every unique inscription ID accounted for across all groupings
         attested_insc_ids = set()
         for dataset in [positions_data, status_data, units_data]:
             for category in dataset:
@@ -998,7 +1001,6 @@ def generate_person_report(p_id):
             insc_strings = [f"{ref} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id, ref in all_insc_id_to_ref.items()]
             insc_display = ", ".join(insc_strings) if insc_strings else "None"
             
-            # Displays the IDs with a COLON explicitly here
             report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s):** {insc_display}\n")
             report_lines.append(f"**Notes:** {person_notes}")
             
@@ -1006,27 +1008,19 @@ def generate_person_report(p_id):
             return
 
         # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 CASING
-        # Clean count line without a colon or trailing list!
         report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s)**\n")
         
-        # Helper closure to format a specific categorical segment beautifully
+        # Helper closure to format specific categorical markdown chunks cleanly
         def format_section(title, dataset):
             if not dataset:
                 return ""
             lines = [f"**{title}**"]
             for item_name, ins_counts in dataset.items():
-                ref_strings = []
-                total_attestations = sum(ins_counts.values())
-                
-                for ins_id in ins_counts.keys():
-                    ref = all_insc_id_to_ref.get(ins_id, f"ID: {ins_id}")
-                    ref_strings.append(f"{ref} (id: [{ins_id}](?ins_id={ins_id}))")
-                
-                refs_display = ", ".join(ref_strings)
-                lines.append(f"• {item_name} ({total_attestations} attestations): {refs_display}")
+                ref_strings = [f"{all_insc_id_to_ref.get(i, f'ID: {i}')} (id: [{i}](?ins_id={i}))" for i in ins_counts.keys()]
+                lines.append(f"• {item_name} ({sum(ins_counts.values())} attestations): {', '.join(ref_strings)}")
             return "\n".join(lines) + "\n\n"
 
-        # Append blocks dynamically (removes blank sections entirely)
+        # Append blocks dynamically if data exists
         if positions_data:
             report_lines.append(format_section("Attested positions in inscriptions:", positions_data))
         if status_data:
@@ -1034,7 +1028,7 @@ def generate_person_report(p_id):
         if units_data:
             report_lines.append(format_section("Attested unit in inscription:", units_data))
             
-        # ALTERNATIVE OUTPUT 2 (Mismatch Logic):
+        # ALTERNATIVE OUTPUT 2 (Mismatch Logic)
         leftover_insc_ids = all_insc_ids - attested_insc_ids
         if leftover_insc_ids:
             leftover_strings = [f"{all_insc_id_to_ref[ins_id]} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id in leftover_insc_ids]
