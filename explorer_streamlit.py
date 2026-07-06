@@ -258,15 +258,16 @@ def teleport_to_results():
     st.components.v1.html(
         """
         <script>
-            var target = window.parent.document.getElementById('results-anchor');
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            setTimeout(function() {
+                var target = window.parent.document.getElementById('results-anchor');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 50);
         </script>
         """,
         height=0,
     )
-
 # ----------------------------------------------------------------------------------------------------------------------------
 # UI FRONTEND
 
