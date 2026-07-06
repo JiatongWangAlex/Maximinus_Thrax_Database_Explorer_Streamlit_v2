@@ -1343,7 +1343,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                     
                     st.markdown(
                         f"* [Inscription ID: {ins_id}]({app_url}) | "
-                        f"**Quick Reference:** {ins_ref}{ref_line} | "
+                        f"**Reference:** {ins_ref}{ref_line} | "
                         f"**Object ID:** {obj_display} | "
                         f"**Province:** {prov_name} | "
                         f"**Type of Inscription:** {type_of_inscription} | "
