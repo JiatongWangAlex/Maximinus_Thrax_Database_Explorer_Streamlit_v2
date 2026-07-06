@@ -506,7 +506,7 @@ with col_s2:
         key="id_report_input",
         on_change=reset_map_and_search_flags
     )
-    st.button("Generate Inscription Report", use_container_width=True, type="primary", on_click=callback_id_search)
+    st.button("Generate Inscription Report(s)", use_container_width=True, type="primary", on_click=callback_id_search)
 
 with col_s3:
     pname_input_var = st.text_input(
