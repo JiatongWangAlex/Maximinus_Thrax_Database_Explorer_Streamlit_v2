@@ -767,7 +767,7 @@ with st.expander("Advanced Search", expanded=False):
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
-with col_btn1:
+    with col_btn1:
         # 1. Construct the payload dictionary exactly as you had it
         form_payload = {
             "text": f_text,
