@@ -52,26 +52,22 @@ optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json"
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
 
-
-
 def get_inscription_report(cursor, inscription_ids):
     """
     Batched version of get_inscription_report.
     Accepts EITHER a single integer/string ID, or a list of IDs.
     Returns:
-      - A single markdown string if a single ID was passed.
-      - A dictionary mapping ID -> markdown string if a list was passed.
+      - A single perfectly stitched Markdown string containing all dossiers,
+        complete with '## Inscription ID' headers and warning markers.
     """
-    # 1. AUTO-DETECT TYPE: Handle a single ID being passed instead of a list
-    is_single_id = False
+    # 1. AUTO-DETECT TYPE: Convert to standard list of integers
     if isinstance(inscription_ids, (int, str)):
-        is_single_id = True
         valid_ids = [int(inscription_ids)]
     else:
         valid_ids = [int(x) for x in inscription_ids if x]
 
     if not valid_ids:
-        return "No inscription data found." if is_single_id else {}
+        return "No inscription data found."
 
     placeholders = ",".join(["?"] * len(valid_ids))
     
@@ -97,8 +93,6 @@ def get_inscription_report(cursor, inscription_ids):
     """
     cursor.execute(sql_main, valid_ids)
     main_rows = cursor.fetchall()
-    if not main_rows:
-        return "No inscription data found." if is_single_id else {}
 
     main_data = {}
     object_ids = set()
@@ -110,58 +104,59 @@ def get_inscription_report(cursor, inscription_ids):
     # ----------------------------------------------------
     # 2. BATCH FETCH MULTI-VALUED FIELDS
     # ----------------------------------------------------
-    sql_tm = f'SELECT inscription_id, TM_number FROM "inscriptions_and_TM_numbers" WHERE inscription_id IN ({placeholders});'
-    cursor.execute(sql_tm, valid_ids)
     tm_map = {}
-    for ins_id, tm in cursor.fetchall():
-        if tm: tm_map.setdefault(ins_id, []).append(tm)
-
-    sql_distributio = f"""
-        SELECT DISTINCT ip_sub.inscription_id, vd_sub.virorum_distributio
-        FROM "inscriptions_and_persons" ip_sub
-        JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
-        JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
-        WHERE ip_sub.inscription_id IN ({placeholders})
-        UNION
-        SELECT DISTINCT ic_sub.inscription_id, vd_sub.virorum_distributio
-        FROM "inscriptions_and_collectives" ic_sub
-        JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
-        JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
-        WHERE ic_sub.inscription_id IN ({placeholders});
-    """
-    cursor.execute(sql_distributio, valid_ids + valid_ids)
     dist_map = {}
-    for ins_id, dist in cursor.fetchall():
-        if dist: dist_map.setdefault(ins_id, []).append(dist)
-
-    sql_persons = f"""
-        SELECT ip.inscription_id, p.person_id, p.person_name 
-        FROM "persons" p 
-        JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id 
-        WHERE ip.inscription_id IN ({placeholders});
-    """
-    cursor.execute(sql_persons, valid_ids)
     persons_map = {}
-    for ins_id, p_id, p_name in cursor.fetchall():
-        persons_map.setdefault(ins_id, []).append((p_id, p_name))
-
-    sql_collectives = f"""
-        SELECT ic.inscription_id, c.collective_id, c.collective_name 
-        FROM "collectives" c
-        JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
-        WHERE ic.inscription_id IN ({placeholders});
-    """
-    cursor.execute(sql_collectives, valid_ids)
     coll_map = {}
-    for ins_id, c_id, c_name in cursor.fetchall():
-        coll_map.setdefault(ins_id, []).append((c_id, c_name))
+
+    if main_rows:
+        sql_tm = f'SELECT inscription_id, TM_number FROM "inscriptions_and_TM_numbers" WHERE inscription_id IN ({placeholders});'
+        cursor.execute(sql_tm, valid_ids)
+        for ins_id, tm in cursor.fetchall():
+            if tm: tm_map.setdefault(ins_id, []).append(tm)
+
+        sql_distributio = f"""
+            SELECT DISTINCT ip_sub.inscription_id, vd_sub.virorum_distributio
+            FROM "inscriptions_and_persons" ip_sub
+            JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
+            JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
+            WHERE ip_sub.inscription_id IN ({placeholders})
+            UNION ALL
+            SELECT DISTINCT ic_sub.inscription_id, vd_sub.virorum_distributio
+            FROM "inscriptions_and_collectives" ic_sub
+            JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
+            JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
+            WHERE ic_sub.inscription_id IN ({placeholders});
+        """
+        cursor.execute(sql_distributio, valid_ids + valid_ids)
+        for ins_id, dist in cursor.fetchall():
+            if dist: dist_map.setdefault(ins_id, []).append(dist)
+
+        sql_persons = f"""
+            SELECT ip.inscription_id, p.person_id, p.person_name 
+            FROM "persons" p 
+            JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id 
+            WHERE ip.inscription_id IN ({placeholders});
+        """
+        cursor.execute(sql_persons, valid_ids)
+        for ins_id, p_id, p_name in cursor.fetchall():
+            persons_map.setdefault(ins_id, []).append((p_id, p_name))
+
+        sql_collectives = f"""
+            SELECT ic.inscription_id, c.collective_id, c.collective_name 
+            FROM "collectives" c
+            JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
+            WHERE ic.inscription_id IN ({placeholders});
+        """
+        cursor.execute(sql_collectives, valid_ids)
+        for ins_id, c_id, c_name in cursor.fetchall():
+            coll_map.setdefault(ins_id, []).append((c_id, c_name))
 
     # ----------------------------------------------------
     # 3. BATCH FETCH OBJECT LINKS (Siblings & Interventions)
     # ----------------------------------------------------
     siblings_map = {}
-    interventions_map = {}
-    interv_by_ins_id = {}  # The "Cubby Hole" lookup structure
+    interv_by_ins_id = {}  
     targets_map = {}
 
     if object_ids:
@@ -203,18 +198,22 @@ def get_inscription_report(cursor, inscription_ids):
 
         for row in all_interventions:
             ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc, obj_id = row
-            interventions_map.setdefault(obj_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
-            # Sort directly into its unique inscription_id Cubby Hole
             interv_by_ins_id.setdefault(ins_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
 
     # ----------------------------------------------------
-    # 4. STRING COMPOSITION
+    # 4. STRING STITCHING PIPELINE
     # ----------------------------------------------------
-    output_reports = {}
+    out_str = []
 
     for ins_id in valid_ids:
+        # Inject the exact heading format you used in your outer loop
+        out_str.append(f"## Inscription ID {ins_id}\n")
+        
         main_row = main_data.get(ins_id)
         if not main_row:
+            # Handle non-existent ID matching precisely as before
+            out_str.append(f"_Warning: This ID does not exist: {ins_id}_")
+            out_str.append("\n\n---\n\n")
             continue
 
         (_, ins_ref, line_ref, text_formatted, lemmas, dating, biblio,
@@ -272,7 +271,6 @@ def get_inscription_report(cursor, inscription_ids):
                 sib_line = f" {sib_lref}" if sib_lref else ""
                 curr_tag = " [current inscription]" if sib_id == ins_id else ""
                 
-                # FIXED: Instant O(1) Dictionary Lookup instead of searching the whole list over and over!
                 item_interv = interv_by_ins_id.get(sib_id, [])
                 
                 if not item_interv:
@@ -297,13 +295,12 @@ def get_inscription_report(cursor, inscription_ids):
                             report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
             report.append("\n")
 
-        output_reports[ins_id] = "\n".join(report)
+        # Append the formatted dossier body and its divider rule
+        out_str.append("\n".join(report))
+        out_str.append("\n\n---\n\n")
 
-    # 5. RETURN CORRECT FORMAT BASED ON INPUT TYPE
-    if is_single_id:
-        return output_reports.get(valid_ids[0], "No inscription data found.")
-    return output_reports
-
+    # 5. FINAL FLATTENING PASSTHROUGH
+    return "\n\n".join(out_str)
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
 def reset_map_and_search_flags():
@@ -928,15 +925,12 @@ def run_standard_search(user_input):
         header += f"Compiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n"
         out_str.append(header)
 
-        
-        batched_dossiers = get_inscription_report(cursor, all_matched_ids)
+        stitched_dossiers_text = get_inscription_report(cursor, all_matched_ids)
 
-        for ins_id in all_matched_ids:
-            out_str.append(f"## Inscription ID {ins_id}\n")
-            dossier_text = batched_dossiers.get(int(ins_id))
-            out_str.append(dossier_text if dossier_text and dossier_text != "No inscription data found." else f"_Warning: This ID does not exist: {ins_id}_")
-            out_str.append("\n\n---\n\n")
-        st.session_state.search_results = "\n\n".join(out_str)
+        # 2. Assign the massive, unified plain-text string straight into your session state
+        st.session_state.search_results = stitched_dossiers_text
+        
+        # 3. Safely close the connection as before
         conn.close()
             
     except Exception as e:
@@ -989,22 +983,9 @@ def run_ref_search(ref_query):
             "_" * 70 + "\n\n"
         ]
         
-
-        batched_dossiers = get_inscription_report(cursor, matched_ids)
-
-        for ins_id in matched_ids:
-            out_str.append(f"## Inscription ID {ins_id}\n")
-            
-            dossier_text = batched_dossiers.get(int(ins_id))
-            
-            if dossier_text and dossier_text != "No inscription data found.":
-                out_str.append(dossier_text)
-            else:
-                out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
-                
-            out_str.append("\n\n---\n\n")
-            
-        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
+        st.session_state.search_results = get_inscription_report(cursor, matched_ids)
+        
+        # 2. Safely close the database connection as before
         conn.close()
             
     except Exception as e:
@@ -1453,7 +1434,7 @@ def execute_advanced_search(f_dict):
             text_rows = cursor.fetchall()
             direct_count = len(text_rows)
 
-        # DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
+# DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
         seen_fallback_ids = set()
@@ -1485,22 +1466,16 @@ def execute_advanced_search(f_dict):
         total_inscriptions = len(all_matched_ids)
         indirect_count = total_inscriptions - direct_count
 
-        out_str = []
+        # Build your custom Advanced Search summary header string
         header = f"## Advanced Search Results\nFound {direct_count} direct match(es) and {indirect_count} indirect match(es)!\n"
         header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
         header += f"\nCompiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
-        out_str.append(header)
         
+        # Fire your updated function to get a single stitched text block
+        stitched_body = get_inscription_report(cursor, all_matched_ids)
 
-        batched_dossiers = get_inscription_report(cursor, all_matched_ids)
-
-        for ins_id in all_matched_ids:
-            out_str.append(f"## Inscription ID {ins_id}\n")
-            dossier_text = batched_dossiers.get(int(ins_id))
-            out_str.append(dossier_text if dossier_text and dossier_text != "No inscription data found." else f"_Warning: ID does not exist: {ins_id}_")
-            out_str.append("\n\n---\n\n")
-            
-        st.session_state.search_results = "\n\n".join(out_str)
+        # Concatenate the header and body cleanly into session state without loops
+        st.session_state.search_results = header + stitched_body
         conn.close()
             
     except Exception as e:
@@ -1531,7 +1506,7 @@ def fetch_metadata_by_id(inscription_ids_input):
         missing_ids = []
         valid_reports = []
             
-
+        # Call the existing dictionary-returning function
         batched_dossiers = get_inscription_report(cursor, valid_ids)
 
         for ins_id in valid_ids:
@@ -1542,9 +1517,11 @@ def fetch_metadata_by_id(inscription_ids_input):
             else:
                 valid_reports.append((ins_id, dossier_body))
                 
+        # 1. RENDER WARNING AT THE TOP
         if missing_ids:
             out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
             
+        # 2. APPEND THE VALID REPORTS BELOW IT
         for ins_id, dossier_body in valid_reports:
             out_str.append(f"### Inscription ID {ins_id}\n\n")
             out_str.append(f"{dossier_body}\n\n")
@@ -1552,6 +1529,7 @@ def fetch_metadata_by_id(inscription_ids_input):
             
         conn.close()
         
+        # 3. STITCH ONCE TO ELIMINATE TYPING LAG
         st.session_state.search_results = "".join(out_str).rstrip("-\n ")
         
     except Exception as e:
@@ -1620,11 +1598,13 @@ def fetch_metadata_by_object_id(object_id):
             
             # Joins each full report block with a clear horizontal markdown break
             dossier_body = "\n\n---\n\n".join(compiled_blocks)
+            
+            # STITCH ONCE HERE TO PREVENT BROWSING/TYPING LAG
             st.session_state.search_results = f"{header_message}\n\n{dossier_body}"
             
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
-             
+            
 # INTERACTIVE MAP
 
 def generate_active_map():
