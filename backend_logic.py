@@ -161,6 +161,7 @@ def get_inscription_report(cursor, inscription_ids):
     # ----------------------------------------------------
     siblings_map = {}
     interventions_map = {}
+    interv_by_ins_id = {}  # The "Cubby Hole" lookup structure
     targets_map = {}
 
     if object_ids:
@@ -203,6 +204,8 @@ def get_inscription_report(cursor, inscription_ids):
         for row in all_interventions:
             ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc, obj_id = row
             interventions_map.setdefault(obj_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
+            # Sort directly into its unique inscription_id Cubby Hole
+            interv_by_ins_id.setdefault(ins_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
 
     # ----------------------------------------------------
     # 4. STRING COMPOSITION
@@ -264,12 +267,13 @@ def get_inscription_report(cursor, inscription_ids):
                 report.append(f"* {s_seq}. {s_ref}{line_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
             report.append("\n")
 
-            interventions = interventions_map.get(obj_id, [])
             report.append("#### Interventions (Later Modifications / Reuse)\n")
             for sib_id, _, sib_ref, sib_lref in siblings:
                 sib_line = f" {sib_lref}" if sib_lref else ""
                 curr_tag = " [current inscription]" if sib_id == ins_id else ""
-                item_interv = [i for i in interventions if i[0] == sib_id]
+                
+                # FIXED: Instant O(1) Dictionary Lookup instead of searching the whole list over and over!
+                item_interv = interv_by_ins_id.get(sib_id, [])
                 
                 if not item_interv:
                     report.append(f"**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
@@ -299,8 +303,6 @@ def get_inscription_report(cursor, inscription_ids):
     if is_single_id:
         return output_reports.get(valid_ids[0], "No inscription data found.")
     return output_reports
-
-
 
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
@@ -562,7 +564,17 @@ def get_db_connection():
     if not os.path.exists(db_path):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
         st.stop()
-    return sqlite3.connect(db_path)
+        
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("PRAGMA cache_size = -20000;")
+  
+    cursor.execute("PRAGMA temp_store = MEMORY;")
+    
+    cursor.execute("PRAGMA journal_mode = WAL;")
+    
+    return conn
 
 
 
