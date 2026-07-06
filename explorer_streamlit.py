@@ -500,7 +500,7 @@ if "person_lookup_input" in st.session_state and st.session_state["person_lookup
 with col_s1:
     ref_input_var = st.text_input(
         "EDCS/TM number:", 
-        placeholder="e.g. EDCS-12345678/TM 123456", 
+        placeholder="e.g. EDCS-12345678/TM 123456/123456(78)", 
         key="edcs_report_input", 
         on_change=reset_map_and_search_flags
     )
