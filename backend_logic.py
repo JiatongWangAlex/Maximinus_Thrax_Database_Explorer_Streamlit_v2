@@ -660,16 +660,6 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
     cursor.execute(match_sql, params)
     results = {row[0] for row in cursor.fetchall()}
     
-    # --- DIAGNOSTIC PRINT WINDOW ---
-    strategy_label = "ASSISTED" if is_assisted else "EXACT"
-    print(f"\n[DEBUG] Strategy: {strategy_label}")
-    print(f"[DEBUG] Target Word: '{word}' | Bound Param Matrix: '{params['w']}'")
-    print(f"[DEBUG] Inscription IDs recovered for this specific token: {len(results)}")
-    if len(results) == 0:
-        print(f"[WARNING] 0 hits found for '{word}'. If this query used an 'AND' operator, the final output will be forced to 0 results.")
-    print("-" * 50)
-    # -------------------------------
-    
     return results
 
 
@@ -682,18 +672,6 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
     if base_query_params is None: base_query_params = {}
     
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
-
-    # --- TOP-LEVEL DIAGNOSTICS ---
-    print("\n" + "="*60)
-    print(f"[ENGINE REBOOT] Raw User Input received: '{user_input}'")
-    
-    cleaned_input = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛!\{\}<>´`\^~]', '', user_input)
-    print(f"[ENGINE REBOOT] Cleaned Input (Punctuation Stripped): '{cleaned_input}'")
-    
-    tokens = re.findall(r'\bAND\b|\bOR\b|\bNOT\b|\w+', cleaned_input, re.IGNORECASE)
-    print(f"[ENGINE REBOOT] Extracted Tokens for Logic Tree: {tokens}")
-    print("="*60)
-    # ------------------------------
 
     if not tokens:
         print("[WARNING] Zero tokens extracted. The search engine has nothing to look for.")
