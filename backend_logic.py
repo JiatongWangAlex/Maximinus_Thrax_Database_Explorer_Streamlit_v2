@@ -1574,32 +1574,17 @@ def fetch_metadata_by_object_id(object_id):
             
             conn.close()
         else:
-            # 3. Compile the dossier markdown text blocks sequentially for all matched IDs
-            compiled_blocks = []
-            
-            # Fetch ALL dossiers from the database at the exact same time
-            batched_dossiers = get_inscription_report(cursor, sibling_ids)
-            
-            for sib_id in sibling_ids:
-                # Pulls from our batch dictionary instead of querying the database one by one
-                dossier_text = batched_dossiers.get(int(sib_id))
-                
-                if dossier_text and dossier_text != "No inscription data found.":
-                    compiled_blocks.append(dossier_text)
-                else:
-                    compiled_blocks.append(f"_Warning: Inscription data for ID {sib_id} could not compile properly._")
+            # 3. One-shot execution: Let the string-returning function build the entire body asset at once
+            dossier_body = get_inscription_report(cursor, sibling_ids)
             
             conn.close()
             
-            # 4. Update active workspace IDs and combine the header with the dossier content blocks
+            # 4. Update active workspace IDs and combine the header with the pre-stitched string
             st.session_state.active_inscription_ids = sibling_ids
             st.session_state["active_search_where_clauses"] = []
             st.session_state["active_search_has_run"] = True
             
-            # Joins each full report block with a clear horizontal markdown break
-            dossier_body = "\n\n---\n\n".join(compiled_blocks)
-            
-            # STITCH ONCE HERE TO PREVENT BROWSING/TYPING LAG
+            # Combine the custom header message with the pre-compiled dossier body string
             st.session_state.search_results = f"{header_message}\n\n{dossier_body}"
             
     except Exception as e:
