@@ -54,10 +54,31 @@ provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json")
 
 
 
+def get_inscription_report(cursor, inscription_ids):
+    """
+    Batched version of get_inscription_report.
+    Accepts EITHER a single integer/string ID, or a list of IDs.
+    Returns:
+      - A single markdown string if a single ID was passed.
+      - A dictionary mapping ID -> markdown string if a list was passed.
+    """
+    # 1. AUTO-DETECT TYPE: Handle a single ID being passed instead of a list
+    is_single_id = False
+    if isinstance(inscription_ids, (int, str)):
+        is_single_id = True
+        valid_ids = [int(inscription_ids)]
+    else:
+        valid_ids = [int(x) for x in inscription_ids if x]
 
-def get_inscription_report(cursor, inscription_id):
+    if not valid_ids:
+        return "No inscription data found." if is_single_id else {}
 
-    sql_main = """
+    placeholders = ",".join(["?"] * len(valid_ids))
+    
+    # ----------------------------------------------------
+    # 1. BATCH FETCH MAIN DETAILS
+    # ----------------------------------------------------
+    sql_main = f"""
         SELECT 
             mt.inscription_id, mt.inscription_ref, mt.line_ref, 
             mt.inscription_text_formatted, mt.corrected_lemmas, mt.dating, mt.expanded_bibliography,
@@ -72,171 +93,213 @@ def get_inscription_report(cursor, inscription_id):
         LEFT JOIN "inscription_and_road" iar ON mt.inscription_id = iar.inscription_id
         LEFT JOIN "itiner_e_roads" r_roads   ON iar.itiner_e_road_id = r_roads.itiner_e_road_id
         LEFT JOIN "status_tituli" st         ON mt.status_tituli_id = st.status_tituli_id
-        WHERE mt.inscription_id = ?;
+        WHERE mt.inscription_id IN ({placeholders});
     """
-    
-    sql_tm = 'SELECT TM_number FROM "inscriptions_and_TM_numbers" WHERE inscription_id = ?;'
-    
-    sql_distributio = """
-        SELECT DISTINCT vd_sub.virorum_distributio
+    cursor.execute(sql_main, valid_ids)
+    main_rows = cursor.fetchall()
+    if not main_rows:
+        return "No inscription data found." if is_single_id else {}
+
+    main_data = {}
+    object_ids = set()
+    for row in main_rows:
+        main_data[row[0]] = row
+        if row[7]:  # object_id
+            object_ids.add(row[7])
+
+    # ----------------------------------------------------
+    # 2. BATCH FETCH MULTI-VALUED FIELDS
+    # ----------------------------------------------------
+    sql_tm = f'SELECT inscription_id, TM_number FROM "inscriptions_and_TM_numbers" WHERE inscription_id IN ({placeholders});'
+    cursor.execute(sql_tm, valid_ids)
+    tm_map = {}
+    for ins_id, tm in cursor.fetchall():
+        if tm: tm_map.setdefault(ins_id, []).append(tm)
+
+    sql_distributio = f"""
+        SELECT DISTINCT ip_sub.inscription_id, vd_sub.virorum_distributio
         FROM "inscriptions_and_persons" ip_sub
         JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
         JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
-        WHERE ip_sub.inscription_id = ?
+        WHERE ip_sub.inscription_id IN ({placeholders})
         UNION
-        SELECT DISTINCT vd_sub.virorum_distributio
+        SELECT DISTINCT ic_sub.inscription_id, vd_sub.virorum_distributio
         FROM "inscriptions_and_collectives" ic_sub
         JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
         JOIN "virorum_distributio" vd_sub ON col_sub.virorum_distributio = vd_sub.virorum_distributio_id
-        WHERE ic_sub.inscription_id = ?;
+        WHERE ic_sub.inscription_id IN ({placeholders});
     """
-    
-    sql_persons = """
-        SELECT p.person_id, p.person_name 
+    cursor.execute(sql_distributio, valid_ids + valid_ids)
+    dist_map = {}
+    for ins_id, dist in cursor.fetchall():
+        if dist: dist_map.setdefault(ins_id, []).append(dist)
+
+    sql_persons = f"""
+        SELECT ip.inscription_id, p.person_id, p.person_name 
         FROM "persons" p 
         JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id 
-        WHERE ip.inscription_id = ?;
+        WHERE ip.inscription_id IN ({placeholders});
     """
-    
-    sql_collectives = """
-        SELECT c.collective_id, c.collective_name 
+    cursor.execute(sql_persons, valid_ids)
+    persons_map = {}
+    for ins_id, p_id, p_name in cursor.fetchall():
+        persons_map.setdefault(ins_id, []).append((p_id, p_name))
+
+    sql_collectives = f"""
+        SELECT ic.inscription_id, c.collective_id, c.collective_name 
         FROM "collectives" c
         JOIN "inscriptions_and_collectives" ic ON c.collective_id = ic.collective_id
-        WHERE ic.inscription_id = ?;
+        WHERE ic.inscription_id IN ({placeholders});
     """
-    
-    sql_siblings = 'SELECT inscription_id, sequence_id, inscription_ref, line_ref FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC;'
-    
-    sql_interventions = """
-        SELECT i.inscription_id, i.intervention_id, i.intervention_index, i.note, 
-               iam.method_id, e.extent_description, m.method_description
-        FROM "interventions_and_inscriptions" i
-        JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
-        LEFT JOIN "extent" e ON iam.extent_id = e.extent_id
-        LEFT JOIN "methods" m ON iam.method_id = m.method_id
-        WHERE i.inscription_id IN (SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ?)
-          AND i.role_id = 1
-          AND iam.method_id <> 1;
-    """
+    cursor.execute(sql_collectives, valid_ids)
+    coll_map = {}
+    for ins_id, c_id, c_name in cursor.fetchall():
+        coll_map.setdefault(ins_id, []).append((c_id, c_name))
 
-    cursor.execute(sql_main, (inscription_id,))
-    main_row = cursor.fetchone()
-    if not main_row:
-        return "No inscription data found."
+    # ----------------------------------------------------
+    # 3. BATCH FETCH OBJECT LINKS (Siblings & Interventions)
+    # ----------------------------------------------------
+    siblings_map = {}
+    interventions_map = {}
+    targets_map = {}
 
-    (ins_id, ins_ref, line_ref, text_formatted, lemmas, dating, biblio,
-     obj_id, context, support, material, province, place, pleiades_id, 
-     road_name, itinere_id, status_tituli) = main_row
+    if object_ids:
+        obj_placeholders = ",".join(["?"] * len(object_ids))
+        obj_ids_list = list(object_ids)
 
-    cursor.execute(sql_tm, (inscription_id,))
-    tm_numbers = [r[0] for r in cursor.fetchall() if r[0]]
-    
-    cursor.execute(sql_distributio, (inscription_id, inscription_id))
-    distributio_items = [r[0] for r in cursor.fetchall() if r[0]]
+        sql_siblings = f'SELECT object_id, inscription_id, sequence_id, inscription_ref, line_ref FROM "Max_Thrax" WHERE object_id IN ({obj_placeholders}) ORDER BY sequence_id ASC;'
+        cursor.execute(sql_siblings, obj_ids_list)
+        for obj_id, s_id, s_seq, s_ref, s_lref in cursor.fetchall():
+            siblings_map.setdefault(obj_id, []).append((s_id, s_seq, s_ref, s_lref))
 
-    cursor.execute(sql_persons, (inscription_id,))
-    persons = cursor.fetchall()
+        sql_interventions = f"""
+            SELECT i.inscription_id, i.intervention_id, i.intervention_index, i.note, 
+                   iam.method_id, e.extent_description, m.method_description, mt.object_id
+            FROM "interventions_and_inscriptions" i
+            JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
+            JOIN "Max_Thrax" mt ON i.inscription_id = mt.inscription_id
+            LEFT JOIN "extent" e ON iam.extent_id = e.extent_id
+            LEFT JOIN "methods" m ON iam.method_id = m.method_id
+            WHERE mt.object_id IN ({obj_placeholders})
+              AND i.role_id = 1
+              AND iam.method_id <> 1;
+        """
+        cursor.execute(sql_interventions, obj_ids_list)
+        all_interventions = cursor.fetchall()
 
-    cursor.execute(sql_collectives, (inscription_id,))
-    collectives = cursor.fetchall()
+        interv_ids = [row[1] for row in all_interventions if row[4] == 2]
+        if interv_ids:
+            int_placeholders = ",".join(["?"] * len(interv_ids))
+            sql_targets = f"""
+                SELECT iat.intervention_id, t.target_description 
+                FROM interventions_and_targets iat 
+                JOIN targets t ON iat.target_id = t.target_id 
+                WHERE iat.intervention_id IN ({int_placeholders})
+            """
+            cursor.execute(sql_targets, interv_ids)
+            for int_id, t_desc in cursor.fetchall():
+                targets_map.setdefault(int_id, []).append(t_desc)
 
-    # --- 3. STRING COMPOSITION ---
-    report = []
+        for row in all_interventions:
+            ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc, obj_id = row
+            interventions_map.setdefault(obj_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
 
-    # HEADING
-    edcs_link = f"[{ins_ref}](https://edcs.hist.uzh.ch/monument/{ins_ref.replace('EDCS-', '')})" if ins_ref else ""
-    line_display = f" {line_ref}" if (ins_ref and line_ref) else (line_ref if line_ref else "")
-    ref_segment = f"{edcs_link}{line_display}" if (ins_ref or line_ref) else "N/A"
-    tm_links = ", ".join([f"[{tm}](https://www.trismegistos.org/text/{tm})" for tm in tm_numbers]) if tm_numbers else "N/A"
-    obj_link = f"[{obj_id}](?obj_id={obj_id})" if obj_id else "N/A"
-    
-    report.append(f"**Quick Reference:** {ref_segment} | **TM Number:** {tm_links} | **Inscription ID:** [{ins_id}](?ins_id={ins_id}) | **Object ID:** {obj_link}\n")
+    # ----------------------------------------------------
+    # 4. STRING COMPOSITION
+    # ----------------------------------------------------
+    output_reports = {}
 
-    report.append("**Inscription Text:**\n")
-    report.append(f"{text_formatted.strip() if text_formatted else 'N/A'}\n")
+    for ins_id in valid_ids:
+        main_row = main_data.get(ins_id)
+        if not main_row:
+            continue
 
-    report.append(f"**Nonstandard Spellings:** {lemmas if lemmas else 'N/A'}\n")
-    report.append(f"**Context:** {context if context else 'N/A'}\n")
-    report.append(f"**Support:** {support if support else 'N/A'}\n")
-    report.append(f"**Dating:** {dating if dating else 'N/A'}\n")
-    report.append(f"**Material:** {material if material else 'N/A'}\n")
-    report.append(f"**Status Tituli:** {status_tituli if status_tituli else 'N/A'}\n")
-    
-    report.append(f"**Distributio Virorum:** {', '.join(distributio_items) if distributio_items else 'N/A'}\n")
-    
-    p_links = ", ".join([f"[{p_name}](?person_id={p_id}) (id: {p_id})" for p_id, p_name in persons]) if persons else "N/A"
-    report.append(f"**Persons:** {p_links}\n")
+        (_, ins_ref, line_ref, text_formatted, lemmas, dating, biblio,
+         obj_id, context, support, material, province, place, pleiades_id, 
+         road_name, itinere_id, status_tituli) = main_row
 
-    c_links = ", ".join([f"[{c_name}](?collective_id={c_id})" for c_id, c_name in collectives]) if collectives else "N/A"
-    report.append(f"**Institutions / Groups / Military Units:** {c_links}\n")
-    
-    report.append(f"**Province:** {province if province else 'N/A'}\n")
+        tm_numbers = tm_map.get(ins_id, [])
+        distributio_items = dist_map.get(ins_id, [])
+        persons = persons_map.get(ins_id, [])
+        collectives = coll_map.get(ins_id, [])
 
-    place_display = f"[{place}](https://pleiades.stoa.org/places/{pleiades_id})" if pleiades_id else (place if place else "N/A")
-    report.append(f"**Place:** {place_display}\n")
+        report = []
 
-    road_display = f"[{road_name if road_name else 'Unnamed Road'}](https://itiner-e.org/?id={itinere_id})" if itinere_id else "N/A"
-    report.append(f"**Associated Roman Road (Itinere):** {road_display}\n")
-
-    biblio_clean = f"\n* {biblio.strip().replace('\n', '\n* ')}" if biblio else " N/A"
-    report.append(f"**Bibliography:** {biblio_clean}\n")
-
-    # OBJECTS AND INSCRIPTIONS
-    if obj_id:
-        report.append("\n---\n\n")  # Push the divider to cleanly isolate metadata from linked layout details
-        cursor.execute(sql_siblings, (obj_id,))
-        siblings = cursor.fetchall()
+        edcs_link = f"[{ins_ref}](https://edcs.hist.uzh.ch/monument/{ins_ref.replace('EDCS-', '')})" if ins_ref else ""
+        line_display = f" {line_ref}" if (ins_ref and line_ref) else (line_ref if line_ref else "")
+        ref_segment = f"{edcs_link}{line_display}" if (ins_ref or line_ref) else "N/A"
+        tm_links = ", ".join([f"[{tm}](https://www.trismegistos.org/text/{tm})" for tm in tm_numbers]) if tm_numbers else "N/A"
+        obj_link = f"[{obj_id}](?obj_id={obj_id})" if obj_id else "N/A"
         
-        report.append(f"#### {len(siblings)} inscriptions on object:\n")
-        for s_id, s_seq, s_ref, s_lref in siblings:
-            curr_tag = " [current inscription]" if s_id == ins_id else ""
-            line_tag = f" {s_lref}" if s_lref else ""
-            report.append(f"* {s_seq}. {s_ref}{line_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
-        report.append("\n")
-
-        # INTERVENTIONS
-        cursor.execute(sql_interventions, (obj_id,))
-        interventions = cursor.fetchall()
+        report.append(f"**Quick Reference:** {ref_segment} | **TM Number:** {tm_links} | **Inscription ID:** [{ins_id}](?ins_id={ins_id}) | **Object ID:** {obj_link}\n")
+        report.append("**Inscription Text:**\n")
+        report.append(f"{text_formatted.strip() if text_formatted else 'N/A'}\n")
+        report.append(f"**Nonstandard Spellings:** {lemmas if lemmas else 'N/A'}\n")
+        report.append(f"**Context:** {context if context else 'N/A'}\n")
+        report.append(f"**Support:** {support if support else 'N/A'}\n")
+        report.append(f"**Dating:** {dating if dating else 'N/A'}\n")
+        report.append(f"**Material:** {material if material else 'N/A'}\n")
+        report.append(f"**Status Tituli:** {status_tituli if status_tituli else 'N/A'}\n")
+        report.append(f"**Distributio Virorum:** {', '.join(distributio_items) if distributio_items else 'N/A'}\n")
         
-        report.append("#### Interventions (Later Modifications / Reuse)\n")
-        
-        for sib_id, _, sib_ref, sib_lref in siblings:
-            sib_line = f" {sib_lref}" if sib_lref else ""
-            curr_tag = " [current inscription]" if sib_id == ins_id else ""
-            item_interv = [i for i in interventions if i[0] == sib_id]
-            
-            if not item_interv:
-                report.append(f"**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
-            else:
-                report.append(f"**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
-                for _, interv_id, idx, note, m_id, ext_desc, meth_desc in item_interv:
-                    idx_lbl = idx if idx else 1
-                    note_str = f" {note}" if note else ""
-                    
-                    if m_id == 2:
-                        # Safely extracted string block to prevent compilation failures
-                        sql_targets = """
-                            SELECT t.target_description 
-                            FROM interventions_and_targets iat 
-                            JOIN targets t ON iat.target_id = t.target_id 
-                            WHERE iat.intervention_id = ?
-                        """
-                        cursor.execute(sql_targets, (interv_id,))
-                        targets = ", ".join([r[0] for r in cursor.fetchall()])
-                        report.append(f"  * _intervention {idx_lbl} :_ {ext_desc or ''} {meth_desc or ''} of inscription, targeting {targets}")
-                    elif m_id == 3:
-                        report.append(f"  * _intervention {idx_lbl} :_ reuse of monument{note_str}")
-                    elif m_id == 4:
-                        report.append(f"  * _intervention {idx_lbl} :_ monument damage{note_str}")
-                    elif m_id == 5:
-                        report.append(f"  * _intervention {idx_lbl} :_ restoration of erased text{note_str}")
-                    elif m_id == 6:
-                        report.append(f"  * _intervention {idx_lbl} :_ reuse as support for new inscription{note_str}")
-                    else:
-                        report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
-        report.append("\n")
+        p_links = ", ".join([f"[{p_name}](?person_id={p_id}) (id: {p_id})" for p_id, p_name in persons]) if persons else "N/A"
+        report.append(f"**Persons:** {p_links}\n")
+        c_links = ", ".join([f"[{c_name}](?collective_id={c_id})" for c_id, c_name in collectives]) if collectives else "N/A"
+        report.append(f"**Institutions / Groups / Military Units:** {c_links}\n")
+        report.append(f"**Province:** {province if province else 'N/A'}\n")
+        place_display = f"[{place}](https://pleiades.stoa.org/places/{pleiades_id})" if pleiades_id else (place if place else "N/A")
+        report.append(f"**Place:** {place_display}\n")
+        road_display = f"[{road_name if road_name else 'Unnamed Road'}](https://itiner-e.org/?id={itinere_id})" if itinere_id else "N/A"
+        report.append(f"**Associated Roman Road (Itinere):** {road_display}\n")
+        biblio_clean = f"\n* {biblio.strip().replace('\n', '\n* ')}" if biblio else " N/A"
+        report.append(f"**Bibliography:** {biblio_clean}\n")
 
-    return "\n".join(report)
+        if obj_id:
+            report.append("\n---\n\n")
+            siblings = siblings_map.get(obj_id, [])
+            report.append(f"#### {len(siblings)} inscriptions on object:\n")
+            for s_id, s_seq, s_ref, s_lref in siblings:
+                curr_tag = " [current inscription]" if s_id == ins_id else ""
+                line_tag = f" {s_lref}" if s_lref else ""
+                report.append(f"* {s_seq}. {s_ref}{line_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
+            report.append("\n")
+
+            interventions = interventions_map.get(obj_id, [])
+            report.append("#### Interventions (Later Modifications / Reuse)\n")
+            for sib_id, _, sib_ref, sib_lref in siblings:
+                sib_line = f" {sib_lref}" if sib_lref else ""
+                curr_tag = " [current inscription]" if sib_id == ins_id else ""
+                item_interv = [i for i in interventions if i[0] == sib_id]
+                
+                if not item_interv:
+                    report.append(f"**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
+                else:
+                    report.append(f"**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
+                    for _, interv_id, idx, note, m_id, ext_desc, meth_desc in item_interv:
+                        idx_lbl = idx if idx else 1
+                        note_str = f" {note}" if note else ""
+                        if m_id == 2:
+                            targets = ", ".join(targets_map.get(interv_id, []))
+                            report.append(f"  * _intervention {idx_lbl} :_ {ext_desc or ''} {meth_desc or ''} of inscription, targeting {targets}")
+                        elif m_id == 3:
+                            report.append(f"  * _intervention {idx_lbl} :_ reuse of monument{note_str}")
+                        elif m_id == 4:
+                            report.append(f"  * _intervention {idx_lbl} :_ monument damage{note_str}")
+                        elif m_id == 5:
+                            report.append(f"  * _intervention {idx_lbl} :_ restoration of erased text{note_str}")
+                        elif m_id == 6:
+                            report.append(f"  * _intervention {idx_lbl} :_ reuse as support for new inscription{note_str}")
+                        else:
+                            report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
+            report.append("\n")
+
+        output_reports[ins_id] = "\n".join(report)
+
+    # 5. RETURN CORRECT FORMAT BASED ON INPUT TYPE
+    if is_single_id:
+        return output_reports.get(valid_ids[0], "No inscription data found.")
+    return output_reports
+
 
 
 
@@ -854,14 +917,16 @@ def run_standard_search(user_input):
         out_str.append(header)
 
         
+        batched_dossiers = get_inscription_report(cursor, all_matched_ids)
+
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
-            dossier_text = get_inscription_report(cursor, int(ins_id))
-            out_str.append(dossier_text if dossier_text != "No inscription data found." else f"_Warning: This ID does not exist: {ins_id}_")
+            dossier_text = batched_dossiers.get(int(ins_id))
+            out_str.append(dossier_text if dossier_text and dossier_text != "No inscription data found." else f"_Warning: This ID does not exist: {ins_id}_")
             out_str.append("\n\n---\n\n")
-            
         st.session_state.search_results = "\n\n".join(out_str)
         conn.close()
+            
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
             
@@ -912,12 +977,15 @@ def run_ref_search(ref_query):
             "_" * 70 + "\n\n"
         ]
         
+
+        batched_dossiers = get_inscription_report(cursor, matched_ids)
+
         for ins_id in matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
             
-            dossier_text = get_inscription_report(cursor, int(ins_id))
+            dossier_text = batched_dossiers.get(int(ins_id))
             
-            if dossier_text != "No inscription data found.":
+            if dossier_text and dossier_text != "No inscription data found.":
                 out_str.append(dossier_text)
             else:
                 out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
@@ -926,7 +994,7 @@ def run_ref_search(ref_query):
             
         st.session_state.search_results = "".join(out_str).rstrip("-\n ")
         conn.close()
-        
+            
     except Exception as e:
         st.error(f"An error occurred during lookup: {e}")
         if 'conn' in locals():
@@ -1411,14 +1479,18 @@ def execute_advanced_search(f_dict):
         header += f"\nCompiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
         out_str.append(header)
         
+
+        batched_dossiers = get_inscription_report(cursor, all_matched_ids)
+
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
-            dossier_text = get_inscription_report(cursor, int(ins_id))
-            out_str.append(dossier_text if dossier_text != "No inscription data found." else f"_Warning: ID does not exist: {ins_id}_")
+            dossier_text = batched_dossiers.get(int(ins_id))
+            out_str.append(dossier_text if dossier_text and dossier_text != "No inscription data found." else f"_Warning: ID does not exist: {ins_id}_")
             out_str.append("\n\n---\n\n")
             
         st.session_state.search_results = "\n\n".join(out_str)
         conn.close()
+            
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
 
@@ -1447,10 +1519,13 @@ def fetch_metadata_by_id(inscription_ids_input):
         missing_ids = []
         valid_reports = []
             
+
+        batched_dossiers = get_inscription_report(cursor, valid_ids)
+
         for ins_id in valid_ids:
-            dossier_body = get_inscription_report(cursor, int(ins_id))
+            dossier_body = batched_dossiers.get(int(ins_id))
             
-            if dossier_body == "No inscription data found.":
+            if not dossier_body or dossier_body == "No inscription data found.":
                 missing_ids.append(str(ins_id))
             else:
                 valid_reports.append((ins_id, dossier_body))
@@ -1511,11 +1586,15 @@ def fetch_metadata_by_object_id(object_id):
         else:
             # 3. Compile the dossier markdown text blocks sequentially for all matched IDs
             compiled_blocks = []
+            
+            # Fetch ALL dossiers from the database at the exact same time
+            batched_dossiers = get_inscription_report(cursor, sibling_ids)
+            
             for sib_id in sibling_ids:
-                # Calls your standardized compiler function directly
-                dossier_text = get_inscription_report(cursor, int(sib_id))
+                # Pulls from our batch dictionary instead of querying the database one by one
+                dossier_text = batched_dossiers.get(int(sib_id))
                 
-                if dossier_text != "No inscription data found.":
+                if dossier_text and dossier_text != "No inscription data found.":
                     compiled_blocks.append(dossier_text)
                 else:
                     compiled_blocks.append(f"_Warning: Inscription data for ID {sib_id} could not compile properly._")
