@@ -752,7 +752,7 @@ def run_standard_search(user_input):
         cursor = conn.cursor()
 
         # Run the decoupled core search utility using your prioritized sequence
-        text_rows, fallback_rows = assisted_search(cursor, user_input)
+        text_rows, fallback_rows, direct_count = assisted_search(cursor, user_input)
         
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
