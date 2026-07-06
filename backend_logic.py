@@ -1483,6 +1483,12 @@ def execute_advanced_search(f_dict):
 
 
 def fetch_metadata_by_id(inscription_ids_input):
+    # 🔍 SYSTEM CHECK PRINT AT THE ABSOLUTE ENTRY POINT
+    print("!!! FETCH METADATA BY ID HAS RUN !!! Input was:", repr(inscription_ids_input))
+    
+    if not inscription_ids_input.strip():
+        st.session_state.search_results = "Please enter one or more Inscription IDs."
+        return
     if not inscription_ids_input.strip():
         st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
