@@ -117,7 +117,9 @@ def commit_search_and_wipe_inputs():
             
     if "person_select_input" in st.session_state:
         st.session_state["person_select_input"] = "PLEASE SELECT"
-        
+             
+    st.session_state["person_matches"] = []
+         
     for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
         st.session_state[anchor] = ""
         
