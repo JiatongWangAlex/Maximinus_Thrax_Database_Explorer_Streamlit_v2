@@ -655,7 +655,7 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
         WHERE ({where_clauses}) {base_intersect_sql}
     """
     
-    params = {**base_query_params, "w_u": f"%{word_u}%", "w_v": f"%{word_v}%"}
+    params = {**base_query_params, "w": f"%{word}%"}
     cursor.execute(match_sql, params)
     return {row[0] for row in cursor.fetchall()}
 
