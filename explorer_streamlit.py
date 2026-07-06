@@ -776,7 +776,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
             "Search by Abbreviated Citation",
             value=""
         )
-        st.markdown("Please use [EDCS style](https://edcs.hist.uzh.ch/sources) abbreviations e.g.CIL-02, 04886, AE-1975, 00701")
+        st.markdown("Please use [EDCS style](https://edcs.hist.uzh.ch/sources) abbreviations e.g. CIL-02, 04886 or AE-1975, 00701")
         
     with col2:
         author_input = st.text_input(
