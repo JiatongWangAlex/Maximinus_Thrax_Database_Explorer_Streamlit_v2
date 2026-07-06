@@ -282,8 +282,8 @@ LATIN_LEMMA_MAP = {
     "centurio": "centurio", "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
     "augustus": "augustus", "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
     "caesar": "caesar", "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
-    "nobilissimus": "nobilissimus", "nobilissimum": "nobilissimus", "nobilissimo": "nobilissimus"
-    "immunis": "immunis", "immunem": "immunis", "immuni": "immunis", "immune": "immunis"
+    "nobilissimus": "nobilissimus", "nobilissimum": "nobilissimus", "nobilissimo": "nobilissimus",
+    "princeps": "princeps", "principis": "princeps", "principi": "princeps","principem": "princeps", "principe": "princeps"
 }
 
 
