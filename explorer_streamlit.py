@@ -638,7 +638,6 @@ with st.expander("Advanced Search", expanded=False):
         )
     )
     
-    # Updated to match the backend function logic variables exactly
     text_search_mode = st.radio(
         "Text Search Strategy:",
         options=[
@@ -652,16 +651,11 @@ with st.expander("Advanced Search", expanded=False):
               "squeezed spaces, military unit profiles, and named personas.")
     )
 
-    # Pack directly into your filter dictionary being built for execute_advanced_search
-    f_dict['text'] = f_text
-    f_dict['text_search_mode'] = text_search_mode
-
     st.markdown("---")
     st.markdown("### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
-         
     # COLUMN 1: Inscription Metadata
     with col1:
         st.markdown("#### Based on Inscription Metadata")
@@ -771,7 +765,7 @@ with st.expander("Advanced Search", expanded=False):
             
             form_payload = {
                 'text': f_text,
-                'text_search_mode': text_search_mode,  # <-- ADDED THIS LINE
+                'text_search_mode': text_search_mode,  # Captured perfectly here later!
                 'relevance_index': (
                     "All" if f_rel == "All inscriptions regardless of relevance" 
                     else 1 if f_rel == "Relevant" 
