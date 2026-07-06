@@ -769,12 +769,19 @@ def run_standard_search(user_input):
             cursor.execute(f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({",".join(["?"] * len(chunk))});', chunk)
             for row in cursor.fetchall(): 
                 unique_objects.add(row[0])
-            
+                    
+        direct_count = getattr(text_rows, "direct_match_count", 0)
+
+        total_inscriptions = len(all_matched_ids)
+        indirect_count = total_inscriptions - direct_count
+
+
         out_str = []
-        header = f"## Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} indirect match(es)!\n"
+        header = f"## Search Results\nFound {direct_count} direct match(es) and {indirect_count} indirect match(es)!\n"
         header += f"**Key Word:** {user_input}\n\n"
-        header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{len(unique_objects)}** objects:\n\n"
+        header += f"Compiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n"
         out_str.append(header)
+
         
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
@@ -1338,11 +1345,18 @@ def execute_advanced_search(f_dict):
             for row in cursor.fetchall(): 
                 unique_objects.add(row[0])
             
+
         # STITCH VISUAL DOSSIER LAYOUT FOR DISPLAY
+
+        direct_count = getattr(text_rows, "direct_match_count", 0)
+        total_inscriptions = len(all_matched_ids)
+        indirect_count = total_inscriptions - direct_count
+
+
         out_str = []
-        header = f"## Advanced Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} assisted fallback match(es)!\n"
+        header = f"## Advanced Search Results\nFound {direct_count} direct match(es) and {indirect_count} assisted fallback match(es)!\n"
         header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
-        header += f"\nCompiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
+        header += f"\nCompiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
         out_str.append(header)
         
         for ins_id in all_matched_ids:
