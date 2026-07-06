@@ -659,8 +659,9 @@ with st.expander("Advanced Search", expanded=False):
     text_search_mode = st.radio(
         "Text Search Strategy:",
         options=[
-            "Exact Match",
-            "Assisted Match"
+            "Assisted Match",
+            "Exact Match"
+            
         ],
         index=0,
         key="adv_text_search_mode",
