@@ -644,7 +644,7 @@ with st.expander("Advanced Search", expanded=False):
     st.text("Scroll down and click 'Execute Advanced Search' to search!")
     
     st.markdown("---")
-    st.markdown("### Text Search")       
+    st.markdown("#### Text Search")       
     f_text = st.text_input(
         "Can be combined with Filters | Boolean Logic Operators Allowed:", 
         placeholder="e.g. Maximinus AND legatum",
@@ -674,13 +674,13 @@ with st.expander("Advanced Search", expanded=False):
     )
          
     st.markdown("---")
-    st.markdown("### Filters")
+    st.markdown("#### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     # COLUMN 1: Inscription Metadata
     with col1:
-        st.markdown("#### Based on Inscription Metadata")
+        st.markdown("##### Based on Inscription Metadata")
         
         relevance_options = [
             "Relevant",
@@ -722,7 +722,7 @@ with st.expander("Advanced Search", expanded=False):
         
     # COLUMN 2: People and Institutions
     with col2:
-        st.markdown("#### Based on People and Institutions")
+        st.markdown("##### Based on People and Institutions")
         
         try:
             conn = get_db_connection()
@@ -745,7 +745,7 @@ with st.expander("Advanced Search", expanded=False):
 
     # COLUMN 3: Later Modifications / Reuse
     with col3:
-        st.markdown("#### Based on Later Modifications / Reuse")
+        st.markdown("##### Based on Later Modifications / Reuse")
         
         intervention_options = [
             "All inscriptions regardless of presence of later intervention",
