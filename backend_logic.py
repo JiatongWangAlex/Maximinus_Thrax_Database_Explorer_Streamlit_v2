@@ -635,13 +635,7 @@ def convert_roman_to_arabic_in_text(text):
         import reimport re
 
 def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base_query_params):
-    """
-    Core ID resolver. Dynamically narrows down or expands its search matrix
-    based on whether the strategy is Exact or Assisted.
-    """
-    word_u = word.replace('v', 'u')
-    word_v = word.replace('u', 'v')
-    
+
     # Base Exact Layers (Tiers 1 & 2A)
     where_clauses = """
         mt.inscription_text_stripped LIKE :w_u OR mt.inscription_text_stripped LIKE :w_v OR
