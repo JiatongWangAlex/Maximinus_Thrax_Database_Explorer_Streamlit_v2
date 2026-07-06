@@ -1958,7 +1958,7 @@ __all__ = [
     'sql_get_person_details',
     'sql_get_all_person_inscriptions',
     'sql_get_positions',
-    'sql_get_status'
+    'sql_get_status',
     'sql_get_units',
     'LATIN_LEMMA_MAP',
     'get_db_connection',
