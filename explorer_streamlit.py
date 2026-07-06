@@ -638,22 +638,30 @@ with st.expander("Advanced Search", expanded=False):
         )
     )
     
+    # Updated to match the backend function logic variables exactly
     text_search_mode = st.radio(
         "Text Search Strategy:",
         options=[
-            "Match any inflected form of word or phrase", 
-            "Match exact word or phrase"
+            "Exact Match",
+            "Assisted Match"
         ],
         index=0,
-        on_change=reset_map_and_search_flags
+        on_change=reset_map_and_search_flags,
+        help=("'Exact Match' uses strict SQLite FTS lookup. "
+              "'Assisted Match' triggers cascading corrections for inflections, "
+              "squeezed spaces, military unit profiles, and named personas.")
     )
+
+    # Pack directly into your filter dictionary being built for execute_advanced_search
+    f_dict['text'] = f_text
+    f_dict['text_search_mode'] = text_search_mode
 
     st.markdown("---")
     st.markdown("### Filters")
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
-
+         
     # COLUMN 1: Inscription Metadata
     with col1:
         st.markdown("#### Based on Inscription Metadata")
