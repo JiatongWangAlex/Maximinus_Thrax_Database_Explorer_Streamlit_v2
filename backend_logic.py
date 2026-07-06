@@ -53,13 +53,7 @@ provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json")
 
 
 def get_inscription_report(cursor, inscription_ids):
-    """
-    Batched version of get_inscription_report.
-    Accepts EITHER a single integer/string ID, or a list of IDs.
-    Returns:
-      - A single perfectly stitched Markdown string containing all dossiers,
-        complete with '## Inscription ID' headers and warning markers.
-    """
+
     # 1. AUTO-DETECT TYPE: Convert to standard list of integers
     if isinstance(inscription_ids, (int, str)):
         valid_ids = [int(inscription_ids)]
