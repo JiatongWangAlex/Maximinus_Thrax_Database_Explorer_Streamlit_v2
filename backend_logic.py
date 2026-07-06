@@ -1409,34 +1409,58 @@ def execute_advanced_search(f_dict):
     except Exception as e:
         st.session_state.search_results = f"Advanced Search System Failure: {e}"
 
-def fetch_metadata_by_id(inscription_id):
-    if not inscription_id.strip().isdigit():
-        st.session_state.search_results = "Please enter a valid numerical Inscription ID."
+def fetch_metadata_by_id(inscription_ids_input):
+    if not inscription_ids_input.strip():
+        st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
+        
+    raw_id_list = [x.strip() for x in inscription_ids_input.split(",")]
+    valid_ids = [int(x) for x in raw_id_list if x and x.isdigit()]
+    
+    if not valid_ids:
+        st.session_state.search_results = "Please enter one or more Inscription IDs as pure numbers"
+        return
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute(main_report_sql, (int(inscription_id),))
-        rows = cursor.fetchall()
+        st.session_state.active_inscription_ids = valid_ids
+        st.session_state["active_search_where_clauses"] = []  
+        st.session_state["active_search_has_run"] = True      
+
+        out_str = []
+        missing_ids = []
+        
+        for ins_id in valid_ids:
+            out_str.append(f"### Inscription ID {ins_id}\n\n")
+            
+            cursor.execute(main_report_sql, (ins_id,))
+            rows = cursor.fetchall()
+            
+            if not rows:
+                out_str.append(f"These ID(s) do not exist: {ins_id}\n\n")
+                missing_ids.append(str(ins_id))
+            else:
+                dossier_body = "\n".join([row[0] for row in rows if row[0] is not None])
+                out_str.append(f"{dossier_body}\n\n")
+                
+            out_str.append("---\n\n")
+            
         conn.close()
         
-        header_message = f"### Inscription ID {inscription_id.strip()}\n\n"
+        final_output = "".join(out_str).rstrip("-\n ")
+      
+        if missing_ids:
+            warning_msg = f"**Warning:** The following ID(s) do not exist in the database: {', '.join(missing_ids)}\n\n"
+            final_output = warning_msg + final_output
+        st.session_state.search_results = final_output
         
-        if not rows:
-            st.session_state.active_inscription_ids = [int(inscription_id.strip())]
-            st.session_state["active_search_where_clauses"] = []  # Mode 2 explicit ID handling
-            st.session_state["active_search_has_run"] = True      # Displays the button
-
-            st.session_state.search_results = f"{header_message}No metadata entries discovered for ID: {inscription_id}"
-            
-        else:
-            dossier_body = "\n".join([row[0] for row in rows if row[0] is not None])
-            st.session_state.search_results = f"{header_message}{dossier_body}"
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata: {e}"
-             
-
+        if 'conn' in locals():
+            conn.close()
+                
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
         st.session_state.search_results = "Please enter a valid Object ID."
