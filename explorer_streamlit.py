@@ -771,7 +771,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
 
     col1, col2 = st.columns(2)
     
-with col1:
+    with col1:
         abbr_input = st.text_input(
             "Search by Abbreviated Citation",
             value="",
