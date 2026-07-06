@@ -53,28 +53,7 @@ provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json")
 
 
 
-# LATIN LEMMMA MAP
 
-LATIN_LEMMA_MAP = {
-
-    "praeses provinciae": "praeses provinciae", "praesidem provinciae": "praeses provinciae",
-    "tribunicia potestate": "tribunicia potestate", "tribuniciae potestate": "tribuniciae potestate",
-    "praefectus": "praefectus", "praefectum": "praefectus", "praefecti": "praefectus", "praefecto": "praefectus",
-    "tribunus": "tribunus", "tribunum": "tribunus", "tribuni": "tribunus", "tribuno": "tribunus",
-    "legatus": "legatus", "legati": "legatus", "legatum": "legatus", "legato": "legatus",
-    "speculator": "speculator", "speculatorem": "speculator", "speculatoris": "speculator", "speculatori": "speculator", "speculatore": "speculator",
-    "veteranus": "veteranus", "veteranum": "veteranus", "veterani": "veteranus", "veterano": "veteranus",
-    "quaestor": "quaestor", "quaestorem": "quaestor", "quaestoris": "quaestor", "quaestori": "quaestor", "quaestore": "quaestor",
-    "procurator": "procurator", "procuratorem": "procurator", "procuratoris": "procurator", "procuratori": "procurator", "procuratore": "procurator",
-    "imperator": "imperator", "imperatorem": "imperator", "imperatoris": "imperator", "imperatori": "imperator", "imperatore": "imperator",
-    "consul": "consul", "consulem": "consul", "consulis": "consul", "consuli": "consul", "consule": "consul",
-    "proconsul": "proconsul", "proconsulem": "proconsul", "proconsulis": "proconsul", "proconsuli": "proconsul", "proconsule": "proconsul",
-    "centurio": "centurio", "centurionem": "centurio", "centurionis": "centurio", "centurioni": "centurio", "centurione": "centurio",
-    "augustus": "augustus", "augustum": "augustus", "augusti": "augustus", "augusto": "augustus",
-    "caesar": "caesar", "caesarem": "caesar", "caesaris": "caesar", "caesari": "caesar", "caesare": "caesar",
-    "nobilissimus": "nobilissimus", "nobilissimum": "nobilissimus", "nobilissimo": "nobilissimus",
-    "princeps": "princeps", "principis": "princeps", "principi": "princeps","principem": "princeps", "principe": "princeps",
-}
 
 def get_inscription_report(cursor, inscription_id):
 
@@ -555,12 +534,6 @@ def convert_markdown_bold_to_underline(text):
             output.append(char + "\u0332")
     return "".join(output)
 
-
-def lemmatize_query(text):
-    if not text: return ""
-    words = text.lower().split()
-    return " ".join([LATIN_LEMMA_MAP.get(word, word) for word in words])
-
 def clean_epigraphic_text(text):
     if not text: return ""
     text = text.lower()
@@ -611,10 +584,10 @@ def run_standard_search(user_input):
 
             expanded_token_clusters = []
             for token in raw_tokens:
-                root_lemma = LATIN_LEMMA_MAP.get(token, token)
-                token_variants = list(set(
-                    [k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, token]
-                ))
+                # Direct string normalization for accurate orthography matches
+                token_u = token.replace('v', 'u')
+                token_v = token.replace('u', 'v')
+                token_variants = list(set([token, token_u, token_v]))
                 expanded_token_clusters.append(token_variants)
     
             possible_phrases = []
@@ -651,8 +624,11 @@ def run_standard_search(user_input):
         # SEARCH FOR OTHER INFLECTED FORMS OF THE QUERY
         else:
             clean_query = clean_epigraphic_text(user_input).strip().lower()
-            root_lemma = LATIN_LEMMA_MAP.get(clean_query, clean_query)
-            synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_query]))
+            
+            # Formulate variants natively to guarantee cross-matching over orthographical differences
+            query_u = clean_query.replace('v', 'u')
+            query_v = clean_query.replace('u', 'v')
+            synonyms = list(set([clean_query, query_u, query_v]))
             
             like_clauses = " OR ".join(["mt.inscription_text_stripped LIKE ?"] * len(synonyms))
             text_sql = f"""
@@ -665,32 +641,41 @@ def run_standard_search(user_input):
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons, text_stripped = row
                 base_data = (ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons)
-                if text_stripped and clean_query in text_stripped.lower():
+                
+                # Check for hits in raw variants
+                if text_stripped and any(syn in text_stripped.lower() for syn in synonyms):
                     text_rows.append(base_data)
                 else:
-                    fallback_rows.append(base_data + ("lemma_cluster", root_lemma))
+                    fallback_rows.append(base_data + ("spelling_variant_cluster", clean_query))
             
             if not text_rows and not fallback_rows:
                 continuous_term = user_input.lower().replace(" ", "")
                 continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_term)
                 
                 if continuous_term:
+                    continuous_term_u = continuous_term.replace('v', 'u')
+                    continuous_term_v = continuous_term.replace('u', 'v')
+                    
                     continuous_sql = """
                         SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
                                (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons
                         FROM "Max_Thrax" mt 
                         WHERE mt.reconstituted_text LIKE ? 
                            OR mt.cleaned_text LIKE ?
+                           OR mt.reconstituted_text LIKE ? 
+                           OR mt.cleaned_text LIKE ?
                         ORDER BY mt.inscription_id DESC;
                     """
-                    cursor.execute(continuous_sql, (f"%{continuous_term}%", f"%{continuous_term}%"))
+                    cursor.execute(continuous_sql, (
+                        f"%{continuous_term_u}%", f"%{continuous_term_u}%",
+                        f"%{continuous_term_v}%", f"%{continuous_term_v}%"
+                    ))
                     for row in cursor.fetchall():
                         ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons = row
                         text_rows.append((ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons))
                         
             # SEE IF ANY PERSON KINDA MATCHES THE QUERY AND OUTPUT ALL INSCRIPTIONS LINKED TO THAT PERSON
-            smart_meta_input = lemmatize_query(user_input.strip())
-            like_query = f"%{re.sub(r'\s+', '%', smart_meta_input)}%"
+            like_query = f"%{re.sub(r'\s+', '%', clean_query)}%"
             cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_query,))
             p_ids = [r[0] for r in cursor.fetchall()]
             if p_ids:
@@ -703,8 +688,6 @@ def run_standard_search(user_input):
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
         seen_fallback_ids = set()
-        search_clean = user_input.strip().lower()
-        base_word = lemmatize_query(search_clean)
         
         for row in fallback_rows:
             ins_id = row[0]
@@ -750,13 +733,9 @@ def run_standard_search(user_input):
         out_str.append(header)
         
         for ins_id in all_matched_ids:
-
             out_str.append(f"## Inscription ID {ins_id}\n")
-            
-            # Call your function directly to grab the compiled report text
             dossier_text = get_inscription_report(cursor, int(ins_id))
             
-            # If the ID wasn't found, the function returns "No inscription data found."
             if dossier_text == "No inscription data found.":
                 out_str.append(f"_Warning: This ID does not exist: {ins_id}_")
             else:
@@ -768,8 +747,6 @@ def run_standard_search(user_input):
         conn.close()
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
-
-
 
 # LOOK UP INSCRIPTION BY EDCS NUMBER OR TM NUMBER
 
@@ -1926,14 +1903,12 @@ def generate_active_map():
         
 __all__ = [
     
-    'LATIN_LEMMA_MAP',
     'get_inscription_report',
     'get_db_connection',
     'reset_map_and_search_flags',
     'generate_bulk_search_csv',
     'generate_bulk_search_sql',
     'convert_markdown_bold_to_underline',
-    'lemmatize_query',
     'clean_epigraphic_text',
     'convert_roman_to_arabic_in_text',
     'run_standard_search',
