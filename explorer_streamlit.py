@@ -641,8 +641,10 @@ with col_s4:
 
 with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
-    st.text("Scroll down and click Execute Advanced Search to search!")
-
+    st.text("Scroll down and click **Execute Advanced Search** to search!")
+    
+    st.markdown("---")
+         
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
         placeholder="e.g. Maximinus AND legatum",
