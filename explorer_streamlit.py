@@ -646,9 +646,10 @@ with st.expander("Advanced Search", expanded=False):
         ],
         index=0,
         on_change=reset_map_and_search_flags,
-        help=("'Exact Match' uses strict SQLite FTS lookup. "
-              "'Assisted Match' triggers cascading corrections for inflections, "
-              "squeezed spaces, military unit profiles, and named personas.")
+        help=("'Exact Match' searches your exact string. "
+              "'Assisted Match' also looks for spelling variants of your search term, "
+              "and sees whether your search term matches the name of a person or group "
+              "identified in the corpus. We cannot handle inflection at this moment")
     )
 
     st.markdown("---")
