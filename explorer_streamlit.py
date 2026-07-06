@@ -243,27 +243,33 @@ def callback_literature_search():
                     st.session_state.active_search_has_run = True
                     st.session_state["csv_mode"] = "ids"
                     
+                    # 1. Start the visual layout structure locally
                     out_str = [
                         f"#### Found {len(linked_ids)} matching inscription(s) via Literature Search:\n", 
                         "_" * 70 + "\n\n"
                     ]
                     
+                    # 2. Batch fetch ALL dossiers at once to prevent looping lag
+                    batched_dossiers = get_inscription_report(cursor, linked_ids)
+                    
+                    # 3. Stitch the blocks together sequentially
                     for ins_id in linked_ids:
                         out_str.append(f"## Inscription ID {ins_id}\n")
-                        dossier_text = get_inscription_report(cursor, int(ins_id))
+                        dossier_text = batched_dossiers.get(int(ins_id))
                         
-                        if dossier_text != "No inscription data found.":
+                        if dossier_text and dossier_text != "No inscription data found.":
                             out_str.append(dossier_text)
                         else:
                             out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
                             
                         out_str.append("\n\n---\n\n")
                     
+                    # 4. Save the single, completely stitched text asset to session state
                     st.session_state.search_results = "".join(out_str)
                 
                 conn.close()
                 
-                # 2. RUN YOUR WIPE FUNCTION AT THE END! Exactly like the other callbacks do
+                # RUN YOUR WIPE FUNCTION AT THE END! Exactly like the other callbacks do
                 commit_search_and_wipe_inputs()
                 
             except Exception as action_err:
