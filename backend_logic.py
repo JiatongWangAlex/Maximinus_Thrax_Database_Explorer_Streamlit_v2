@@ -770,8 +770,8 @@ def run_standard_search(user_input):
         header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects:\n\n"
         out_str.append(header)
         
-        for rank, ins_id in enumerate(all_matched_ids, 1):
-            out_str.append(f"## Result {rank}\n")
+        for ins_id in all_matched_ids:
+            out_str.append(f"## Inscription ID {ins_id}\n")
             
             cursor.execute(main_report_sql, (int(ins_id),))
             card_rows = cursor.fetchall()
@@ -789,8 +789,7 @@ def run_standard_search(user_input):
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
 
-# LOOK UP INSCRIPTION BY EDCS NUMBER 
-import re
+# LOOK UP INSCRIPTION BY EDCS NUMBER OR TM NUMBER
 
 def run_ref_search(ref_query):
     if not ref_query.strip():
@@ -837,8 +836,9 @@ def run_ref_search(ref_query):
             "_" * 70 + "\n\n"
         ]
         
-        for idx, ins_id in enumerate(matched_ids, 1):
-            out_str.append(f"## Result {idx}\n")
+        for ins_id in matched_ids:
+            # Updated header format here
+            out_str.append(f"## Inscription ID {ins_id}\n")
             
             cursor.execute(main_report_sql, (int(ins_id),))
             card_rows = cursor.fetchall()
@@ -851,7 +851,7 @@ def run_ref_search(ref_query):
                 
             out_str.append("\n\n---\n\n")
             
-        st.session_state.search_results = "".join(out_str)
+        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
         conn.close()
         
     except Exception as e:
@@ -1389,8 +1389,8 @@ def execute_advanced_search(f_dict):
             return
 
         # 3. Stitch every matching custom card together sequentially
-        for rank, ins_id in enumerate(all_matched_ids, 1):
-            out_str.append(f"## Result {rank}\n")
+        for ins_id in all_matched_ids:
+            out_str.append(f"## Inscription ID {ins_id}\n")
             
             cursor.execute(main_report_sql, (int(ins_id),))
             card_rows = cursor.fetchall()
