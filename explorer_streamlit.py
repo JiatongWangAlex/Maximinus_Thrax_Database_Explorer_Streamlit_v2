@@ -649,7 +649,7 @@ with st.expander("Advanced Search", expanded=False):
     )
     
     st.caption(
-        "Supported logic operators", 
+        "Scroll down and press 'Execute Advanced Search' | Supported logic operators", 
         help=(
             "**Supported Operators:**\n"
             "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
