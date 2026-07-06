@@ -641,7 +641,7 @@ with col_s4:
 
 with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
-    st.text("Scroll down and click **Execute Advanced Search** to search!")
+    st.text("Scroll down and click 'Execute Advanced Search' to search!")
     
     st.markdown("---")
     st.markdown("### Advanced Text Search")       
