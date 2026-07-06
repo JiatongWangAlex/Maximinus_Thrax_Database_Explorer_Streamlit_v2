@@ -961,11 +961,10 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
                             for ins_id in linked_ids:
                                 out_str.append(f"## Inscription ID {ins_id}\n")
                                 
-                                cursor.execute(main_report_sql, (int(ins_id),))
-                                card_rows = cursor.fetchall()
+                                # Use the clean decoupled backend function here
+                                dossier_text = get_inscription_report(cursor, int(ins_id))
                                 
-                                if card_rows:
-                                    dossier_text = "\n".join([r[0] for r in card_rows if r[0] is not None])
+                                if dossier_text != "No inscription data found.":
                                     out_str.append(dossier_text)
                                 else:
                                     out_str.append(f"_Warning: Inscription ID {ins_id} could not compile properly._")
@@ -990,8 +989,6 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
     elif st.session_state.lit_search_type is not None:
         st.markdown("---")
         st.info("No matching bibliographies or references found inside the database columns.")
-             
-
                  
 # EXPORT TO CSV AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
