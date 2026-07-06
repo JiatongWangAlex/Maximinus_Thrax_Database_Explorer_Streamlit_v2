@@ -1415,7 +1415,7 @@ def execute_advanced_search(f_dict):
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
 
-def _id(inscription_ids_input):
+def fetch_metadata_by_id(inscription_ids_input):
     if not inscription_ids_input.strip():
         st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
@@ -1947,6 +1947,3 @@ __all__ = [
     'generate_active_map',
     
 ]
-
-
-
