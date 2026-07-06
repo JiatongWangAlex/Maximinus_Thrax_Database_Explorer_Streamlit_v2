@@ -771,6 +771,7 @@ with st.expander("Advanced Search", expanded=False):
             
             form_payload = {
                 'text': f_text,
+                'text_search_mode': text_search_mode,  # <-- ADDED THIS LINE
                 'relevance_index': (
                     "All" if f_rel == "All inscriptions regardless of relevance" 
                     else 1 if f_rel == "Relevant" 
