@@ -979,15 +979,21 @@ def generate_person_report(p_id):
         # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 CASING
         report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s)**\n")
         
-        # Helper closure to format specific categorical markdown chunks cleanly
+
         def format_section(title, dataset):
             if not dataset:
                 return ""
-            lines = [f"**{title}**"]
+            
+            # Adding \n\n after the title forces a real visual block break before the list starts
+            lines = [f"**{title}**\n"] 
+            
             for item_name, ins_counts in dataset.items():
                 ref_strings = [f"{all_insc_id_to_ref.get(i, f'ID: {i}')} (id: [{i}](?ins_id={i}))" for i in ins_counts.keys()]
-                lines.append(f"• {item_name} ({sum(ins_counts.values())} attestations): {', '.join(ref_strings)}")
-            return "\n".join(lines) + "\n\n"
+                
+                # Bolds the title item and attestation count, adds a line break between bullet items
+                lines.append(f"• **{item_name} ({sum(ins_counts.values())} attestations)**: {', '.join(ref_strings)}\n")
+                
+            return "\n".join(lines) + "\n"
 
         # Append blocks dynamically if data exists
         if positions_data:
