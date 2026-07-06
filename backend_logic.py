@@ -944,7 +944,8 @@ def generate_person_report(p_id):
             st.session_state.search_results = f"### **Person ID {p_id}**\n\n---\n\nNo person dossier card compiled for Person ID {p_id}."
             return
             
-        person_name, person_notes = name_row[0], name_row[1]
+        person_name = name_row[0] if name_row[0] else f"Person ID {p_id}"
+        person_notes = name_row[1] if name_row[1] else "None"
         header_message = f"### **{person_name}**\n\n---"
         
         # 2. Fetch all overall unique inscriptions linked to this person
@@ -952,24 +953,26 @@ def generate_person_report(p_id):
         all_inscriptions = cursor.fetchall()  
         
         # Keep track of active inscriptions for the map component
-        st.session_state.active_inscription_ids = [r[0] for r in all_inscriptions]
+        st.session_state.active_inscription_ids = [r[0] for r in all_inscriptions if r[0] is not None]
         st.session_state["active_search_where_clauses"] = []  
         st.session_state["active_search_has_run"] = True      
         
         # Maps & sets to keep track of unique IDs and translate ID -> Ref
-        all_insc_ids = {r[0] for r in all_inscriptions}
-        all_insc_id_to_ref = {r[0]: r[1] for r in all_inscriptions}
+        all_insc_ids = {r[0] for r in all_inscriptions if r[0] is not None}
+        all_insc_id_to_ref = {r[0]: (r[1] if r[1] else f"Insc ID {r[0]}") for r in all_inscriptions if r[0] is not None}
         
         # Helper to group raw rows and count duplicate attestations per inscription
         def process_rows(rows):
             grouped = {}
             for item_name, ref, ins_id in rows:
+                if item_name is None or ins_id is None:
+                    continue
                 if item_name not in grouped:
                     grouped[item_name] = {}
                 grouped[item_name][ins_id] = grouped[item_name].get(ins_id, 0) + 1
             return grouped
 
-        # 3. Fetch specific attestation datasets using lowercase constants
+        # 3. Fetch specific attestation datasets
         cursor.execute(sql_get_positions, (person_id_int,))
         positions_data = process_rows(cursor.fetchall())
         
@@ -987,7 +990,7 @@ def generate_person_report(p_id):
                 
         has_any_attestations = len(attested_insc_ids) > 0
 
-
+        # --- CONDITION LOGIC FOR OUTPUT GENERATION ---
         report_lines = [f"**Name:** {person_name} | **Person ID:** {person_id_int}\n"]
         
         # ALTERNATIVE OUTPUT 1: Completely un-affiliated person
@@ -995,17 +998,18 @@ def generate_person_report(p_id):
             insc_strings = [f"{ref} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id, ref in all_insc_id_to_ref.items()]
             insc_display = ", ".join(insc_strings) if insc_strings else "None"
             
-            # Appends the IDs explicitly here since there are no status/position/unit items
+            # Displays the IDs with a COLON explicitly here
             report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s):** {insc_display}\n")
-            report_lines.append(f"**Notes:** {person_notes if person_notes else 'None'}")
+            report_lines.append(f"**Notes:** {person_notes}")
             
             st.session_state.search_results = f"{header_message}\n\n" + "\n".join(report_lines)
             return
 
-        # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 
-
+        # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 CASING
+        # Clean count line without a colon or trailing list!
         report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s)**\n")
         
+        # Helper closure to format a specific categorical segment beautifully
         def format_section(title, dataset):
             if not dataset:
                 return ""
@@ -1030,14 +1034,15 @@ def generate_person_report(p_id):
         if units_data:
             report_lines.append(format_section("Attested unit in inscription:", units_data))
             
-        # ALTERNATIVE OUTPUT 2:
+        # ALTERNATIVE OUTPUT 2 (Mismatch Logic):
         leftover_insc_ids = all_insc_ids - attested_insc_ids
         if leftover_insc_ids:
             leftover_strings = [f"{all_insc_id_to_ref[ins_id]} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id in leftover_insc_ids]
             leftover_display = " ".join(leftover_strings)
             report_lines.append(f"**Other inscriptions mentioning {person_name}:** {leftover_display}\n")
             
-        report_lines.append(f"**Notes:** {person_notes if person_notes else 'None'}")
+        # Wrap up with notes
+        report_lines.append(f"**Notes:** {person_notes}")
         
         st.session_state.search_results = f"{header_message}\n\n" + "\n".join(report_lines)
 
