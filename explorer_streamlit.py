@@ -198,7 +198,19 @@ def callback_person_report_text():
         st.session_state["skip_scroll"] = False
         generate_person_report(val)
         commit_search_and_wipe_inputs()
-             
+
+def callback_advanced_search(payload):
+    """Executes the advanced search and triggers scroll behavior 
+
+    without wiping the advanced search form fields.
+    """
+    st.session_state["csv_mode"] = "advanced"
+    st.session_state["active_inscription_ids"] = []
+    st.session_state["skip_scroll"] = False
+    st.session_state["trigger_map_html"] = None
+
+    execute_advanced_search(payload)
+         
 def callback_literature_search():
     selected_option = st.session_state.get("lit_dropdown_selection", "PLEASE SELECT")
     
@@ -755,51 +767,69 @@ with st.expander("Advanced Search", expanded=False):
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
-    with col_btn1:
-        if st.button("Execute Advanced Search", key="btn_advanced_filter_search", use_container_width=True, type="primary", on_click=commit_search_and_wipe_inputs):
-            st.session_state["csv_mode"] = "advanced"
-            st.session_state["active_inscription_ids"] = []
-            st.session_state["skip_scroll"] = False
-            st.session_state["trigger_map_html"] = None 
-            
-            form_payload = {
-                'text': f_text,
-                'adv_text_search_mode': text_search_mode,  # <-- FIXED HERE
-                'relevance_index': (
-                    "All" if f_rel == "All inscriptions regardless of relevance" 
-                    else 1 if f_rel == "Relevant" 
-                    else 0
-                ),
-                'relevance_active': False if f_rel == "All inscriptions regardless of relevance" else True,
-                'distributio_titulorum': f_dist_tit,
-                'material_name': f_obj_mat,
-                'support_name': f_sup_name,
-                'context_name': f_in_con,
-                'province_name': f_prov,
-                'number_of_inscriptions': f_num_ins,
-                'person_id': f_person_id,
-                'person_operator': "AND" if "AND" in f_person_operator else "OR",
-                'collective_name': f_unit,
-                'collective_operator': "AND" if "AND" in f_unit_operator else "OR",
-                'virorum_distributio': f_vir_dist,
-                'status_designation': f_status,
-                'position_description': f_pos,
-                'intervention_status': (
-                    "All" if f_inter_status == "All inscriptions regardless of presence of later intervention"
-                    else 1 if f_inter_status == "Intervention present"
-                    else 0
-                ),
-                'intervention_status_active': False if f_inter_status == "All inscriptions regardless of presence of later intervention" else True,
-                'intervention_toggle': intervention_scope,
-                'method_description': f_interv_meth,
-                'extent_description': f_interv_ext, 
-                'target_description': f_interv_tgt,
-                'status_tituli_name': f_status_tituli,
-                'start_date': f_start_date,  
-                'end_date': f_end_date,
-                'dating_strategy': f_dating_strategy
-            }
-            execute_advanced_search(form_payload)
+with col_btn1:
+        # 1. Construct the payload dictionary exactly as you had it
+        form_payload = {
+            "text": f_text,
+            "adv_text_search_mode": text_search_mode,
+            "relevance_index": (
+                "All"
+                if f_rel == "All inscriptions regardless of relevance"
+                else 1
+                if f_rel == "Relevant"
+                else 0
+            ),
+            "relevance_active": (
+                False
+                if f_rel == "All inscriptions regardless of relevance"
+                else True
+            ),
+            "distributio_titulorum": f_dist_tit,
+            "material_name": f_obj_mat,
+            "support_name": f_sup_name,
+            "context_name": f_in_con,
+            "province_name": f_prov,
+            "number_of_inscriptions": f_num_ins,
+            "person_id": f_person_id,
+            "person_operator": "AND" if "AND" in f_person_operator else "OR",
+            "collective_name": f_unit,
+            "collective_operator": "AND" if "AND" in f_unit_operator else "OR",
+            "virorum_distributio": f_vir_dist,
+            "status_designation": f_status,
+            "position_description": f_pos,
+            "intervention_status": (
+                "All"
+                if f_inter_status
+                == "All inscriptions regardless of presence of later intervention"
+                else 1
+                if f_inter_status == "Intervention present"
+                else 0
+            ),
+            "intervention_status_active": (
+                False
+                if f_inter_status
+                == "All inscriptions regardless of presence of later intervention"
+                else True
+            ),
+            "intervention_toggle": intervention_scope,
+            "method_description": f_interv_meth,
+            "extent_description": f_interv_ext,
+            "target_description": f_interv_tgt,
+            "status_tituli_name": f_status_tituli,
+            "start_date": f_start_date,
+            "end_date": f_end_date,
+            "dating_strategy": f_dating_strategy,
+        }
+
+        # 2. Wire up the button using on_click and args
+        st.button(
+            "Execute Advanced Search",
+            key="btn_advanced_filter_search",
+            use_container_width=True,
+            type="primary",
+            on_click=callback_advanced_search,
+            args=(form_payload,),
+        )
                  
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
