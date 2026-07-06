@@ -1261,7 +1261,6 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
 st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 # SEARCH RESULTS
 st.markdown("### Search Results")
-
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
@@ -1316,21 +1315,8 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         with st.expander("Search Results List View", expanded=st.session_state["list_view_expanded"]):
             st.markdown(f"**Found {len(overview_rows)} record(s) matching your search:**")
             
-            st.markdown(
-                """
-                <style>
-                .dynamic-results-box {
-                    height: 50px;
-                    overflow-y: auto;
-                    padding-right: 5px;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-            
-            with st.container():
-                st.markdown('<div class="dynamic-results-box">', unsafe_allow_html=True)
+            # Using standard native Streamlit height scroll container
+            with st.container(height=100):
                 
                 for row in overview_rows:
                     ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
@@ -1350,8 +1336,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                         f"**Dating:** {dating_val} | "
                         f"*{erasure_status}*"
                     )
-                
-                st.markdown('</div>', unsafe_allow_html=True)
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
