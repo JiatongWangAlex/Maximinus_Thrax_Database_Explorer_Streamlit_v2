@@ -1284,6 +1284,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
             COALESCE(mt.line_ref, '') AS line_ref,
             COALESCE(pr.province_name, 'N/A') AS province_name,
             COALESCE(dt.distributio_titulorum, 'N/A') AS type_of_inscription,
+            COALESCE(mt.dating, 'N/A') AS dating,
             CASE 
                 WHEN mt.relevance_index = 1 
                      AND EXISTS (SELECT 1 FROM "interventions" i WHERE i.patient_inscription = mt.inscription_id AND i.method_id = 2)
@@ -1332,7 +1333,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 st.markdown('<div class="dynamic-results-box">', unsafe_allow_html=True)
                 
                 for row in overview_rows:
-                    ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, erasure_status = row
+                    ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
                     
                     ref_line = f" {line_ref}" if line_ref else ""
                     
@@ -1346,6 +1347,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                         f"**Object ID:** {obj_display} | "
                         f"**Province:** {prov_name} | "
                         f"**Type of Inscription:** {type_of_inscription} | "
+                        f"**Dating:** {dating_val} | "
                         f"*{erasure_status}*"
                     )
                 
@@ -1353,7 +1355,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
-             
 # MAIN RESULTS VIEW
 
 if st.session_state.get("active_search_has_run"):
