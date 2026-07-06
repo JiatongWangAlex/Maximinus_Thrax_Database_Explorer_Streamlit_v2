@@ -1015,8 +1015,7 @@ def get_filter_options(table, col):
         pass
     return options
     
-# ADVANCED SEARCH
-def execute_advanced_search(f_dict):
+# ADVANCED SEARCHdef execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
     where_clauses = []
@@ -1063,12 +1062,6 @@ def execute_advanced_search(f_dict):
     intervention_toggle = f_dict.get('intervention_toggle', 'Interventions Relevant to Maximinus Thrax')
     if intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
         applied_criteria_summary.append("  • Scope: Interventions Relevant to Maximinus Thrax")
-        
-        # Enforce all conditions: 
-        # 1. mt.relevance_index = 1
-        # 2. mt.intervention_status = 1
-        # 3. Linked to an intervention where method_id != 1
-        # 4. NOT linked to person_id 50
         where_clauses.append("""
             mt.relevance_index = 1 
             AND mt.intervention_status = 1 
@@ -1086,71 +1079,11 @@ def execute_advanced_search(f_dict):
     else:
         applied_criteria_summary.append("  • Scope: All Interventions")
 
-    # ADVANCED TEXT SEARCH (USER PICKS STRATEGY)
-    phrase = f_dict.get('text', '').strip()
-    if phrase:
-        search_mode = f_dict.get('text_search_mode', 'Match any inflected form of word or phrase')
-        
-        norm_phrase = phrase
-        norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
-        norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
-        norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
-        
-        tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
-        
-        fts_compiled_terms = []
-        for token in tokens:
-            t_clean = token.strip()
-            if not t_clean: 
-                continue
-            
-            if t_clean in ("AND", "OR", "NOT"):
-                fts_compiled_terms.append(t_clean)
-            else:
-                if search_mode == 'Match any inflected form of word or phrase':
-                    clean_word = clean_epigraphic_text(t_clean).lower()
-                    root_lemma = LATIN_LEMMA_MAP.get(clean_word, clean_word)
-                    synonyms = list(set([k for k, v in LATIN_LEMMA_MAP.items() if v == root_lemma] + [root_lemma, clean_word]))
-                    
-                    continuous_words = []
-                    for syn in synonyms:
-                        cw = syn.lower().replace(" ", "")
-                        cw = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', cw)
-                        if cw:
-                            continuous_words.append(cw)
-                    continuous_words = list(set(continuous_words))
-                    
-                    all_variants = list(set(synonyms + continuous_words))
-                    if len(all_variants) > 1:
-                        syn_clause = "(" + " OR ".join([f'"{v}"' for v in all_variants]) + ")"
-                    else:
-                        syn_clause = f'"{all_variants[0]}"'
-                    
-                    fts_compiled_terms.append(syn_clause)
-                else:
-                    fts_compiled_terms.append(f'"{t_clean}"')
-                    
-        fts_query_string = " ".join(fts_compiled_terms)
-
-        mode_label = "Inflected Forms" if search_mode == 'Match any inflected form of word or phrase' else "Exact Match"
-        applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {mode_label}]")
-        
-        pname = f"fts_phrase_{len(query_params)}"
-        query_params[pname] = fts_query_string
-       
-        fts_subquery = f"""
-            mt.inscription_id IN (
-                SELECT inscription_id 
-                FROM inscriptions_fts 
-                WHERE inscriptions_fts MATCH :{pname}
-            )
-        """
-        where_clauses.append(fts_subquery)
-        
-   # DATE (USER PICKS STRATEGY)
+    # PRE-COMPILE THE FIXED ADVANCED FILTERS (Dates, Materials, Metadata Dropdowns)
+    # This ensures text fallbacks still obey the structural filters selected by the user
     req_start = f_dict.get('start_date')
     req_end = f_dict.get('end_date')
-    dating_strategy = f_dict.get('dating_strategy', 'overlap') # Defaults to overlap if not specified
+    dating_strategy = f_dict.get('dating_strategy', 'overlap')
 
     if req_start is not None and req_end is not None:
         if dating_strategy == 'strict':
@@ -1159,21 +1092,17 @@ def execute_advanced_search(f_dict):
         else:
             applied_criteria_summary.append(f"  • Date Span: Overlapping anywhere within {req_start} to {req_end} CE")
             where_clauses.append("mt.end_date >= :req_start AND mt.start_date <= :req_end")
-            
         query_params['req_start'] = int(req_start)
         query_params['req_end'] = int(req_end)
-        
     elif req_start is not None:
         applied_criteria_summary.append(f"  • Start Date Bound: >= {req_start} CE")
         where_clauses.append("mt.end_date >= :req_start")
         query_params['req_start'] = int(req_start)
-        
     elif req_end is not None:
         applied_criteria_summary.append(f"  • End Date Bound: <= {req_end} CE")
         where_clauses.append("mt.start_date <= :req_end")
         query_params['req_end'] = int(req_end)
         
-   # 3. Mapping Configuration
     mapping = [
         ('relevance_index', 'mt.relevance_index', 'Relevance'),
         ('distributio_titulorum', 'dt.distributio_titulorum', 'Distributio Titulorum'),
@@ -1189,13 +1118,10 @@ def execute_advanced_search(f_dict):
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
         ('target_description', 'targ.target_description', 'Target of Intervention'),
         ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
-   ]
+    ]
 
-  #SQL BUILDER
     for key, column_sql, display_name in mapping:
         val = f_dict.get(key, [])
-        
-        # Prevent rewriting explicit manual values if toggle overrules them
         if key == 'relevance_index' and intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
             continue
         if key == 'intervention_status' and intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
@@ -1222,176 +1148,217 @@ def execute_advanced_search(f_dict):
             val_str = str(val).strip()
             if not val_str and val_str != "0":
                 continue
-                
             applied_criteria_summary.append(f"  • {display_name}: '{val_str}'")
             if key in ('relevance_index', 'intervention_status'):
                 val = 1 if val_str in ("True", "1") else 0
-                
             p_name = f"param_{key}"
             where_clauses.append(f"{column_sql} = :{p_name}")
             query_params[p_name] = val
         else:
             applied_criteria_summary.append(f"  • {display_name}: {', '.join(map(str, val))}")
-            
             param_names = []
             for idx, item in enumerate(val):
                 p_name = f"param_{key}_{idx}"
                 param_names.append(f":{p_name}")
                 query_params[p_name] = item
-            
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
-            
-    #PERSONS
+
+    # EXPLICIT METADATA FILTERS (PERSONS, COLLECTIVES, VIRORUM)
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
-
     if person_ids and person_ids != "All" and person_ids != ["All"]:
         applied_criteria_summary.append(f"  • Person ({person_op}): {', '.join(map(str, person_ids))}")
-    
         person_params = []
         for idx, p_id in enumerate(person_ids):
             p_param_name = f"param_person_id_{idx}"
             query_params[p_param_name] = p_id
             person_params.append(f":{p_param_name}")
-
         if person_op == "AND":
             where_clauses.append(f"""
-                (SELECT COUNT(DISTINCT ip_sub.person_id) 
-                 FROM "inscriptions_and_persons" ip_sub 
-                 WHERE ip_sub.inscription_id = mt.inscription_id 
-                 AND ip_sub.person_id IN ({', '.join(person_params)})) = {len(person_ids)}
+                (SELECT COUNT(DISTINCT ip_sub.person_id) FROM "inscriptions_and_persons" ip_sub 
+                 WHERE ip_sub.inscription_id = mt.inscription_id AND ip_sub.person_id IN ({', '.join(person_params)})) = {len(person_ids)}
             """)
         else:
             where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
 
-    # INSTITUTIONS/GROUPS/MILITARY UNITS
     collective_names = f_dict.get('collective_name', [])
     collective_op = f_dict.get('collective_operator', 'OR')
-
     if collective_names and collective_names != "All" and collective_names != ["All"]:
         applied_criteria_summary.append(f"  • Collective/Military Unit ({collective_op}): {', '.join(map(str, collective_names))}")
-        
         collective_params = []
         for idx, col_name in enumerate(collective_names):
             c_param_name = f"param_collective_name_{idx}"
             query_params[c_param_name] = col_name
             collective_params.append(f":{c_param_name}")
-
         if collective_op == "AND":
             where_clauses.append(f"""
-                (SELECT COUNT(DISTINCT col_sub.collective_name) 
-                 FROM "inscriptions_and_collectives" ic_sub
+                (SELECT COUNT(DISTINCT col_sub.collective_name) FROM "inscriptions_and_collectives" ic_sub
                  JOIN "collectives" col_sub ON ic_sub.collective_id = col_sub.collective_id
-                 WHERE ic_sub.inscription_id = mt.inscription_id 
-                 AND col_sub.collective_name IN ({', '.join(collective_params)})) = {len(collective_names)}
+                 WHERE ic_sub.inscription_id = mt.inscription_id AND col_sub.collective_name IN ({', '.join(collective_params)})) = {len(collective_names)}
             """)
         else:
             where_clauses.append(f"col.collective_name IN ({', '.join(collective_params)})")
 
-    # VIRORUM DISTRIBUTIO
     vd_vals = f_dict.get('virorum_distributio', [])
     if vd_vals and vd_vals != "All" and vd_vals != ["All"]:
-        if not isinstance(vd_vals, list):
-            vd_vals = [vd_vals]
-            
+        if not isinstance(vd_vals, list): vd_vals = [vd_vals]
         applied_criteria_summary.append(f"  • Distributio Virorum: {', '.join(map(str, vd_vals))}")
-        
         vd_params = []
         for idx, vd_val in enumerate(vd_vals):
             p_name = f"param_vd_custom_{idx}"
             query_params[p_name] = vd_val
             vd_params.append(f":{p_name}")
-            
-        vd_placeholders = ", ".join(vd_params)
-        
         where_clauses.append(f"""
-            (
-                EXISTS (
-                    SELECT 1 
-                    FROM "inscriptions_and_persons" ip_sub
+            EXISTS (SELECT 1 FROM "inscriptions_and_persons" ip_sub
                     JOIN "persons_and_virorum_distributio" pvd_sub ON ip_sub.person_id = pvd_sub.person_id
                     JOIN "virorum_distributio" vd_sub ON pvd_sub.virorum_distributio_id = vd_sub.virorum_distributio_id
-                    WHERE ip_sub.inscription_id = mt.inscription_id 
-                      AND vd_sub.virorum_distributio IN ({vd_placeholders})
-                )
-            )
+                    WHERE ip_sub.inscription_id = mt.inscription_id AND vd_sub.virorum_distributio IN ({', '.join(vd_params)}))
         """)
 
-    # Combine final clauses
-    if where_clauses:
-        final_sql = base_sql + " AND " + " AND ".join(where_clauses)
-    else:
-        final_sql = base_sql
+    # ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+    phrase = f_dict.get('text', '').strip()
+    search_mode = f_dict.get('text_search_mode', 'Exact Match')
+    applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {search_mode}]")
+
+    text_rows = []
+    fallback_rows = []
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(final_sql, query_params)
-        rows = cursor.fetchall()
-        st.session_state.active_inscription_ids = [row[0] for row in rows]
+
+        # STRATEGY 1: EXACT MATCH (STRICT INTERSECTING FTS QUERY)
+        if search_mode == 'Exact Match' or not phrase:
+            if phrase:
+                norm_phrase = phrase
+                norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
+                norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
+                norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
+                tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
+                
+                fts_compiled = []
+                for t in tokens:
+                    tc = t.strip()
+                    if not tc: continue
+                    if tc in ("AND", "OR", "NOT"): fts_compiled.append(tc)
+                    else: fts_compiled.append(f'"{tc}"')
+                
+                pname = f"fts_phrase_{len(query_params)}"
+                query_params[pname] = " ".join(fts_compiled)
+                where_clauses.append(f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_fts WHERE inscriptions_fts MATCH :{pname})")
+
+            final_sql = base_sql + (" AND " + " AND ".join(where_clauses) if where_clauses else "")
+            cursor.execute(final_sql, query_params)
+            text_rows = cursor.fetchall()
+
+        # STRATEGY 2: ASSISTED MATCH (TIERED FALLBACK ENGINE FROM STANDARD SEARCH)
+        else:
+            converted_input = convert_roman_to_arabic_in_text(phrase)
+            is_unit_query = bool(re.search(r'\b(legio|cohors|ala|numerus|classis)\b', phrase, re.IGNORECASE) and re.search(r'\d+|[ivxl]+', phrase, re.IGNORECASE))
+            
+            # --- TIER 1: Military Unit Phrase Expansion ---
+            if is_unit_query:
+                raw_tokens = re.findall(r'\w+', converted_input.lower())
+                expanded_clusters = []
+                for token in raw_tokens:
+                    token_u = token.replace('v', 'u')
+                    token_v = token.replace('u', 'v')
+                    expanded_clusters.append(list(set([token, token_u, token_v])))
+                
+                possible_phrases = []
+                for combination in itertools.product(*expanded_clusters):
+                    possible_phrases.append(r'\b' + r'\s+'.join(re.escape(word) for word in combination) + r'\b')
+                
+                cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
+                c_ids = [col_id for col_id, col_search in cursor.fetchall() if col_search and any(re.search(pat, col_search.lower()) for pat in possible_phrases)]
+                
+                if c_ids:
+                    unit_where = where_clauses + [f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_and_collectives WHERE collective_id IN ({','.join(['?']*len(c_ids))}))"]
+                    cursor.execute(base_sql + " AND " + " AND ".join(unit_where), c_ids)
+                    text_rows = cursor.fetchall()
+
+            # --- TIER 2: Direct Inflection String Scanning ---
+            if not text_rows:
+                clean_query = clean_epigraphic_text(phrase).strip().lower()
+                query_u, query_v = clean_query.replace('v', 'u'), clean_query.replace('u', 'v')
+                synonyms = list(set([clean_query, query_u, query_v]))
+                
+                syn_where = where_clauses + ["(" + " OR ".join(["mt.inscription_text_stripped LIKE ?"] * len(synonyms)) + ")"]
+                syn_params = [f"%{syn}%" for syn in synonyms]
+                
+                cursor.execute(base_sql + " AND " + " AND ".join(syn_where), syn_params)
+                for row in cursor.fetchall():
+                    if row[6] and any(syn in row[6].lower() for syn in synonyms): # Verify primary text hit
+                        text_rows.append(row[:6])
+                    else:
+                        fallback_rows.append(row[:6] + ("spelling_variant_cluster", clean_query))
+
+            # --- TIER 3: Reconstituted Continuous Character Squeezing ---
+            if not text_rows and not fallback_rows:
+                continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~ ]', '', phrase.lower())
+                if continuous_term:
+                    ct_u, ct_v = continuous_term.replace('v', 'u'), continuous_term.replace('u', 'v')
+                    cont_where = where_clauses + ["(mt.reconstituted_text LIKE ? OR mt.cleaned_text LIKE ? OR mt.reconstituted_text LIKE ? OR mt.cleaned_text LIKE ?)"]
+                    cont_params = [f"%{ct_u}%", f"%{ct_u}%", f"%{ct_v}%", f"%{ct_v}%"]
+                    
+                    cursor.execute(base_sql + " AND " + " AND ".join(cont_where), cont_params)
+                    text_rows = [r[:6] for r in cursor.fetchall()]
+
+            # --- TIER 4: Partial Person Name Matching ---
+            like_person = f"%{re.sub(r'\s+', '%', clean_epigraphic_text(phrase).strip().lower())}%"
+            cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_person,))
+            p_ids = [r[0] for r in cursor.fetchall()]
+            if p_ids:
+                p_where = where_clauses + [f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_and_persons WHERE person_id IN ({','.join(['?']*len(p_ids))}))"]
+                cursor.execute(base_sql + " AND " + " AND ".join(p_where), p_ids)
+                for row in cursor.fetchall():
+                    fallback_rows.append(row[:6] + ('person', 'Person names match'))
+
+        # DEDUPLICATE AND RESOLVE BOTH STREAMS INTO THE SESSION STATE
+        seen_text_ids = {row[0] for row in text_rows}
+        unique_fallback_rows = []
+        seen_fallback_ids = set()
+        
+        for row in fallback_rows:
+            ins_id = row[0]
+            if ins_id not in seen_text_ids and ins_id not in seen_fallback_ids:
+                unique_fallback_rows.append(row)
+                seen_fallback_ids.add(ins_id)
+                
+        st.session_state.active_inscription_ids = list(seen_text_ids.union(seen_fallback_ids))
         all_matched_ids = st.session_state.active_inscription_ids
 
-        st.session_state["active_search_where_clauses"] = where_clauses
-        st.session_state["active_search_query_params"] = query_params
-        st.session_state["active_search_has_run"] = True
-        
-        out_str = []
-        
-        object_count = 0
-        if all_matched_ids:
-            obj_cursor = conn.cursor()
-            chunk_size = 900
-            unique_objects = set()
-            
-            # Split IDs into safe chunks to prevent SQLite parameter limits (999) from crashing
-            for i in range(0, len(all_matched_ids), chunk_size):
-                chunk = all_matched_ids[i:i + chunk_size]
-                placeholders = ",".join(["?"] * len(chunk))
-                
-                obj_cursor.execute(
-                    f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({placeholders});', 
-                    chunk
-                )
-                for row in obj_cursor.fetchall():
-                    unique_objects.add(row[0])
-            
-            object_count = len(unique_objects)
-            
-        header_lines = ["## Advanced Search Results\n"]
-        header_lines.append("**Filters Applied:**\n")
-        if applied_criteria_summary:
-            header_lines.extend([f"{c}\n" for c in applied_criteria_summary])
-        else:
-            header_lines.append("  • *[None - Broad Query Execution Mode]*\n")
-            
-        header_lines.append(f"\n**Results:** Found **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects.\n\n---\n\n")
-        out_str.append("".join(header_lines))
-        
         if not all_matched_ids:
-            out_str.append("No inscriptions found matching the specified advanced filter criteria.\n")
-            st.session_state.search_results = "".join(out_str)
+            st.session_state.search_results = "## Advanced Search Results\nFound **0** matching inscriptions based on criteria."
             conn.close()
             return
-
-        # 3. Stitch every matching custom card together sequentially
+            
+        # CALCULATE UNIQUE OBJECT DOSSIERS
+        unique_objects = set()
+        chunk_size = 900
+        for i in range(0, len(all_matched_ids), chunk_size):
+            chunk = all_matched_ids[i:i + chunk_size]
+            cursor.execute(f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({",".join(["?"] * len(chunk))});', chunk)
+            for row in cursor.fetchall(): unique_objects.add(row[0])
+            
+        # STITCH VISUAL DOSSIER LAYOUT FOR STREAMLIT DISPLAY
+        out_str = []
+        header = f"## Advanced Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} assisted fallback match(es)!\n"
+        header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
+        header += f"\nCompiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
+        out_str.append(header)
+        
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
-            
-            # Call your new function to get the complete text report
             dossier_text = get_inscription_report(cursor, int(ins_id))
-            
-            if dossier_text:
-                out_str.append(dossier_text)
-            else:
-                out_str.append(f"_Warning: Could not find data for ID: {ins_id}_")
-                
+            out_str.append(dossier_text if dossier_text != "No inscription data found." else f"_Warning: ID does not exist: {ins_id}_")
             out_str.append("\n\n---\n\n")
             
         st.session_state.search_results = "\n\n".join(out_str)
-        
         conn.close()
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
-
+            
 def fetch_metadata_by_id(inscription_ids_input):
     if not inscription_ids_input.strip():
         st.session_state.search_results = "Please enter one or more Inscription IDs."
