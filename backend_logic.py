@@ -660,6 +660,11 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
     cursor.execute(match_sql, params)
     results = {row[0] for row in cursor.fetchall()}
     
+
+    strategy_label = "ASSISTED" if is_assisted else "EXACT"
+
+    # -------------------------------
+    
     return results
 
 
@@ -672,6 +677,13 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
     if base_query_params is None: base_query_params = {}
     
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
+
+    
+    cleaned_input = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛!\{\}<>´`\^~]', '', user_input)
+
+    
+    tokens = re.findall(r'\bAND\b|\bOR\b|\bNOT\b|\w+', cleaned_input, re.IGNORECASE)
+
 
     if not tokens:
         print("[WARNING] Zero tokens extracted. The search engine has nothing to look for.")
