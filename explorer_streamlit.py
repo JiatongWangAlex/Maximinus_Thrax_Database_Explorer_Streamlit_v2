@@ -534,7 +534,7 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
 ### Advanced Search
 With advanced search, you can look for multiple words by connecting them with Boolean logic operators (which must be written in **UPPERCASE**):
 
-* **AND** (e.g., `Maximinus AND legatus` to find entries containing both terms)
+* **AND** (e.g., `Maximinus AND legatum` to find entries containing both terms)
 * **OR** (e.g., `cohors OR legio` to find entries containing either term)
 * **NOT** (e.g., `Maximinus NOT Maximus` to exclude specific textual entries)
 
@@ -644,7 +644,7 @@ with st.expander("Advanced Search", expanded=False):
 
     f_text = st.text_input(
         "Advanced Text Search (Boolean Logic Operators Allowed):", 
-        placeholder="e.g. Maximinus AND legatus",
+        placeholder="e.g. Maximinus AND legatum",
         on_change=reset_map_and_search_flags
     )
     
