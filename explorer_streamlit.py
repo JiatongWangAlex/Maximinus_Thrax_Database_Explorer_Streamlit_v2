@@ -644,9 +644,9 @@ with st.expander("Advanced Search", expanded=False):
     st.text("Scroll down and click **Execute Advanced Search** to search!")
     
     st.markdown("---")
-         
+    st.markdown("### Advanced Text Search")       
     f_text = st.text_input(
-        "Advanced Text Search (Boolean Logic Operators Allowed):", 
+        "Can be combined with Filters | Boolean Logic Operators Allowed:", 
         placeholder="e.g. Maximinus AND legatum",
         on_change=reset_map_and_search_flags
     )
