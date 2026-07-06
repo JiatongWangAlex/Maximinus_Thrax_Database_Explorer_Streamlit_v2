@@ -1319,7 +1319,59 @@ def execute_advanced_search(f_dict):
         st.session_state.search_results = f"Advanced Search Failed: {e}"
 
 
+def fetch_metadata_by_id(inscription_ids_input):
+    if not inscription_ids_input.strip():
+        st.session_state.search_results = "Please enter one or more Inscription IDs."
+        return
+        
+    raw_id_list = [x.strip() for x in inscription_ids_input.split(",")]
+    valid_ids = [int(x) for x in raw_id_list if x and x.isdigit()]
+    
+    if not valid_ids:
+        st.session_state.search_results = "Please enter one or more Inscription IDs as pure numbers"
+        return
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        st.session_state.active_inscription_ids = valid_ids
+        st.session_state["active_search_where_clauses"] = []  
+        st.session_state["active_search_has_run"] = True      
+
+        out_str = []
+        missing_ids = []
+        valid_reports = []
+            
+        for ins_id in valid_ids:
+            dossier_body = get_inscription_report(cursor, int(ins_id))
+            
+            if dossier_body == "No inscription data found.":
+                missing_ids.append(str(ins_id))
+            else:
+                valid_reports.append((ins_id, dossier_body))
                 
+        if missing_ids:
+            out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
+            
+        for ins_id, dossier_body in valid_reports:
+            out_str.append(f"### Inscription ID {ins_id}\n\n")
+            out_str.append(f"{dossier_body}\n\n")
+            out_str.append("---\n\n")
+            
+        conn.close()
+        
+        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
+        
+    except Exception as e:
+        st.session_state.search_results = f"Error fetching metadata: {e}"
+        if 'conn' in locals():
+            try:
+                conn.close()
+            except:
+                pass
+
+
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
         st.session_state.search_results = "Please enter a valid Object ID."
