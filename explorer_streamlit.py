@@ -198,13 +198,14 @@ def callback_person_report_text():
         st.session_state["skip_scroll"] = False
         generate_person_report(val)
         commit_search_and_wipe_inputs()
-
+             
 def callback_literature_search():
     selected_option = st.session_state.get("lit_dropdown_selection", "PLEASE SELECT")
     
     if selected_option != "PLEASE SELECT":
         target_unique_citation_id = st.session_state.lit_display_map.get(selected_option)
         st.session_state["skip_scroll"] = False
+        st.session_state["trigger_map_html"] = None
         
         if target_unique_citation_id is None and "Ref ID: " in selected_option:
             try:
