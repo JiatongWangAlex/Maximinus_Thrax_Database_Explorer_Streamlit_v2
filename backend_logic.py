@@ -1415,7 +1415,7 @@ def execute_advanced_search(f_dict):
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
 
-def fetch_metadata_by_id(inscription_ids_input):
+def _id(inscription_ids_input):
     if not inscription_ids_input.strip():
         st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
@@ -1475,17 +1475,16 @@ def fetch_metadata_by_object_id(object_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 1. Ask the database for the total count of unique inscription_id's linked to this object_id
         cursor.execute(
             'SELECT COUNT(DISTINCT inscription_id) FROM "Max_Thrax" WHERE object_id = ?',
             (object_id.strip(),)
         )
         inscription_count = cursor.fetchone()[0] or 0
         
-        # Build the big markdown header message
+    
         header_message = f"### **{inscription_count}** inscription(s) on this object\n\n---"
         
-        # 2. Grab all companion inscription IDs that share this specific object_id
+ 
         cursor.execute(
             'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
             (object_id.strip(),)
@@ -1497,21 +1496,28 @@ def fetch_metadata_by_object_id(object_id):
             st.session_state["active_search_where_clauses"] = []
             st.session_state["active_search_has_run"] = True
             st.session_state.search_results = f"No inscriptions found for Object ID: {object_id}"
+            
+            conn.close()
         else:
-            # 3. Compile the dossier markdown text blocks sequentially for all matched IDs
+
             compiled_blocks = []
             for sib_id in sibling_ids:
-                cursor.execute(main_report_sql, (sib_id,))
-                report_rows = cursor.fetchall()
-                compiled_blocks.append("".join([row[0] for row in report_rows if row[0] is not None]))
+                # Calls your standardized compiler function directly
+                dossier_text = get_inscription_report(cursor, int(sib_id))
+                
+                if dossier_text != "No inscription data found.":
+                    compiled_blocks.append(dossier_text)
+                else:
+                    compiled_blocks.append(f"_Warning: Inscription data for ID {sib_id} could not compile properly._")
             
             conn.close()
             
-            # 4. Update active workspace IDs and combine the header with the dossier content blocks
+        
             st.session_state.active_inscription_ids = sibling_ids
             st.session_state["active_search_where_clauses"] = []
             st.session_state["active_search_has_run"] = True
             
+           
             dossier_body = "\n\n---\n\n".join(compiled_blocks)
             st.session_state.search_results = f"{header_message}\n\n{dossier_body}"
             
