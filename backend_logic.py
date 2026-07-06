@@ -1507,7 +1507,14 @@ def fetch_metadata_by_id(inscription_ids_input):
         valid_reports = []
             
         # Call the existing dictionary-returning function
+        # Call the existing dictionary-returning function
         batched_dossiers = get_inscription_report(cursor, valid_ids)
+
+        # 🔍 TEMPORARY DIAGNOSTIC PRINT:
+        print("--- DEBUGGING TYPE CHECK ---")
+        print("Type:", type(batched_dossiers))
+        print("Value:", repr(batched_dossiers))
+        print("----------------------------")
 
         for ins_id in valid_ids:
             dossier_body = batched_dossiers.get(int(ins_id))
