@@ -1277,50 +1277,30 @@ def execute_advanced_search(f_dict):
 
     text_rows = []
     fallback_rows = []
-    direct_count = 0  # Initialize variable safely here to hold our integer counter
+    direct_count = 0
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # STRATEGY 1: EXACT MATCH (Scans cleaned_text & inscription_text_stripped for terms)
-        if search_mode == 'Exact Match' or not phrase:
-            if phrase:
-                norm_phrase = phrase
-                norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
-                norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
-                norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
-                
-                raw_tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
-                keywords = [t.strip().lower() for t in raw_tokens if t.strip() and t.strip() not in ("AND", "OR", "NOT")]
-                
-                for idx, word in enumerate(keywords):
-                    pname = f"exact_word_{idx}"
-                    query_params[pname] = f"%{word}%"
-                    where_clauses.append(f"(mt.cleaned_text LIKE :{pname} OR mt.inscription_text_stripped LIKE :{pname})")
-
+        if phrase:
+            # Determine if we should exit early based on the radio button choice
+            exact_flag = (search_mode == "Exact Match")
+            
+            # Both strategies now use the unified engine!
+            text_rows, fallback_rows, direct_count = assisted_search(
+                cursor=cursor,
+                user_input=phrase,
+                base_where_clauses=where_clauses,
+                base_query_params=query_params,
+                exact_match_only=exact_flag
+            )
+        else:
+            # If no phrase was provided, fallback to running the base filters matching standard sql loops
             final_sql = base_sql + (" AND " + " AND ".join(where_clauses) if where_clauses else "")
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
-            
-            # SAFE: Store the count in our independent variable instead of using setattr() on the list
             direct_count = len(text_rows)
-
-        # STRATEGY 2: ASSISTED MATCH (Call the compartmentalized shell engine directly)
-        else:
-            local_clauses = list(where_clauses)
-            local_params = {
-                k: v for k, v in query_params.items() 
-                if not k.startswith("exact_word_") and not k.startswith("fts_phrase_")
-            }
-            
-            # SAFE: Unpack all 3 variables explicitly returned by your assisted_search engine
-            text_rows, fallback_rows, direct_count = assisted_search(
-                cursor, 
-                phrase, 
-                base_where_clauses=local_clauses, 
-                base_query_params=local_params
-            )
 
         # DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
