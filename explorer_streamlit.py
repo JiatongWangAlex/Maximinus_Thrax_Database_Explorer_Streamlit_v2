@@ -641,9 +641,8 @@ with col_s4:
 
 with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
-    st.text("Scroll down and click 'Execute Advanced Search' to search!")
-    
-    st.markdown("---")
+    st.caption("Scroll down and click 'Execute Advanced Search' to search!")
+         
     st.markdown("#### Text Search")       
     f_text = st.text_input(
         "Can be combined with Filters | Boolean Logic Operators Allowed:", 
