@@ -1534,7 +1534,7 @@ def fetch_metadata_by_id(inscription_ids_input):
         if missing_ids:
             out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
             
-        # 2. APPEND THE VALID REPORTS BELOW IT
+# 2. APPEND THE VALID REPORTS BELOW IT
         for ins_id, dossier_body in valid_reports:
             out_str.append(f"### Inscription ID {ins_id}\n\n")
             out_str.append(f"{dossier_body}\n\n")
@@ -1546,17 +1546,14 @@ def fetch_metadata_by_id(inscription_ids_input):
         st.session_state.search_results = "".join(out_str).rstrip("-\n ")
         
     except Exception as e:
-            except Exception as e:
         # This will forcefully write the exact failure reason right onto your layout view
         st.error(f"CRASH REPORT -> Error: {e} | Returned Variable Type: {type(batched_dossiers if 'batched_dossiers' in locals() else None)}")
-        st.session_state.search_results = f"Error fetching metadata: {e}"
         st.session_state.search_results = f"Error fetching metadata: {e}"
         if 'conn' in locals():
             try:
                 conn.close()
             except:
                 pass
-
 
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
