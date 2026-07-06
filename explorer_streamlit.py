@@ -647,9 +647,9 @@ with st.expander("Advanced Search", expanded=False):
         placeholder="e.g. Maximinus AND legatum",
         on_change=reset_map_and_search_flags
     )
-    
+    st.text("Scroll down and click Execute Advanced Search to search!")
     st.caption(
-        "Scroll down and press 'Execute Advanced Search' | Supported logic operators", 
+        "Supported logic operators", 
         help=(
             "**Supported Operators:**\n"
             "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
