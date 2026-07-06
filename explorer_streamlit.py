@@ -193,7 +193,9 @@ def callback_person_report_text():
         st.session_state["last_searched_person"] = val
         st.session_state["active_search_has_run"] = True
         st.session_state["inputs_are_dirty"] = False
-        st.session_state["skip_scroll"] = False 
+        st.session_state["show_lookup_hint"] = False  # 👈 ADD THIS LINE HERE!
+        st.session_state["skip_scroll"] = False
+        
         generate_person_report(val)
         commit_search_and_wipe_inputs()
 
