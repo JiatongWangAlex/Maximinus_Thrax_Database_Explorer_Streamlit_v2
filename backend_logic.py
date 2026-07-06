@@ -1483,12 +1483,6 @@ def execute_advanced_search(f_dict):
 
 
 def fetch_metadata_by_id(inscription_ids_input):
-    # 🔍 SYSTEM CHECK PRINT AT THE ABSOLUTE ENTRY POINT
-    print("!!! FETCH METADATA BY ID HAS RUN !!! Input was:", repr(inscription_ids_input))
-    
-    if not inscription_ids_input.strip():
-        st.session_state.search_results = "Please enter one or more Inscription IDs."
-        return
     if not inscription_ids_input.strip():
         st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
@@ -1507,54 +1501,23 @@ def fetch_metadata_by_id(inscription_ids_input):
         st.session_state.active_inscription_ids = valid_ids
         st.session_state["active_search_where_clauses"] = []  
         st.session_state["active_search_has_run"] = True      
-
-        out_str = []
-        missing_ids = []
-        valid_reports = []
             
-        # Call the existing dictionary-returning function
-        # Call the existing dictionary-returning function
-        batched_dossiers = get_inscription_report(cursor, valid_ids)
-
-        # 🔍 TEMPORARY DIAGNOSTIC PRINT:
-        print("--- DEBUGGING TYPE CHECK ---")
-        print("Type:", type(batched_dossiers))
-        print("Value:", repr(batched_dossiers))
-        print("----------------------------")
-
-        for ins_id in valid_ids:
-            dossier_body = batched_dossiers.get(int(ins_id))
-            
-            if not dossier_body or dossier_body == "No inscription data found.":
-                missing_ids.append(str(ins_id))
-            else:
-                valid_reports.append((ins_id, dossier_body))
-                
-        # 1. RENDER WARNING AT THE TOP
-        if missing_ids:
-            out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
-            
-# 2. APPEND THE VALID REPORTS BELOW IT
-        for ins_id, dossier_body in valid_reports:
-            out_str.append(f"### Inscription ID {ins_id}\n\n")
-            out_str.append(f"{dossier_body}\n\n")
-            out_str.append("---\n\n")
+        # 1. Hand it a list of IDs, and get back the pre-stitched text asset directly
+        dossier_body = get_inscription_report(cursor, valid_ids)
             
         conn.close()
         
-        # 3. STITCH ONCE TO ELIMINATE TYPING LAG
-        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
+        # 2. Put that stitched output straight into the results state!
+        st.session_state.search_results = dossier_body
         
     except Exception as e:
-        # This will forcefully write the exact failure reason right onto your layout view
-        st.error(f"CRASH REPORT -> Error: {e} | Returned Variable Type: {type(batched_dossiers if 'batched_dossiers' in locals() else None)}")
         st.session_state.search_results = f"Error fetching metadata: {e}"
         if 'conn' in locals():
             try:
                 conn.close()
             except:
                 pass
-
+                    
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
         st.session_state.search_results = "Please enter a valid Object ID."
