@@ -1342,7 +1342,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                     obj_display = f"[{obj_id}]({obj_url})" if obj_id is not None else "N/A"
                     
                     st.markdown(
-                        f"* [Inscription ID: {ins_id}]({app_url}) | "
+                        f"* [Ins. ID: {ins_id}]({app_url}) | "
                         f"**Reference:** {ins_ref}{ref_line} | "
                         f"**Object ID:** {obj_display} | "
                         f"**Province:** {prov_name} | "
