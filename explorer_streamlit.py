@@ -477,7 +477,7 @@ if "main_text_input" in st.session_state:
 with col_text1:    
     text_input_var = st.text_input(
         "Enter search text:", 
-        placeholder="e.g., munivit ac restituit",
+        placeholder="e.g., vias et pontes",
         key="main_text_input",
         label_visibility="collapsed",
         on_change=reset_map_and_search_flags
