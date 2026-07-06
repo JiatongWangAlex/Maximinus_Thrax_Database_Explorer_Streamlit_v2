@@ -763,7 +763,7 @@ with st.expander("Advanced Search", expanded=False):
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
     
-    st.write("---")
+st.write("---")
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
@@ -830,7 +830,7 @@ with st.expander("Advanced Search", expanded=False):
             on_click=callback_advanced_search,
             args=(form_payload,),
         )
-                 
+             
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_bulk_search_sql()
@@ -855,7 +855,6 @@ with st.expander("Advanced Search", expanded=False):
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-
 
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
