@@ -562,11 +562,7 @@ def convert_roman_to_arabic_in_text(text):
     return " ".join(converted_words)
 
 
-
-import re
-import itertools
-
-def assisted_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
+def assisted_search(cursor, user_input, base_where_clauses=None, base_query_params=None, exact_match_only=False):
     """
     Core tiered search engine logic.
     Sequential Priority: 
@@ -588,7 +584,6 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
     
     direct_match_count = 0
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
-
 
     # search through inscription text as it appears on the monument, but without epigraphic sigla
 
@@ -620,9 +615,6 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
         if text_stripped and any(syn in text_stripped.lower() for syn in synonyms):
             text_rows.append(base_data)
             direct_match_count += 1
-        else:
-            fallback_rows.append(base_data + ("spelling_variant_cluster", clean_query))
-    
 
     # continuous text search
 
@@ -641,7 +633,8 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
 
         # TIER 2A: search through a continuous version of the inscription text (in case line breaks chopped up words)
 
-        if not text_rows and not fallback_rows:
+        # Runs if no direct hits were found in Tier 1, OR if we are forcing an Exact Match sweep across all direct-count areas
+        if (not text_rows and not fallback_rows) or exact_match_only:
             sql_2a = f"""
                 SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref,
                        (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons
@@ -652,9 +645,14 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
             cursor.execute(sql_2a, combined_t2_params)
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
-                text_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons))
-                direct_match_count += 1
+                # Avoid duplicate matches if already captured in Tier 1 during an exact sweep
+                if not any(r[0] == ins_id for r in text_rows):
+                    text_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons))
+                    direct_match_count += 1
 
+        # STOP AND EXIT EARLY HERE IF USER DEMANDS EXACT MATCH ONLY
+        if exact_match_only:
+            return text_rows, fallback_rows, direct_match_count
 
         # TIER 2B: search through a continuous version of the inscription text with corrected spellings
 
@@ -670,7 +668,6 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
             for row in cursor.fetchall():
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "squeezed_reconstituted_text", continuous_term))
-
 
     # TIER 3: Group Search
 
@@ -714,7 +711,6 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "military_unit", user_input))
 
-
     # TIER 4: Person Search
  
     if not text_rows and not fallback_rows:
@@ -737,6 +733,7 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "person", "Person names match"))
 
     return text_rows, fallback_rows, direct_match_count
+
 
 # KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
