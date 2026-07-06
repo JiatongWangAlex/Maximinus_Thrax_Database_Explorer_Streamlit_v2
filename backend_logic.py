@@ -672,29 +672,42 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
     
     return results
 
+
 def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clauses, base_query_params):
     """
-    Shared execution engine that performs the token explosion and Python Set logic.
+    Shared execution engine with top-level diagnostics to catch why 
+    the search loop might be skipped entirely.
     """
     if base_where_clauses is None: base_where_clauses = []
     if base_query_params is None: base_query_params = {}
     
     advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
 
-    # Clean characters and tokenize keywords alongside boolean operators
+    # --- TOP-LEVEL DIAGNOSTICS ---
+    print("\n" + "="*60)
+    print(f"[ENGINE REBOOT] Raw User Input received: '{user_input}'")
+    
     cleaned_input = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛!\{\}<>´`\^~]', '', user_input)
+    print(f"[ENGINE REBOOT] Cleaned Input (Punctuation Stripped): '{cleaned_input}'")
+    
     tokens = re.findall(r'\bAND\b|\bOR\b|\bNOT\b|\w+', cleaned_input, re.IGNORECASE)
+    print(f"[ENGINE REBOOT] Extracted Tokens for Logic Tree: {tokens}")
+    print("="*60)
+    # ------------------------------
 
-    # Step 1: Pre-calculate individual ID sets per word
+    if not tokens:
+        print("[WARNING] Zero tokens extracted. The search engine has nothing to look for.")
+        return [], [], 0
+
     word_sets = {}
     for token in tokens:
         word = token.lower()
         if word not in ("and", "or", "not") and word not in word_sets:
+            # We call the child function here
             word_sets[word] = _get_ids_for_single_word(
                 cursor, word, is_assisted, advanced_intersect_sql, base_query_params
             )
 
-    # Step 2: Evaluate the parsed tokens using Boolean Set algebra
     final_ids = None
     current_operator = "AND"
 
@@ -719,7 +732,9 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
     if final_ids is None:
         final_ids = set()
 
-    # Step 3: Hydrate our finalized, mathematically clean ID set
+    print(f"\n[FINAL ENGINE OUTPUT] Consolidated Final Inscription IDs: {final_ids}")
+    print(f"[FINAL ENGINE OUTPUT] Total Rows To Fetch: {len(final_ids)}\n")
+
     text_rows = []
     if final_ids:
         id_list = ", ".join(map(str, final_ids))
@@ -736,7 +751,6 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
         text_rows = cursor.fetchall()
 
     return text_rows, [], len(text_rows)
-
 
 # =========================================================================
 # PUBLIC SEARCH INVERSION ENGINE FAMILY
