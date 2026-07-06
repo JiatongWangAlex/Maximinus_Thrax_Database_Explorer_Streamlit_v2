@@ -629,8 +629,7 @@ def convert_roman_to_arabic_in_text(text):
 
 def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base_query_params):
     """
-    Core ID resolver. Dynamically narrows down or expands its search matrix
-    using a single unified wildcard string match.
+    Core ID resolver with embedded diagnostic print statements to catch 0-result anomalies.
     """
     # Base Exact Layers (Tiers 1 & 2A)
     where_clauses = """
@@ -659,8 +658,19 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
     
     params = {**base_query_params, "w": f"%{word}%"}
     cursor.execute(match_sql, params)
-    return {row[0] for row in cursor.fetchall()}
-
+    results = {row[0] for row in cursor.fetchall()}
+    
+    # --- DIAGNOSTIC PRINT WINDOW ---
+    strategy_label = "ASSISTED" if is_assisted else "EXACT"
+    print(f"\n[DEBUG] Strategy: {strategy_label}")
+    print(f"[DEBUG] Target Word: '{word}' | Bound Param Matrix: '{params['w']}'")
+    print(f"[DEBUG] Inscription IDs recovered for this specific token: {len(results)}")
+    if len(results) == 0:
+        print(f"[WARNING] 0 hits found for '{word}'. If this query used an 'AND' operator, the final output will be forced to 0 results.")
+    print("-" * 50)
+    # -------------------------------
+    
+    return results
 
 def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clauses, base_query_params):
     """
