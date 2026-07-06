@@ -1226,7 +1226,7 @@ def execute_advanced_search(f_dict):
                     WHERE ip_sub.inscription_id = mt.inscription_id AND vd_sub.virorum_distributio IN ({', '.join(vd_params)}))
         """)
 
-    # ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+# ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
     phrase = f_dict.get('text', '').strip()
     search_mode = f_dict.get('text_search_mode', 'Exact Match')
     applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {search_mode}]")
@@ -1238,37 +1238,32 @@ def execute_advanced_search(f_dict):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # STRATEGY 1: EXACT MATCH (Only run the direct matching loop via SQLite FTS)
+        # STRATEGY 1: EXACT MATCH (Scans cleaned_text & inscription_text_stripped for terms)
         if search_mode == 'Exact Match' or not phrase:
             if phrase:
+                # Standardize boolean operator strings for safe extraction
                 norm_phrase = phrase
                 norm_phrase = re.sub(r'\s+[aA][nN][dD]\s+', ' AND ', norm_phrase)
                 norm_phrase = re.sub(r'\s+[oO][rR]\s+', ' OR ', norm_phrase)
                 norm_phrase = re.sub(r'\s+[nN][oO][tT]\s+', ' NOT ', norm_phrase)
-                tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
                 
-                fts_compiled = []
-                for t in tokens:
-                    tc = t.strip()
-                    if not tc: continue
-                    if tc in ("AND", "OR", "NOT"): 
-                        fts_compiled.append(tc)
-                    else: 
-                        fts_compiled.append(f'"{tc}"')
+                # Split phrase into individual clean words, discarding boolean punctuation keywords
+                raw_tokens = re.split(r'(\s+| AND | OR | NOT )', norm_phrase)
+                keywords = [t.strip().lower() for t in raw_tokens if t.strip() and t.strip() not in ("AND", "OR", "NOT")]
                 
-                pname = f"fts_phrase_{len(query_params)}"
-                query_params[pname] = " ".join(fts_compiled)
-                where_clauses.append(f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_fts WHERE inscriptions_fts MATCH :{pname})")
+                # Build matching intercept filters checking both required columns for EVERY word
+                for idx, word in enumerate(keywords):
+                    pname = f"exact_word_{idx}"
+                    query_params[pname] = f"%{word}%"
+                    where_clauses.append(f"(mt.cleaned_text LIKE :{pname} OR mt.inscription_text_stripped LIKE :{pname})")
 
             final_sql = base_sql + (" AND " + " AND ".join(where_clauses) if where_clauses else "")
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
 
-        # STRATEGY 2: ASSISTED MATCH (Call the compartmentalized shell engine directly)
+        # STRATEGY 2: ASSISTED MATCH (Calls the multi-tiered cascading fallback utility)
         else:
-            # We hand our structural filters over to the shared core cascade engine
             text_rows, fallback_rows = assisted_search(cursor, phrase, base_where_clauses=where_clauses, base_query_params=query_params)
-            # Standardize records structure down to primary row metadata length safely
             text_rows = [r[:6] for r in text_rows]
             fallback_rows = [r[:6] if len(r) == 6 else (r[:6] + (r[6], r[7]) if len(r) == 8 else r[:6] + ('assisted_fallback', 'Match found')) for r in fallback_rows]
 
