@@ -561,6 +561,142 @@ def convert_roman_to_arabic_in_text(text):
             converted_words.append(word)
     return " ".join(converted_words)
 
+def assisted_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
+    """
+    Core tiered search engine logic.
+    Sequential Priority: 
+      1. Direct Text Substring Scanning
+      2. Continuous Text Squeezing
+      3. Military Unit Identification 
+      4. Partial Person Lookup
+    """
+    if base_where_clauses is None: base_where_clauses = []
+    if base_query_params is None: base_query_params = {}
+    
+    converted_input = convert_roman_to_arabic_in_text(user_input)
+    is_unit_query = bool(re.search(r'\b(legio|cohors|ala|numerus|classis)\b', user_input, re.IGNORECASE) and re.search(r'\d+|[ivxl]+', user_input, re.IGNORECASE))
+    
+    text_rows = []
+    fallback_rows = []
+    
+    # We dynamically weave in extra structural criteria if called by Advanced Search
+    advanced_intersect_sql = " AND " + " AND ".join(base_where_clauses) if base_where_clauses else ""
+
+    # =========================================================================
+    # TIER 1: DIRECT TEXT SUBSTRING SCANNING
+    # =========================================================================
+    clean_query = clean_epigraphic_text(user_input).strip().lower()
+    query_u = clean_query.replace('v', 'u')
+    query_v = clean_query.replace('u', 'v')
+    synonyms = list(set([clean_query, query_u, query_v]))
+    
+    like_clauses = " OR ".join(["mt.inscription_text_stripped LIKE ?"] * len(synonyms))
+    text_sql = f"""
+        SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
+               (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons,
+               mt.inscription_text_stripped
+        FROM "Max_Thrax" mt WHERE ({like_clauses}) {advanced_intersect_sql} ORDER BY mt.inscription_id DESC;
+    """
+    params = [f"%{syn}%" for syn in synonyms]
+    cursor.execute(text_sql, params)
+    
+    for row in cursor.fetchall():
+        ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons, text_stripped = row
+        base_data = (ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons)
+        
+        if text_stripped and any(syn in text_stripped.lower() for syn in synonyms):
+            text_rows.append(base_data)
+        else:
+            fallback_rows.append(base_data + ("spelling_variant_cluster", clean_query))
+    
+    # =========================================================================
+    # TIER 2: CONTINUOUS TEXT CHARACTER SQUEEZING
+    # =========================================================================
+    if not text_rows and not fallback_rows:
+        continuous_term = user_input.lower().replace(" ", "")
+        continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_term)
+        
+        if continuous_term:
+            continuous_term_u = continuous_term.replace('v', 'u')
+            continuous_term_v = continuous_term.replace('u', 'v')
+            
+            continuous_sql = f"""
+                SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
+                       (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons
+                FROM "Max_Thrax" mt 
+                WHERE (mt.reconstituted_text LIKE ? 
+                   OR mt.cleaned_text LIKE ?
+                   OR mt.reconstituted_text LIKE ? 
+                   OR mt.cleaned_text LIKE ?) {advanced_intersect_sql}
+                ORDER BY mt.inscription_id DESC;
+            """
+            cursor.execute(continuous_sql, (
+                f"%{continuous_term_u}%", f"%{continuous_term_u}%",
+                f"%{continuous_term_v}%", f"%{continuous_term_v}%"
+            ))
+            for row in cursor.fetchall():
+                ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons = row
+                text_rows.append((ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons))
+
+    # =========================================================================
+    # TIER 3: MILITARY UNIT CLAUSE MATCHING
+    # =========================================================================
+    if not text_rows and not fallback_rows and is_unit_query:
+        raw_tokens = re.findall(r'\w+', converted_input.lower())
+        expanded_token_clusters = []
+        for token in raw_tokens:
+            token_u = token.replace('v', 'u')
+            token_v = token.replace('u', 'v')
+            expanded_token_clusters.append(list(set([token, token_u, token_v])))
+
+        possible_phrases = []
+        for combination in itertools.product(*expanded_token_clusters):
+            phrase_regex = r'\b' + r'\s+'.join(re.escape(word) for word in combination) + r'\b'
+            possible_phrases.append(phrase_regex)
+            
+        cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
+        all_collectives = cursor.fetchall()
+        
+        c_ids = []
+        for col_id, col_search in all_collectives:
+            if not col_search: continue
+            col_search_lower = col_search.lower()
+            if any(re.search(pattern, col_search_lower) for pattern in possible_phrases):
+                c_ids.append(col_id)
+                
+        if c_ids:
+            c_sql = f"""
+                SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
+                (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
+                 FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
+                 WHERE ip.inscription_id = mt.inscription_id)
+                FROM "Max_Thrax" mt 
+                JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
+                WHERE ic.collective_id IN ({','.join(['?']*len(c_ids))}) {advanced_intersect_sql};
+            """
+            cursor.execute(c_sql, c_ids)
+            text_rows = cursor.fetchall()
+
+    # =========================================================================
+    # TIER 4: PARTIAL PERSON NAME SUBSTRING CROSS-REFERENCE
+    # =========================================================================
+    if not text_rows and not fallback_rows:
+        like_query = f"%{re.sub(r'\s+', '%', clean_query)}%"
+        cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_query,))
+        p_ids = [r[0] for r in cursor.fetchall()]
+        if p_ids:
+            p_sql = f"""
+                SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
+                (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id),
+                'person', 'Person names match' 
+                FROM "Max_Thrax" mt 
+                JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id 
+                WHERE ip.person_id IN ({','.join(['?']*len(p_ids))}) {advanced_intersect_sql};
+            """
+            cursor.execute(p_sql, p_ids)
+            fallback_rows.extend(cursor.fetchall())
+
+    return text_rows, fallback_rows
 
 # KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
@@ -568,122 +704,12 @@ def run_standard_search(user_input):
         st.session_state.search_results = "Please enter a search term."
         return
 
-    converted_input = convert_roman_to_arabic_in_text(user_input)
-    is_unit_query = bool(re.search(r'\b(legio|cohors|ala|numerus|classis)\b', user_input, re.IGNORECASE) and re.search(r'\d+|[ivxl]+', user_input, re.IGNORECASE))
-    
-    text_rows = []
-    fallback_rows = []
-    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # SEE IF ANY GROUP/INSTITUTION/MILITARY UNIT NAME MATCHES THE QUERY EXACTLY AND OUTPUT ALL INSCRIPTIONS LINKED TO IT
-        if is_unit_query:
-            raw_tokens = re.findall(r'\w+', converted_input.lower())
-
-            expanded_token_clusters = []
-            for token in raw_tokens:
-                # Direct string normalization for accurate orthography matches
-                token_u = token.replace('v', 'u')
-                token_v = token.replace('u', 'v')
-                token_variants = list(set([token, token_u, token_v]))
-                expanded_token_clusters.append(token_variants)
-    
-            possible_phrases = []
-            for combination in itertools.product(*expanded_token_clusters):
-                phrase_regex = r'\b' + r'\s+'.join(re.escape(word) for word in combination) + r'\b'
-                possible_phrases.append(phrase_regex)
-                
-            cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
-            all_collectives = cursor.fetchall()
-            
-            c_ids = []
-            for col_id, col_search in all_collectives:
-                if not col_search:
-                    continue
-                    
-                col_search_lower = col_search.lower()
-                
-                if any(re.search(pattern, col_search_lower) for pattern in possible_phrases):
-                    c_ids.append(col_id)
-                    
-            if c_ids:
-                c_sql = f"""
-                    SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
-                    (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') 
-                     FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id 
-                     WHERE ip.inscription_id = mt.inscription_id)
-                    FROM "Max_Thrax" mt 
-                    JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
-                    WHERE ic.collective_id IN ({','.join(['?']*len(c_ids))});
-                """
-                cursor.execute(c_sql, c_ids)
-                text_rows = cursor.fetchall()
-        
-        # SEARCH FOR OTHER INFLECTED FORMS OF THE QUERY
-        else:
-            clean_query = clean_epigraphic_text(user_input).strip().lower()
-            
-            # Formulate variants natively to guarantee cross-matching over orthographical differences
-            query_u = clean_query.replace('v', 'u')
-            query_v = clean_query.replace('u', 'v')
-            synonyms = list(set([clean_query, query_u, query_v]))
-            
-            like_clauses = " OR ".join(["mt.inscription_text_stripped LIKE ?"] * len(synonyms))
-            text_sql = f"""
-                SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
-                       (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons,
-                       mt.inscription_text_stripped
-                FROM "Max_Thrax" mt WHERE {like_clauses} ORDER BY mt.inscription_id DESC;
-            """
-            cursor.execute(text_sql, [f"%{syn}%" for syn in synonyms])
-            for row in cursor.fetchall():
-                ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons, text_stripped = row
-                base_data = (ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons)
-                
-                # Check for hits in raw variants
-                if text_stripped and any(syn in text_stripped.lower() for syn in synonyms):
-                    text_rows.append(base_data)
-                else:
-                    fallback_rows.append(base_data + ("spelling_variant_cluster", clean_query))
-            
-            if not text_rows and not fallback_rows:
-                continuous_term = user_input.lower().replace(" ", "")
-                continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~]', '', continuous_term)
-                
-                if continuous_term:
-                    continuous_term_u = continuous_term.replace('v', 'u')
-                    continuous_term_v = continuous_term.replace('u', 'v')
-                    
-                    continuous_sql = """
-                        SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
-                               (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM "persons" p JOIN "inscriptions_and_persons" ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id) AS linked_persons
-                        FROM "Max_Thrax" mt 
-                        WHERE mt.reconstituted_text LIKE ? 
-                           OR mt.cleaned_text LIKE ?
-                           OR mt.reconstituted_text LIKE ? 
-                           OR mt.cleaned_text LIKE ?
-                        ORDER BY mt.inscription_id DESC;
-                    """
-                    cursor.execute(continuous_sql, (
-                        f"%{continuous_term_u}%", f"%{continuous_term_u}%",
-                        f"%{continuous_term_v}%", f"%{continuous_term_v}%"
-                    ))
-                    for row in cursor.fetchall():
-                        ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons = row
-                        text_rows.append((ins_id, ins_text, ins_ref, line_ref, further_bib, linked_persons))
-                        
-            # SEE IF ANY PERSON KINDA MATCHES THE QUERY AND OUTPUT ALL INSCRIPTIONS LINKED TO THAT PERSON
-            like_query = f"%{re.sub(r'\s+', '%', clean_query)}%"
-            cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_query,))
-            p_ids = [r[0] for r in cursor.fetchall()]
-            if p_ids:
-                p_sql = f"""SELECT mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref, mt.further_bibliography,
-                           (SELECT GROUP_CONCAT(p.person_name || ' (id: ' || p.person_id || ')', ', ') FROM persons p JOIN inscriptions_and_persons ip ON p.person_id = ip.person_id WHERE ip.inscription_id = mt.inscription_id),
-                           'person', 'Person names match' FROM "Max_Thrax" mt JOIN "inscriptions_and_persons" ip ON mt.inscription_id = ip.inscription_id WHERE ip.person_id IN ({','.join(['?']*len(p_ids))});"""
-                cursor.execute(p_sql, p_ids)
-                fallback_rows.extend(cursor.fetchall())
+        # Run the decoupled core search utility using your prioritized sequence
+        text_rows, fallback_rows = assisted_search(cursor, user_input)
         
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
@@ -706,48 +732,32 @@ def run_standard_search(user_input):
             conn.close()
             return
             
-        object_count = 0
-        if all_matched_ids:
-            obj_cursor = conn.cursor()
-            chunk_size = 900
-            unique_objects = set()
-            
-            for i in range(0, len(all_matched_ids), chunk_size):
-                chunk = all_matched_ids[i:i + chunk_size]
-                placeholders = ",".join(["?"] * len(chunk))
-                
-                obj_cursor.execute(
-                    f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({placeholders});', 
-                    chunk
-                )
-                for row in obj_cursor.fetchall():
-                    unique_objects.add(row[0])
-            
-            object_count = len(unique_objects)
+        # Calculate matching unique physical objects
+        unique_objects = set()
+        chunk_size = 900
+        for i in range(0, len(all_matched_ids), chunk_size):
+            chunk = all_matched_ids[i:i + chunk_size]
+            cursor.execute(f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({",".join(["?"] * len(chunk))});', chunk)
+            for row in cursor.fetchall(): 
+                unique_objects.add(row[0])
             
         out_str = []
-    
         header = f"## Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} indirect match(es)!\n"
         header += f"**Key Word:** {user_input}\n\n"
-        header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{object_count}** objects:\n\n"
+        header += f"Compiled dossiers for all **{len(all_matched_ids)}** matching inscriptions on **{len(unique_objects)}** objects:\n\n"
         out_str.append(header)
         
         for ins_id in all_matched_ids:
             out_str.append(f"## Inscription ID {ins_id}\n")
             dossier_text = get_inscription_report(cursor, int(ins_id))
-            
-            if dossier_text == "No inscription data found.":
-                out_str.append(f"_Warning: This ID does not exist: {ins_id}_")
-            else:
-                out_str.append(dossier_text)
-                
+            out_str.append(dossier_text if dossier_text != "No inscription data found." else f"_Warning: This ID does not exist: {ins_id}_")
             out_str.append("\n\n---\n\n")
             
         st.session_state.search_results = "\n\n".join(out_str)
         conn.close()
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
-
+            
 # LOOK UP INSCRIPTION BY EDCS NUMBER OR TM NUMBER
 
 def run_ref_search(ref_query):
@@ -1014,8 +1024,10 @@ def get_filter_options(table, col):
     except Exception:
         pass
     return options
-    
-# ADVANCED SEARCHdef execute_advanced_search(f_dict):
+
+
+# SET UP ADVANCED SEARCH
+def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
     where_clauses = []
@@ -1079,8 +1091,7 @@ def get_filter_options(table, col):
     else:
         applied_criteria_summary.append("  • Scope: All Interventions")
 
-    # PRE-COMPILE THE FIXED ADVANCED FILTERS (Dates, Materials, Metadata Dropdowns)
-    # This ensures text fallbacks still obey the structural filters selected by the user
+    # PRE-COMPILE THE FIXED ADVANCED FILTERS
     req_start = f_dict.get('start_date')
     req_end = f_dict.get('end_date')
     dating_strategy = f_dict.get('dating_strategy', 'overlap')
@@ -1163,7 +1174,7 @@ def get_filter_options(table, col):
                 query_params[p_name] = item
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
 
-    # EXPLICIT METADATA FILTERS (PERSONS, COLLECTIVES, VIRORUM)
+    # EXPLICIT METADATA FILTERS
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
     if person_ids and person_ids != "All" and person_ids != ["All"]:
@@ -1227,7 +1238,7 @@ def get_filter_options(table, col):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # STRATEGY 1: EXACT MATCH (STRICT INTERSECTING FTS QUERY)
+        # STRATEGY 1: EXACT MATCH (Only run the direct matching loop via SQLite FTS)
         if search_mode == 'Exact Match' or not phrase:
             if phrase:
                 norm_phrase = phrase
@@ -1240,8 +1251,10 @@ def get_filter_options(table, col):
                 for t in tokens:
                     tc = t.strip()
                     if not tc: continue
-                    if tc in ("AND", "OR", "NOT"): fts_compiled.append(tc)
-                    else: fts_compiled.append(f'"{tc}"')
+                    if tc in ("AND", "OR", "NOT"): 
+                        fts_compiled.append(tc)
+                    else: 
+                        fts_compiled.append(f'"{tc}"')
                 
                 pname = f"fts_phrase_{len(query_params)}"
                 query_params[pname] = " ".join(fts_compiled)
@@ -1251,70 +1264,15 @@ def get_filter_options(table, col):
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
 
-        # STRATEGY 2: ASSISTED MATCH (TIERED FALLBACK ENGINE FROM STANDARD SEARCH)
+        # STRATEGY 2: ASSISTED MATCH (Call the compartmentalized shell engine directly)
         else:
-            converted_input = convert_roman_to_arabic_in_text(phrase)
-            is_unit_query = bool(re.search(r'\b(legio|cohors|ala|numerus|classis)\b', phrase, re.IGNORECASE) and re.search(r'\d+|[ivxl]+', phrase, re.IGNORECASE))
-            
-            # --- TIER 1: Military Unit Phrase Expansion ---
-            if is_unit_query:
-                raw_tokens = re.findall(r'\w+', converted_input.lower())
-                expanded_clusters = []
-                for token in raw_tokens:
-                    token_u = token.replace('v', 'u')
-                    token_v = token.replace('u', 'v')
-                    expanded_clusters.append(list(set([token, token_u, token_v])))
-                
-                possible_phrases = []
-                for combination in itertools.product(*expanded_clusters):
-                    possible_phrases.append(r'\b' + r'\s+'.join(re.escape(word) for word in combination) + r'\b')
-                
-                cursor.execute("SELECT collective_id, collective_name_search FROM collectives;")
-                c_ids = [col_id for col_id, col_search in cursor.fetchall() if col_search and any(re.search(pat, col_search.lower()) for pat in possible_phrases)]
-                
-                if c_ids:
-                    unit_where = where_clauses + [f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_and_collectives WHERE collective_id IN ({','.join(['?']*len(c_ids))}))"]
-                    cursor.execute(base_sql + " AND " + " AND ".join(unit_where), c_ids)
-                    text_rows = cursor.fetchall()
+            # We hand our structural filters over to the shared core cascade engine
+            text_rows, fallback_rows = assisted_search(cursor, phrase, base_where_clauses=where_clauses, base_query_params=query_params)
+            # Standardize records structure down to primary row metadata length safely
+            text_rows = [r[:6] for r in text_rows]
+            fallback_rows = [r[:6] if len(r) == 6 else (r[:6] + (r[6], r[7]) if len(r) == 8 else r[:6] + ('assisted_fallback', 'Match found')) for r in fallback_rows]
 
-            # --- TIER 2: Direct Inflection String Scanning ---
-            if not text_rows:
-                clean_query = clean_epigraphic_text(phrase).strip().lower()
-                query_u, query_v = clean_query.replace('v', 'u'), clean_query.replace('u', 'v')
-                synonyms = list(set([clean_query, query_u, query_v]))
-                
-                syn_where = where_clauses + ["(" + " OR ".join(["mt.inscription_text_stripped LIKE ?"] * len(synonyms)) + ")"]
-                syn_params = [f"%{syn}%" for syn in synonyms]
-                
-                cursor.execute(base_sql + " AND " + " AND ".join(syn_where), syn_params)
-                for row in cursor.fetchall():
-                    if row[6] and any(syn in row[6].lower() for syn in synonyms): # Verify primary text hit
-                        text_rows.append(row[:6])
-                    else:
-                        fallback_rows.append(row[:6] + ("spelling_variant_cluster", clean_query))
-
-            # --- TIER 3: Reconstituted Continuous Character Squeezing ---
-            if not text_rows and not fallback_rows:
-                continuous_term = re.sub(r'[\[\]\(\)\.\?\-\/\u0323⟦⟧〚〛\d!\{\}<>´`\^~ ]', '', phrase.lower())
-                if continuous_term:
-                    ct_u, ct_v = continuous_term.replace('v', 'u'), continuous_term.replace('u', 'v')
-                    cont_where = where_clauses + ["(mt.reconstituted_text LIKE ? OR mt.cleaned_text LIKE ? OR mt.reconstituted_text LIKE ? OR mt.cleaned_text LIKE ?)"]
-                    cont_params = [f"%{ct_u}%", f"%{ct_u}%", f"%{ct_v}%", f"%{ct_v}%"]
-                    
-                    cursor.execute(base_sql + " AND " + " AND ".join(cont_where), cont_params)
-                    text_rows = [r[:6] for r in cursor.fetchall()]
-
-            # --- TIER 4: Partial Person Name Matching ---
-            like_person = f"%{re.sub(r'\s+', '%', clean_epigraphic_text(phrase).strip().lower())}%"
-            cursor.execute("SELECT person_id FROM persons WHERE person_name LIKE ?;", (like_person,))
-            p_ids = [r[0] for r in cursor.fetchall()]
-            if p_ids:
-                p_where = where_clauses + [f"mt.inscription_id IN (SELECT inscription_id FROM inscriptions_and_persons WHERE person_id IN ({','.join(['?']*len(p_ids))}))"]
-                cursor.execute(base_sql + " AND " + " AND ".join(p_where), p_ids)
-                for row in cursor.fetchall():
-                    fallback_rows.append(row[:6] + ('person', 'Person names match'))
-
-        # DEDUPLICATE AND RESOLVE BOTH STREAMS INTO THE SESSION STATE
+        # DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
         seen_fallback_ids = set()
@@ -1339,9 +1297,10 @@ def get_filter_options(table, col):
         for i in range(0, len(all_matched_ids), chunk_size):
             chunk = all_matched_ids[i:i + chunk_size]
             cursor.execute(f'SELECT DISTINCT object_id FROM "Max_Thrax" WHERE inscription_id IN ({",".join(["?"] * len(chunk))});', chunk)
-            for row in cursor.fetchall(): unique_objects.add(row[0])
+            for row in cursor.fetchall(): 
+                unique_objects.add(row[0])
             
-        # STITCH VISUAL DOSSIER LAYOUT FOR STREAMLIT DISPLAY
+        # STITCH VISUAL DOSSIER LAYOUT FOR DISPLAY
         out_str = []
         header = f"## Advanced Search Results\nFound {len(text_rows)} direct match(es) and {len(unique_fallback_rows)} assisted fallback match(es)!\n"
         header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
@@ -1358,58 +1317,8 @@ def get_filter_options(table, col):
         conn.close()
     except Exception as e:
         st.session_state.search_results = f"Advanced Search Failed: {e}"
-            
-def fetch_metadata_by_id(inscription_ids_input):
-    if not inscription_ids_input.strip():
-        st.session_state.search_results = "Please enter one or more Inscription IDs."
-        return
-        
-    raw_id_list = [x.strip() for x in inscription_ids_input.split(",")]
-    valid_ids = [int(x) for x in raw_id_list if x and x.isdigit()]
-    
-    if not valid_ids:
-        st.session_state.search_results = "Please enter one or more Inscription IDs as pure numbers"
-        return
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        st.session_state.active_inscription_ids = valid_ids
-        st.session_state["active_search_where_clauses"] = []  
-        st.session_state["active_search_has_run"] = True      
 
-        out_str = []
-        missing_ids = []
-        valid_reports = []
-            
-        for ins_id in valid_ids:
-            dossier_body = get_inscription_report(cursor, int(ins_id))
-            
-            if dossier_body == "No inscription data found.":
-                missing_ids.append(str(ins_id))
-            else:
-                valid_reports.append((ins_id, dossier_body))
-                
-        if missing_ids:
-            out_str.append(f"**Warning: The following ID(s) do not exist in the database:** {', '.join(missing_ids)}\n\n---\n\n")
-            
-        for ins_id, dossier_body in valid_reports:
-            out_str.append(f"### Inscription ID {ins_id}\n\n")
-            out_str.append(f"{dossier_body}\n\n")
-            out_str.append("---\n\n")
-            
-        conn.close()
-        
-        st.session_state.search_results = "".join(out_str).rstrip("-\n ")
-        
-    except Exception as e:
-        st.session_state.search_results = f"Error fetching metadata: {e}"
-        if 'conn' in locals():
-            try:
-                conn.close()
-            except:
-                pass
                 
 def fetch_metadata_by_object_id(object_id):
     if not str(object_id).strip():
