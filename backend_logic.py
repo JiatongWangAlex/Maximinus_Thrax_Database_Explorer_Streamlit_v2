@@ -626,7 +626,7 @@ def convert_roman_to_arabic_in_text(text):
         else:
             converted_words.append(word)
     return " ".join(converted_words)
-        import reimport re
+
 
 def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base_query_params):
 
