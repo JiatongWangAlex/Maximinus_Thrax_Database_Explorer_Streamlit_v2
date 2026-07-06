@@ -227,10 +227,11 @@ def get_inscription_report(cursor, inscription_id):
     report.append(f"**Associated Roman Road (Itinere):** {road_display}\n")
 
     biblio_clean = f"\n* {biblio.strip().replace('\n', '\n* ')}" if biblio else " N/A"
-    report.append(f"**Bibliography:** {biblio_clean}\n\n---\n")
+    report.append(f"**Bibliography:** {biblio_clean}\n")
 
     # OBJECTS AND INSCRIPTIONS
     if obj_id:
+        report.append("\n---\n\n")  # Push the divider to cleanly isolate metadata from linked layout details
         cursor.execute(sql_siblings, (obj_id,))
         siblings = cursor.fetchall()
         
@@ -241,7 +242,7 @@ def get_inscription_report(cursor, inscription_id):
             report.append(f"* {s_seq}. {s_ref}{line_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
         report.append("\n")
 
-     # INTERVENTIONS
+        # INTERVENTIONS
         cursor.execute(sql_interventions, (obj_id,))
         interventions = cursor.fetchall()
         
@@ -261,12 +262,14 @@ def get_inscription_report(cursor, inscription_id):
                     note_str = f" {note}" if note else ""
                     
                     if m_id == 2:
-                        cursor.execute("""
+                        # Safely extracted string block to prevent compilation failures
+                        sql_targets = """
                             SELECT t.target_description 
                             FROM interventions_and_targets iat 
                             JOIN targets t ON iat.target_id = t.target_id 
                             WHERE iat.intervention_id = ?
-                        """, (interv_id,))
+                        """
+                        cursor.execute(sql_targets, (interv_id,))
                         targets = ", ".join([r[0] for r in cursor.fetchall()])
                         report.append(f"  * _intervention {idx_lbl} :_ {ext_desc or ''} {meth_desc or ''} of inscription, targeting {targets}")
                     elif m_id == 3:
