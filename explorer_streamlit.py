@@ -763,7 +763,7 @@ with st.expander("Advanced Search", expanded=False):
         f_interv_ext = st.multiselect("Extent of Intervention:", [opt for opt in get_filter_options("extent", "extent_description") if opt != "All"], on_change=reset_map_and_search_flags)
         f_interv_tgt = st.multiselect("Target of Intervention:", [opt for opt in get_filter_options("targets", "target_description") if opt != "All"], on_change=reset_map_and_search_flags)
     
-st.write("---")
+    st.write("---")
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
@@ -855,7 +855,7 @@ st.write("---")
                 disabled=True,
                 help="Make a search first to unlock SQL query generation."
             )
-
+                 
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
 with st.expander("Search by Bibliography / Literature Search", expanded=False):
