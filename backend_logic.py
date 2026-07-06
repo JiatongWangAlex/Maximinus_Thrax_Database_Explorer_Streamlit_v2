@@ -1778,7 +1778,8 @@ def generate_active_map():
 
         
 __all__ = [
-    
+        
+    'assisted_search',
     'get_inscription_report',
     'get_db_connection',
     'reset_map_and_search_flags',
