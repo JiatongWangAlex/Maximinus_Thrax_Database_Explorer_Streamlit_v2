@@ -1406,7 +1406,7 @@ def execute_advanced_search(f_dict):
         indirect_count = total_inscriptions - direct_count
 
         out_str = []
-        header = f"## Advanced Search Results\nFound {direct_count} direct match(es) and {indirect_count} assisted fallback match(es)!\n"
+        header = f"## Advanced Search Results\nFound {direct_count} direct match(es) and {indirect_count} indirect match(es)!\n"
         header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
         header += f"\nCompiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
         out_str.append(header)
