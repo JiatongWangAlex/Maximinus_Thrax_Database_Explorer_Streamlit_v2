@@ -99,7 +99,8 @@ def commit_search_and_wipe_inputs():
     """Wipes text fields instantly after click, keeping only active results and mapping IDs."""
     inputs_to_clear = [
         "main_text_input", "edcs_report_input", "id_report_input", 
-        "person_lookup_input", "person_report_input"
+        "person_lookup_input", "person_report_input",
+        "lit_abbr_input", "lit_author_input" # Wipes text inputs if explicit keys were added
     ]
     for field in inputs_to_clear:
         if field in st.session_state:
@@ -113,12 +114,17 @@ def commit_search_and_wipe_inputs():
     for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
         st.session_state[anchor] = ""
         
-    st.session_state["inputs_are_dirty"] = False
+    st.session_state.lit_matches = []       
+    st.session_state.lit_search_type = None
     
-    # TELL THE APP: A fresh search button was clicked, so do NOT skip scrolling on the next render pass!
+    if "lit_display_map" in st.session_state:
+        del st.session_state.lit_display_map
+
+    st.session_state["inputs_are_dirty"] = False
     st.session_state["skip_scroll"] = False
 
-# --- FIXED DEDICATED SEARCH CALLBACK FUNCTIONS ---
+
+# SEARCH CALLBACK FUNCTIONS
 
 def callback_text_search():
     val = st.session_state.get("main_text_input", "").strip()
