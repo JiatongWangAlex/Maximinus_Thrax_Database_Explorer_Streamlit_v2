@@ -100,7 +100,8 @@ def commit_search_and_wipe_inputs():
     inputs_to_clear = [
         "main_text_input", "edcs_report_input", "id_report_input", 
         "person_lookup_input", "person_report_input",
-        "lit_abbr_input", "lit_author_input" # Wipes text inputs if explicit keys were added
+        "lit_abbr_input",    
+        "lit_name_or_full_citation_input"
     ]
     for field in inputs_to_clear:
         if field in st.session_state:
@@ -112,17 +113,17 @@ def commit_search_and_wipe_inputs():
     st.session_state["person_matches"] = []
          
     for anchor in ["last_searched_text", "last_searched_edcs", "last_searched_id", "last_searched_lookup", "last_searched_person"]:
-        st.session_state[anchor] = ""
+        if anchor in st.session_state:
+            st.session_state[anchor] = ""
         
-    st.session_state.lit_matches = []       
-    st.session_state.lit_search_type = None
+    st.session_state.lit_matches = []        
+    st.session_state.lit_search_type = None  
     
     if "lit_display_map" in st.session_state:
         del st.session_state.lit_display_map
 
     st.session_state["inputs_are_dirty"] = False
     st.session_state["skip_scroll"] = False
-
 
 # SEARCH CALLBACK FUNCTIONS
 
@@ -770,17 +771,19 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
 
     col1, col2 = st.columns(2)
     
-    with col1:
+with col1:
         abbr_input = st.text_input(
             "Search by Abbreviated Citation",
-            value=""
+            value="",
+            key="lit_abbr_input"
         )
         st.markdown("Please use [EDCS style](https://edcs.hist.uzh.ch/sources) abbreviations e.g. CIL-02, 04886")
         
     with col2:
         author_input = st.text_input(
             "Search by Author / Work / Full Citation",
-            value=""
+            value="",
+            key="lit_name_or_full_citation_input"
         )
 
     btn_col1, btn_col2 = st.columns(2)
