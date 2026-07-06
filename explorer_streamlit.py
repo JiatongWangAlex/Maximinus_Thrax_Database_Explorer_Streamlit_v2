@@ -649,7 +649,8 @@ with st.expander("Advanced Search", expanded=False):
         help=("'Exact Match' searches your exact string. "
               "'Assisted Match' also looks for spelling variants of your search term, "
               "and sees whether your search term matches the name of a person or group "
-              "identified in the corpus. We cannot handle inflection at this moment")
+              "identified in the corpus. We cannot automatically check all inflected"
+              "forms of your search term at this moment")
     )
 
     st.markdown("---")
