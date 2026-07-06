@@ -1261,6 +1261,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
 st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 # SEARCH RESULTS
 st.markdown("### Search Results")
+
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
@@ -1316,7 +1317,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
             st.markdown(f"**Found {len(overview_rows)} record(s) matching your search:**")
             
             # Using standard native Streamlit height scroll container
-            with st.container(height=100):
+            with st.container(height=200):
                 
                 for row in overview_rows:
                     ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
