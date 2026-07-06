@@ -736,10 +736,7 @@ def assisted_search(cursor, user_input, base_where_clauses=None, base_query_para
                 ins_id, ins_text, ins_ref, line_ref, linked_persons = row
                 fallback_rows.append((ins_id, ins_text, ins_ref, line_ref, linked_persons, "person", "Person names match"))
 
-    # Secure the direct count attribute directly to the text_rows array object
-    setattr(text_rows, "direct_match_count", direct_match_count)
-    return text_rows, fallback_rows
-
+    return text_rows, fallback_rows, direct_match_count
 
 # KEY WORD OR PHRASE SEARCH
 def run_standard_search(user_input):
