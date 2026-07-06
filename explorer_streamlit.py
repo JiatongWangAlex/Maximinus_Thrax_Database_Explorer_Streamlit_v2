@@ -160,9 +160,16 @@ def callback_id_search():
         st.session_state["active_search_has_run"] = True
         st.session_state["trigger_map_html"] = None
         st.session_state["inputs_are_dirty"] = False
-        st.session_state.active_inscription_ids = [int(val)]
-        fetch_metadata_by_id(val)
-        commit_search_and_wipe_inputs()
+        
+        parsed_ids = [int(x.strip()) for x in val.split(",") if x.strip().isdigit()]
+        
+        if parsed_ids:
+            st.session_state.active_inscription_ids = parsed_ids
+            fetch_metadata_by_id(val)
+            commit_search_and_wipe_inputs()
+        else:
+            st.session_state.search_results = "Please enter Inscription ID(s) as pure numbers."
+            st.session_state.active_inscription_ids = []
 
 def callback_person_report_dropdown():
     selected_option = st.session_state.get("person_select_input", "PLEASE SELECT")
