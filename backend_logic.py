@@ -1508,8 +1508,7 @@ def fetch_metadata_by_object_id(object_id):
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
             
-# INTERACTIVE MAP
-def generate_active_map():
+# INTERACTIVE MAPdef generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -1576,7 +1575,7 @@ def generate_active_map():
     # SET MAP CENTER TO LARINO
     valid_center = [41.807100, 14.919200]
     
-    # INITIALIZE MAP CONTAINER
+    # PERFORMANCE OPTIMIZATION 1: prefer_canvas=True forces browser-level graphic acceleration
     mymap = folium.Map(
         location=valid_center, 
         zoom_start=4.5, 
@@ -1587,6 +1586,7 @@ def generate_active_map():
         control_scale=True,
         doubleClickZoom=False,
         smooth_wheel_zoom=True,
+        prefer_canvas=True
     )
     
     # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
@@ -1624,11 +1624,7 @@ def generate_active_map():
 
     # PROVINCES LAYER
     from collections import Counter
-    
-    # 1. Count total inscriptions per province
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
-    
-    # 2. Count ONLY erased inscriptions per province
     erased_counts = Counter([
         row[9].strip() 
         for row in matched_points 
@@ -1645,12 +1641,8 @@ def generate_active_map():
             geo_name = props.get("Name") or props.get("province_name")
             if geo_name:
                 geo_name_clean = geo_name.strip()
-                count = search_counts.get(geo_name_clean, 0)
-                erased_count = erased_counts.get(geo_name_clean, 0)
-                
-                # Inject both counts into the GeoJSON properties
-                props["search_count"] = f"<br>{count}"
-                props["erased_count"] = f"<br>{erased_count}"
+                props["search_count"] = f"<br>{search_counts.get(geo_name_clean, 0)}"
+                props["erased_count"] = f"<br>{erased_counts.get(geo_name_clean, 0)}"
             else:
                 props["search_count"] = "<br>0"
                 props["erased_count"] = "<br>0"
@@ -1669,17 +1661,7 @@ def generate_active_map():
                 style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
         ).add_to(mymap)
-        
-        mymap.get_root().header.add_child(folium.Element("""
-            <style>
-                .leaflet-tooltip table td {
-                    text-align: left !important;
-                    padding-right: 15px !important;
-                }
-            </style>
-        """))
 
-         
     # STACKABLE VISUAL LAYERS
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
@@ -1721,22 +1703,14 @@ def generate_active_map():
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
-        
         bucket_erased_rows = [row for row in rows if row[0] in erased_ids]
         erased_count = len(bucket_erased_rows)
             
         popup_html = ""
         if is_bucket_approximate:
-            popup_html += """
-            <h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">
-                WARNING: APPROXIMATE COORDINATES
-            </h3>
-            """
+            popup_html += '<h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">WARNING: APPROXIMATE COORDINATES</h3>'
         if overlap_count > 1:
-            bg_color = "#f0f4ff" 
-            text_color = "#001140"
-            border_color = "#d0daff"
-            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
+            popup_html += f"<div style='background-color:#f0f4ff; color:#001140; padding:5px; margin-bottom:8px; border:1px solid #d0daff; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
         
         for idx, row in enumerate(rows, 1):
             f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
@@ -1750,21 +1724,13 @@ def generate_active_map():
             province = province_name if province_name is not None else "N/A"
             place = place_name_val if place_name_val is not None else "N/A"
             
-            if pleiades_id_val and str(pleiades_id_val).strip():
-                clean_pleiades_id = str(pleiades_id_val).strip()
-                pleiades_link = f'<a href="https://pleiades.stoa.org/places/{clean_pleiades_id}" target="_blank">{clean_pleiades_id}</a>'
-            else:
-                pleiades_link = 'N/A'
-                
+            pleiades_link = f'<a href="https://pleiades.stoa.org/places/{str(pleiades_id_val).strip()}" target="_blank">{str(pleiades_id_val).strip()}</a>' if pleiades_id_val and str(pleiades_id_val).strip() else 'N/A'
             ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text.replace("EDCS-", "")}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
             if overlap_count > 1:
                 item_border = "#7f8c8d" if is_approx == 1 else "#001140"
-                popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
-                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
-                
-                # Dynamic UX Tag placement inside the Record header line
+                popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'><span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
                 if f_id in erased_ids:
                     popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 if is_approx == 1:
@@ -1772,26 +1738,13 @@ def generate_active_map():
                 popup_html += "<br>"
 
             if overlap_count == 1 and is_approx == 1:
-                popup_html += (
-                    "<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>"
-                    "Some legacy place names cannot be securely linked to a modern location.<br>"
-                    "Approximate coordinates represent the geometric center of the area where the place is likely located. This area is estimated based on identifiable sites reported in the vicinity,or based on the mile number of a milestone associated with the place.<br>"
-                    "</span><br>"
-                )
+                popup_html += "<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>Some legacy place names cannot be securely linked to a modern location.<br>Approximate coordinates represent the geometric center of the area where the place is likely located.<br></span><br>"
                  
-            popup_html += (
-                f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
-            )
-            
-            # Dynamic UX Tag placement for Single Marker views
+            popup_html += f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
             if overlap_count == 1 and f_id in erased_ids:
                 popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 
-            popup_html += (
-                f"<br><b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br>"
-                f"<b>Province:</b> {province}<br>"
-                f"<b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
-            )
+            popup_html += f"<br><b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br><b>Province:</b> {province}<br><b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
             
             if support_id in (1, 2):
                 popup_html += "<br><b>Type of Inscription:</b> Milestone"
@@ -1806,24 +1759,19 @@ def generate_active_map():
             else:
                 popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
-            # FIXED STRUCTURAL TAG LEAK: Explicitly close the opened block for stacked records
             if overlap_count > 1:
                 popup_html += "</div>"
                      
         # PASS A: PLOT TO DEFAULT VIEW LAYER 
-
         if overlap_count > 1:
-            size = 16
-            d_border = "#001140"
-            d_fill = "#1a53ff"
+            size, d_border, d_fill = 16, "#001140", "#1a53ff"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
-            tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
+            # PERFORMANCE OPTIMIZATION 2: Lightened Tooltip payload strings
+            tooltip_label = f"{overlap_count} entries (Approximate)" if is_bucket_approximate else f"{overlap_count} inscriptions"
         else:
-            size = 10
-            d_border = "#002fa7"
-            d_fill =  "#33b5e5"
+            size, d_border, d_fill = 10, "#002fa7", "#33b5e5"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
-            tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
+            tooltip_label = f"ID: {rows[0][0]} (Approximate)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         folium.Marker(
             location=[lat, lon],
@@ -1833,20 +1781,15 @@ def generate_active_map():
         ).add_to(default_layer)
 
         # PASS B: PLOT TO ERASURE OVERLAY LAYER
-
         if erased_count > 0:
             if overlap_count > 1:
-                size = 16
-                e_border = "#400000"
-                e_fill = "#ff1a1a"
+                size, e_border, e_fill = 16, "#400000", "#ff1a1a"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{erased_count}</div>'
-                e_tooltip = f"{erased_count} relevant erasures here"
+                e_tooltip = f"{erased_count} erasures"
             else:
-                size = 10
-                e_border = "#400000"
-                e_fill = "#e56333"
+                size, e_border, e_fill = 10, "#400000", "#e56333"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 9999 !important; position: relative;"></div>'
-                e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
+                e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Erasure)"
 
             folium.Marker(
                 location=[lat, lon],
@@ -1859,7 +1802,6 @@ def generate_active_map():
     range_layer.add_to(mymap)
     default_layer.add_to(mymap)
     erased_layer.add_to(mymap)
-    
     folium.LayerControl(collapsed=False).add_to(mymap)
 
     # Global UI Script (Handles double-click interface hiding)
@@ -1871,22 +1813,11 @@ def generate_active_map():
                 if (mapElements.length > 0) {
                     var mapId = mapElements[0].id;
                     var mymap = window[mapId];
-                    
                     if (mymap) {
                         var hiddenState = false;
-                        
                         mymap.on('dblclick', function(e) {
                             hiddenState = !hiddenState;
-                            
-                            var selectors = [
-                                '.leaflet-control-zoom', 
-                                '.leaflet-control-layers', 
-                                '.leaflet-draw', 
-                                '.easyprint-container', 
-                                '.legend',
-                                '.leaflet-control-scale'
-                            ];
-                            
+                            var selectors = ['.leaflet-control-zoom', '.leaflet-control-layers', '.leaflet-draw', '.easyprint-container', '.legend', '.leaflet-control-scale'];
                             selectors.forEach(function(sel) {
                                 document.querySelectorAll(sel).forEach(function(el) {
                                     el.style.setProperty('display', hiddenState ? 'none' : 'block', 'important');
@@ -1901,7 +1832,6 @@ def generate_active_map():
     """
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
-        
         
 __all__ = [
         
