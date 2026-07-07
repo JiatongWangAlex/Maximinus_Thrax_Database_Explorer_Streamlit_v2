@@ -1,11 +1,27 @@
 """
-Jiatong Wang | SAPIENZA BA THESIS DATABASE GUI
+Jiatong Wang | DATABASE GUI 
 --------------------------------------------------------------------   
+AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
+
+I have written the SQL queries used in the backend of this software, and coded most of the elements which only involve native Streamlit features.
+
+HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
+I accepted input from a LLM when making this software, specifically for managing session states and the JavaScript
+and HTML snippets for introducing behaviors not native to Streamlit.(Specifically clearing user input after every 
+search, and also scrolling users down to the Results viewer or Map viewer automatically after every search).
+
+I have extensively tested the behavior of this Webapp myself; I believe it does execute all queries as I intended.
+
+That said, if you would like to be extra sure, please download the database and query list, and query directly inside 
+your SQL database browser. 
+
+
 Purpose: This GUI allows anyone to browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
          It offers an interactive map and intuitive searches & filters.
          It also offers the option to download search results as a csv file, or export advanced search settings as an sql query 
          (The WHERE clause is dynamically generated based on user input. I have provided a default SELECT statement.
          Of course the user may customize the SELECT statment based on their needs after downloading the query)
+
 
 NOTES
 --------------------------------------------------------------------
