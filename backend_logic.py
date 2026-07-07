@@ -1250,15 +1250,23 @@ def execute_advanced_search(f_dict):
             p_param_name = f"param_person_id_{idx}"
             query_params[p_param_name] = p_id
             person_params.append(f":{p_param_name}")
+            
         if person_op == "AND":
             where_clauses.append(f"""
                 (SELECT COUNT(DISTINCT ip_sub.person_id) FROM "inscriptions_and_persons" ip_sub 
                  WHERE ip_sub.inscription_id = mt.inscription_id AND ip_sub.person_id IN ({', '.join(person_params)})) = {len(person_ids)}
             """)
         else:
-            where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
+            # FIX: Use EXISTS subquery for OR instead of relying on the joined table ip_f
+            where_clauses.append(f"""
+                EXISTS (
+                    SELECT 1 FROM "inscriptions_and_persons" ip_sub
+                    WHERE ip_sub.inscription_id = mt.inscription_id 
+                    AND ip_sub.person_id IN ({', '.join(person_params)})
+                )
+            """)
 
-    # 2. NEW ADVANCED EXCLUSION LOGIC WITH OWN OPERATOR (A NOT B Matrix)
+    # 2. EXCLUSION
     if person_excludes and person_excludes != "All" and person_excludes != ["All"]:
         applied_criteria_summary.append(f"  • Exclude Person ({person_exclude_op}): {', '.join(map(str, person_excludes))}")
         p_exc_params = []
