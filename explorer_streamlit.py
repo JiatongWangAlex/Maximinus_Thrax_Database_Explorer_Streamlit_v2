@@ -736,8 +736,9 @@ with st.expander("Advanced Search", expanded=False):
         st.markdown("**Advanced People Search**")
    
         f_person_id = st.multiselect("INCLUDE these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
-        f_person_operator = st.radio("Include:", options=["OR (Inscriptions mentioning any of these people)", "AND (Inscriptions mentioning all of them together)"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
-        
+        raw_person_op = st.radio("Include:", options=["OR (Inscriptions mentioning any of these people)", "AND (Inscriptions mentioning all of them together)"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
+        f_person_operator = "AND" if "AND" in raw_person_op else "OR"
+             
         f_person_exclude = st.multiselect("EXCLUDE these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_exc")
         raw_person_exc_op = st.radio("Exclude:", options=["OR (Inscriptions mentioning any of these people)", "AND (Inscriptions mentioning all of them together)"], horizontal=True, index=0, key="rad_person_exc_op", on_change=reset_map_and_search_flags)
         f_person_exclude_operator = "AND" if "AND" in raw_person_exc_op else "OR"
