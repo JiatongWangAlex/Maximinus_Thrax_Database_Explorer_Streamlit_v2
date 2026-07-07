@@ -19,7 +19,7 @@ I have designed the webapp's layout and logic & created features tailored to my 
 
 HOWEVER, I am not a CS student and this is not a CS thesis. While I have some knowledge of Python and SQL,
 I accepted input from a LLM when implementing and debugging this software, specifically for managing session states 
-and for writing the JavaScript and HTML snippets that introduce introducing behaviors not native to Streamlit 
+and for writing the JavaScript and HTML snippets introducing behaviors not native to Streamlit 
 (These parts of the code clear user input after every search, and scroll users down to the Results viewer 
 or Map viewer automatically after every search).
 
