@@ -28,10 +28,7 @@ I have extensively tested the behavior of this Webapp myself; I believe it does 
 That said, if you would like to be extra sure, please download the database and query list, and query directly inside 
 your SQL database browser. 
 
-The code for the user interface is provided 'as-is' for sharing, copying, and modification. I claim absolutely no rights over it. I assume no liability for any issues or damages arising from its use.
-
-(I mean, you should be fine; this is just an interface; it will not modify data or anything in the mostly imaginary scenario someone happen to 
-modify and reuse this code for a different interface)
+Terms of Use: This user interface code is provided "as-is" for sharing, copying, and modification. I claim no rights over it and assume no liability for any issues or damages arising from its use. Because this is a read-only interface, it does not modify backend data; however, any subsequent reuse or modification of this code is entirely at the user's own risk.
 
 
 ## The full documentation for this project is being prepared
