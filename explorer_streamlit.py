@@ -293,20 +293,7 @@ def callback_literature_search():
             except Exception as action_err:
                 st.error(f"Failed sourcing linked junction table IDs: {action_err}")
                      
-def teleport_to_results():
-    st.components.v1.html(
-        """
-        <script>
-            setTimeout(function() {
-                var target = window.parent.document.getElementById('results-anchor');
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 1000);
-        </script>
-        """,
-        height=0,
-    )
+
 # ----------------------------------------------------------------------------------------------------------------------------
 # UI FRONTEND
 
@@ -1285,13 +1272,19 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
                 if (target) {{
-                    target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    // requestAnimationFrame forces the browser to finish rendering 
+                    // the layout before firing the smooth scroll action
+                    window.parent.requestAnimationFrame(function() {{
+                        target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    }});
                 }} else {{
+                    // If Streamlit hasn't dropped the anchor into the DOM yet, wait 50ms and try again
                     setTimeout(executeResultsScroll, 50);
                 }}
             }}
-            window.addEventListener('load', executeResultsScroll);
-            setTimeout(executeResultsScroll, 100);
+            
+            // Try running it immediately on component load
+            executeResultsScroll();
         </script>
         """,
         height=0,
