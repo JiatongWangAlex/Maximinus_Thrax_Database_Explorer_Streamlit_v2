@@ -13,15 +13,15 @@ The roman provinces polygons in roman_provinces.json are created by me based on 
 
 ## Software Disclaimer
 
-AI/LLM USE DISCLAIMER: The dataset and data structure of the database behind this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of the research process for my BA thesis.
+AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
 
-I have written the SQL queries used in the backend of this software(i.e. the core logic of the software), and coded most of the elements which only involve native Streamlit features.
+I have designed the webapp, written the SQL queries used in the backend of this software, and coded most of the elements 
+which only involve native Streamlit features.
 
 HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
-I accepted input from a LLM when making this software, specifically for managing session states and writing 
-the JavaScript and HTML snippets for introducing behaviors not native to Streamlit.
-(Specifically clearing user input after every search, and also scrolling users down to the Results viewer or 
-Map viewer automatically after every search).
+I accepted input from a LLM when implementing and debugging this software, specifically for managing session states 
+and the JavaScript and HTML snippets for introducing behaviors not native to Streamlit (These are used to clear user input 
+after every search, and also scroll users down to the Results viewer or Map viewer automatically after every search).
 
 I have extensively tested the behavior of this Webapp myself; I believe it does execute all queries as I intended.
 
