@@ -732,16 +732,32 @@ with st.expander("Advanced Search", expanded=False):
             person_options = {row[0]: row[1] for row in db_persons}
         except Exception:
             person_options = {}
+            
         f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
-        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        f_unit_operator = st.radio("Match selected units using:", options=["OR (Any of these units)", "AND (All of these units)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_collective_op", on_change=reset_map_and_search_flags)
         
-        f_person_id = st.multiselect("Person:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags)
-        f_person_operator = st.radio("Match selected people using:", options=["OR (Any of these people)", "AND (All of these people)"], horizontal=True, index=0, label_visibility="collapsed", key="rad_person_op", on_change=reset_map_and_search_flags)
+        # --- INSTITUTIONS / GROUPS (Kept Basic) ---
+        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_unit_operator = st.radio("Match selected units using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
+        
+        st.write("---")
+        
+        # --- PEOPLE (Advanced Control Panel) ---
+        st.markdown("**People Query Matrix**")
+        
+        f_person_id = st.multiselect("Include these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
+        f_person_operator = st.radio("Match included people using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
+        
+        f_person_exclude = st.multiselect("EXCLUDE these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_exc")
+        raw_person_exc_op = st.radio("Exclude when matching:", options=["OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_person_exc_op", on_change=reset_map_and_search_flags)
+        f_person_exclude_operator = "AND" if "AND" in raw_person_exc_op else "OR"
+        
+        st.write("---")
         
         f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
 
+
+         
     # COLUMN 3: Later Modifications / Reuse
     with col3:
         st.markdown("##### Based on Later Modifications / Reuse")
