@@ -1734,9 +1734,9 @@ def generate_active_map():
             </h3>
             """
         if overlap_count > 1:
-            bg_color = "#f2f4f4" if is_bucket_approximate else "#f0f4ff"
-            text_color = "#2c3e50" if is_bucket_approximate else "#001140"
-            border_color = "#bdc3c7" if is_bucket_approximate else "#d0daff"
+            bg_color = "#f0f4ff" 
+            text_color = "#001140"
+            border_color = "#d0daff"
             popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
         
         for idx, row in enumerate(rows, 1):
@@ -1814,14 +1814,14 @@ def generate_active_map():
 
         if overlap_count > 1:
             size = 16
-            d_border = "#20304c" if is_bucket_approximate else "#001140"
-            d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff"
+            d_border = "#001140"
+            d_fill = "#1a53ff"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
             size = 10
-            d_border = "#20304c" if is_bucket_approximate else "#002fa7"
-            d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5"
+            d_border = "#002fa7"
+            d_fill =  "#33b5e5"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
@@ -1838,15 +1838,15 @@ def generate_active_map():
             # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
             if overlap_count > 1:
                 size = 16
-                e_border = "#4c2420" if is_bucket_approximate else "#400000"
-                e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
+                e_border = "#400000"
+                e_fill = "#ff1a1a"
                 # Displays the unique erased subset value within the matching physical container
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
                 size = 10
-                e_border = "#4c2420" if is_bucket_approximate else "#400000"
-                e_fill = "#9c726c" if is_bucket_approximate else "#e56333"
+                e_border = "#400000"
+                e_fill = "#e56333"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
