@@ -674,18 +674,16 @@ with st.expander("Advanced Search", expanded=False):
         )
     )
          
-    
     text_search_mode = st.radio(
         "Text Search Strategy:",
         options=[
             "Assisted Match",
             "Exact Match"
-            
         ],
         index=0,
         key="adv_text_search_mode",
         on_change=reset_map_and_search_flags,
-        help="'Exact Match' searches your exact string. 'Assisted Match' can find inscriptions containing non-standard spellings of your search term; it also checks whether your search term PARTIALLY matches the name of any indentified individuals or groups in the corpus and pulls all inscriptions linked with those individuals or groups. We cannot automatically check all inflected forms of your search term at this moment.The search bar also CANNOT search for PERSON A NOT PERSON B because it does not know which specific person you are referring to with your search term; For such purposes it is recommended to use the ADVANCED PEOPLE SEARCH BELOW."
+        help="'Exact Match' searches your exact string. 'Assisted Match' can find inscriptions containing non-standard spellings of your search term; it also checks whether your search term PARTIALLY matches the name of any identified individuals or groups in the corpus and pulls all inscriptions linked with those individuals or groups. We cannot automatically check all inflected forms of your search term at this moment. The search bar also CANNOT search for PERSON A NOT PERSON B because it does not know which specific person you are referring to with your search term; For such purposes it is recommended to use the ADVANCED PEOPLE SEARCH BELOW."
     )
          
     st.markdown("---")
@@ -693,6 +691,7 @@ with st.expander("Advanced Search", expanded=False):
     st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
+    
     # COLUMN 1: Inscription Metadata
     with col1:
         st.markdown("##### Based on Inscription Metadata")
@@ -710,6 +709,7 @@ with st.expander("Advanced Search", expanded=False):
         f_obj_mat = st.multiselect("Material:", [opt for opt in get_filter_options("materials", "material_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_status_tituli = st.multiselect("Status Tituli | Preservation Status:", [opt for opt in get_filter_options("status_tituli", "status_tituli_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_num_ins = st.multiselect("Number of Inscriptions on Object:", [opt for opt in get_filter_options("objects", "number_of_inscriptions") if opt != "All"], on_change=reset_map_and_search_flags)
+        
         st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
         st.markdown("##### Chronological Range (CE)")
         date_col1, date_col2 = st.columns(2)
@@ -717,6 +717,7 @@ with st.expander("Advanced Search", expanded=False):
             f_start_date = st.number_input("Start Year:", value=None, step=1, placeholder="e.g. 235", on_change=reset_map_and_search_flags)
         with date_col2:
             f_end_date = st.number_input("End Year:", value=None, step=1, placeholder="e.g. 238", on_change=reset_map_and_search_flags)
+        
         f_dating_strategy = st.radio(
             "Search Strategy:",
             options=["overlap", "strict"],
@@ -760,15 +761,13 @@ with st.expander("Advanced Search", expanded=False):
         f_person_exclude_operator = "AND" if "AND" in raw_person_exc_op else "OR"
              
         st.write("---")
-        # --- INSTITUTIONS / GROUPS (Kept Basic) ---
+        # --- INSTITUTIONS / GROUPS ---
         f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
         f_unit_operator = st.radio("Find inscriptions mentioning:", options=["OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
         
-             
         f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
         f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
-      
 
     # COLUMN 3: Later Modifications / Reuse
     with col3:
@@ -805,6 +804,7 @@ with st.expander("Advanced Search", expanded=False):
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
+    with col_btn1:
         form_payload = {
             "text": f_text,
             "adv_text_search_mode": text_search_mode,
@@ -829,11 +829,11 @@ with st.expander("Advanced Search", expanded=False):
             
             # --- PERSON INCLUSION ---
             "person_id": f_person_id,
-            "person_operator": f_person_operator, # Hand off your simplified 'AND'/'OR'
+            "person_operator": f_person_operator, 
             
-            # --- PERSON EXCLUSION (FIX: ADDED THESE TWO LINES) ---
+            # --- PERSON EXCLUSION ---
             "person_exclude": f_person_exclude,
-            "person_exclude_operator": f_person_exclude_operator, # Hand off your simplified 'AND'/'OR'
+            "person_exclude_operator": f_person_exclude_operator, 
             
             "collective_name": f_unit,
             "collective_operator": "AND" if "AND" in f_unit_operator else "OR",
@@ -863,6 +863,40 @@ with st.expander("Advanced Search", expanded=False):
             "end_date": f_end_date,
             "dating_strategy": f_dating_strategy,
         }
+
+        st.button(
+            "Execute Advanced Search",
+            key="btn_advanced_filter_search",
+            use_container_width=True,
+            type="primary",
+            on_click=callback_advanced_search,
+            args=(form_payload,),
+        )
+             
+    with col_btn2:
+        if st.session_state.get("active_search_has_run"):
+            dynamic_sql_query = generate_bulk_search_sql()
+            
+            sql_clicked = st.download_button(
+                label="Download SQL Query",
+                data=dynamic_sql_query,
+                file_name="search_results_compiled_query.sql",
+                mime="text/plain",
+                use_container_width=True,
+                key="btn_download_raw_sql_query"
+            )
+            
+            if sql_clicked:
+                st.session_state["skip_scroll"] = True
+                st.rerun()
+        else:
+            st.button(
+                label="Download SQL Query",
+                key="btn_advanced_sql_disabled",
+                use_container_width=True,
+                disabled=True,
+                help="Make a search first to unlock SQL query generation."
+            )
                  
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
