@@ -770,14 +770,6 @@ with st.expander("Advanced Search", expanded=False):
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
       
 
-
-        
-
-        
-
-
-
-         
     # COLUMN 3: Later Modifications / Reuse
     with col3:
         st.markdown("##### Based on Later Modifications / Reuse")
@@ -813,8 +805,6 @@ with st.expander("Advanced Search", expanded=False):
     
     col_btn1, col_btn2 = st.columns([1, 1])
 
-    with col_btn1:
-        # 1. Construct the payload dictionary exactly as you had it
         form_payload = {
             "text": f_text,
             "adv_text_search_mode": text_search_mode,
@@ -836,8 +826,15 @@ with st.expander("Advanced Search", expanded=False):
             "context_name": f_in_con,
             "province_name": f_prov,
             "number_of_inscriptions": f_num_ins,
+            
+            # --- PERSON INCLUSION ---
             "person_id": f_person_id,
-            "person_operator": "AND" if "AND" in f_person_operator else "OR",
+            "person_operator": f_person_operator, # Hand off your simplified 'AND'/'OR'
+            
+            # --- PERSON EXCLUSION (FIX: ADDED THESE TWO LINES) ---
+            "person_exclude": f_person_exclude,
+            "person_exclude_operator": f_person_exclude_operator, # Hand off your simplified 'AND'/'OR'
+            
             "collective_name": f_unit,
             "collective_operator": "AND" if "AND" in f_unit_operator else "OR",
             "virorum_distributio": f_vir_dist,
@@ -866,41 +863,6 @@ with st.expander("Advanced Search", expanded=False):
             "end_date": f_end_date,
             "dating_strategy": f_dating_strategy,
         }
-
-        # 2. Wire up the button using on_click and args
-        st.button(
-            "Execute Advanced Search",
-            key="btn_advanced_filter_search",
-            use_container_width=True,
-            type="primary",
-            on_click=callback_advanced_search,
-            args=(form_payload,),
-        )
-             
-    with col_btn2:
-        if st.session_state.get("active_search_has_run"):
-            dynamic_sql_query = generate_bulk_search_sql()
-            
-            sql_clicked = st.download_button(
-                label="Download SQL Query",
-                data=dynamic_sql_query,
-                file_name="search_results_compiled_query.sql",
-                mime="text/plain",
-                use_container_width=True,
-                key="btn_download_raw_sql_query"
-            )
-            
-            if sql_clicked:
-                st.session_state["skip_scroll"] = True
-                st.rerun()
-        else:
-            st.button(
-                label="Download SQL Query",
-                key="btn_advanced_sql_disabled",
-                use_container_width=True,
-                disabled=True,
-                help="Make a search first to unlock SQL query generation."
-            )
                  
 # SEARCH BY BIBLIOGRAPHY / LITERATURE SEARCH
 
