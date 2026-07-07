@@ -669,7 +669,7 @@ with st.expander("Advanced Search", expanded=False):
         index=0,
         key="adv_text_search_mode",
         on_change=reset_map_and_search_flags,
-        help="'Exact Match' searches your exact string. 'Assisted Match' can find inscriptions containing non-standard spellings of your search term; it also checks whether your search term matches an indentified individual or group in the corpus and pulls all inscriptions linked with that individual or group. We cannot automatically check all inflected forms of your search term at this moment."
+        help="'Exact Match' searches your exact string. 'Assisted Match' can find inscriptions containing non-standard spellings of your search term; it also checks whether your search term matches an indentified individual or group in the corpus and pulls all inscriptions linked with that individual or group. We cannot automatically check all inflected forms of your search term at this moment.The search bar also CANNOT search for PERSON A NOT PERSON B because it does not know which word should be treated exclusively as a person and not a s a generic search term; For such purposes it is infinitely easier to use the provided query list."
     )
          
     st.markdown("---")
