@@ -1269,21 +1269,25 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
         f"""
         <script>
             // Cache breaker pass: {cache_breaker}
+            var attempts = 0;
+            var maxAttempts = 60; // 60 attempts * 50ms = 3 full seconds of waiting power
+
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
+                
                 if (target) {{
-                    // requestAnimationFrame forces the browser to finish rendering 
-                    // the layout before firing the smooth scroll action
+                    // Anchor found! Wait for the paint engine to settle, then scroll smoothly
                     window.parent.requestAnimationFrame(function() {{
                         target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
                     }});
-                }} else {{
-                    // If Streamlit hasn't dropped the anchor into the DOM yet, wait 50ms and try again
+                }} else if (attempts < maxAttempts) {{
+                    // Not ready yet. Increment counter, wait 50ms, and hunt again
+                    attempts++;
                     setTimeout(executeResultsScroll, 50);
                 }}
             }}
             
-            // Try running it immediately on component load
+            // Start the radar hunt immediately when the component initializes
             executeResultsScroll();
         </script>
         """,
@@ -1291,7 +1295,6 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     )
     # Lock the scroll after it runs once, until commit_search_and_wipe_inputs drops it back to False!
     st.session_state["skip_scroll"] = True
-
 
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
