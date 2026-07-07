@@ -15,7 +15,7 @@ The roman provinces polygons in roman_provinces.json are created by me based on 
 
 AI/LLM USE DISCLAIMER: The dataset and data structure of the database behind this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of the research process for my BA thesis.
 
-I have written the SQL queries used in the backend of this software, and coded most of the elements which only involve native Streamlit features.
+I have written the SQL queries used in the backend of this software(i.e. the core logic of the software), and coded most of the elements which only involve native Streamlit features.
 
 HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
 I accepted input from a LLM when making this software, specifically for managing session states and writing 
