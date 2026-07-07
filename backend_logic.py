@@ -1424,7 +1424,11 @@ def fetch_metadata_by_id(inscription_ids_input):
         st.session_state.search_results = "Please enter one or more Inscription IDs."
         return
         
-    raw_id_list = [x.strip() for x in inscription_ids_input.split(",")]
+    # --- ADDED LINES: Strip out parentheses or brackets if copied directly from the list view ---
+    clean_input = inscription_ids_input.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
+    
+    # Updated to split the cleaned string instead of the raw input
+    raw_id_list = [x.strip() for x in clean_input.split(",")]
     valid_ids = [int(x) for x in raw_id_list if x and x.isdigit()]
     
     if not valid_ids:
