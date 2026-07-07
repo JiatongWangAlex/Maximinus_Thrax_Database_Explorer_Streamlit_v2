@@ -745,7 +745,7 @@ with st.expander("Advanced Search", expanded=False):
         st.write("---")
         # --- INSTITUTIONS / GROUPS (Kept Basic) ---
         f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        f_unit_operator = st.radio("Match selected units using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
+        f_unit_operator = st.radio("Find inscriptions mentioning:", options=["OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
         
              
         f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
