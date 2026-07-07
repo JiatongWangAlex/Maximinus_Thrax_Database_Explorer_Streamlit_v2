@@ -17,7 +17,7 @@ AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FUL
 
 I have designed the webapp's layout and logic & created features tailored to my dataset, without AI/LLM input. I have also written the SQL queries used in the backend of this software and coded most of the elements which only involve native Streamlit features.
 
-HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
+HOWEVER, I am not a CS student and this is not a CS thesis. While I have some knowledge of Python and SQL,
 I accepted input from a LLM when implementing and debugging this software, specifically for managing session states 
 and for writing the JavaScript and HTML snippets that introduce introducing behaviors not native to Streamlit 
 (These parts of the code clear user input after every search, and scroll users down to the Results viewer 
