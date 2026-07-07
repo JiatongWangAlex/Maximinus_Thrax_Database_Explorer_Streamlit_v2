@@ -734,14 +734,14 @@ with st.expander("Advanced Search", expanded=False):
             person_options = {}
 
         st.markdown("**Advanced People Search**")
-        
-        f_person_id = st.multiselect("INCLUDE these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
-        f_person_operator = st.radio(options=["Search Strategy", "OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
+   
+        f_person_id = st.multiselect("Include these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
+        f_person_operator = st.radio("Match included people using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
         
         f_person_exclude = st.multiselect("EXCLUDE these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_exc")
-        raw_person_exc_op = st.radio(options=["Search Strategy", "OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_person_exc_op", on_change=reset_map_and_search_flags)
+        raw_person_exc_op = st.radio("Exclude when matching:", options=["OR (Any of them)", "AND (All of them together)"], horizontal=True, index=0, key="rad_person_exc_op", on_change=reset_map_and_search_flags)
         f_person_exclude_operator = "AND" if "AND" in raw_person_exc_op else "OR"
-        
+             
         st.write("---")
         # --- INSTITUTIONS / GROUPS (Kept Basic) ---
         f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
