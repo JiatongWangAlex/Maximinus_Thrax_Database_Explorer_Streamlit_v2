@@ -1377,7 +1377,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
         LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
         LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
         WHERE mt.inscription_id IN ({placeholders})
-        ORDER BY mt.inscription_id ASC;
+        ORDER BY mt.object_id ASC;
         """
         
         cursor_overview.execute(overview_sql, [int(x) for x in matched_ids])
