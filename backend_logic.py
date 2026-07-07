@@ -63,13 +63,20 @@ CACHED_ROADS_DATA = load_and_parse_json(optimized_json_path)
 CACHED_PROVINCES_DATA = load_and_parse_json(provinces_json_path)
 
 
+import sqlite3
+import os
+import streamlit as st
+
+# Global storage slot to keep the connection permanently alive in memory
+if "GLOBAL_RAM_DB" not in st.session_state:
+    st.session_state["GLOBAL_RAM_DB"] = None
+
 @st.cache_resource
 def _initialize_ram_database(path):
-
     disk_conn = sqlite3.connect(path)
-    mem_conn = sqlite3.connect(':memory:', check_same_thread=False)
     
-
+    mem_conn = sqlite3.connect("file:maximinus_thrax_db?mode=memory&cache=shared", uri=True, check_same_thread=False)
+    
     disk_conn.backup(mem_conn)
     disk_conn.close()
     
@@ -78,6 +85,7 @@ def _initialize_ram_database(path):
     cursor.execute("PRAGMA temp_store = MEMORY;")
     cursor.execute("PRAGMA journal_mode = WAL;")
     
+    st.session_state["GLOBAL_RAM_DB"] = mem_conn
     return mem_conn
 
 def get_db_connection():
@@ -85,8 +93,8 @@ def get_db_connection():
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
         st.stop()
         
-    return _initialize_ram_database(db_path)
-
+    _initialize_ram_database(db_path)
+    return sqlite3.connect("file:maximinus_thrax_db?mode=memory&cache=shared", uri=True, check_same_thread=False)
 
 def get_inscription_report(cursor, inscription_ids):
 
