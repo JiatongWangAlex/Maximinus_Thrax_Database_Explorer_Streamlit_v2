@@ -3,10 +3,11 @@ Jiatong Wang | DATABASE GUI
 --------------------------------------------------------------------   
 AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
 
-I have written the SQL queries used in the backend of this software, and coded most of the elements which only involve native Streamlit features.
+I have designed the webapp, written the SQL queries used in the backend of this software, and coded most of the elements 
+which only involve native Streamlit features.
 
 HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
-I accepted input from a LLM when making this software, specifically for managing session states and the JavaScript
+I accepted input from a LLM when implementing this software, specifically for managing session states and the JavaScript
 and HTML snippets for introducing behaviors not native to Streamlit.(Specifically clearing user input after every 
 search, and also scrolling users down to the Results viewer or Map viewer automatically after every search).
 
