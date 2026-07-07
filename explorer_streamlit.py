@@ -713,7 +713,7 @@ with st.expander("Advanced Search", expanded=False):
                 "For example, if you search 236–237 CE, inscriptions dated to 236 CE or 237CE or 236-237CE will appear, "
                 "and so will inscriptions dated to 235–238 CE.\n\n"
                 "• B: Returns only inscriptions dated to a time period that falls completely inside your search window. "
-                "For example, if you search 236–236 CE, an inscription dated exactly to 236 CE will appear, "
+                "For example, if you search 236–236 CE, an inscription dated specifically to 236 CE will appear, "
                 "but an inscription dated to 235–238 CE will be excluded."
             ),
             on_change=reset_map_and_search_flags
