@@ -19,8 +19,9 @@ I have designed the webapp's layout and logic & created features tailored to my 
 
 HOWEVER, as I am not a CS student and this is not a CS thesis, while I have some knowledge of Python and SQL,
 I accepted input from a LLM when implementing and debugging this software, specifically for managing session states 
-and the JavaScript and HTML snippets for introducing behaviors not native to Streamlit (These are used to clear user input 
-after every search, and also scroll users down to the Results viewer or Map viewer automatically after every search).
+and for writing the JavaScript and HTML snippets that introduce introducing behaviors not native to Streamlit 
+(These parts of the code clear user input after every search, and scroll users down to the Results viewer 
+or Map viewer automatically after every search).
 
 I have extensively tested the behavior of this Webapp myself; I believe it does execute all queries as I intended.
 
