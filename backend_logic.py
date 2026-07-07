@@ -31,7 +31,8 @@ IF you reuse this, make sure to change/check the section.
 FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
 
 ====================================================================
-"""import sqlite3
+"""
+import sqlite3
 import os
 import textwrap
 import streamlit as st
