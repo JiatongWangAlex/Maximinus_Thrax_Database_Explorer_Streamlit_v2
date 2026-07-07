@@ -96,6 +96,9 @@ def get_db_connection():
     _initialize_ram_database(db_path)
     return sqlite3.connect("file:maximinus_thrax_db?mode=memory&cache=shared", uri=True, check_same_thread=False)
 
+
+_initialize_ram_database(db_path)
+
 def get_inscription_report(cursor, inscription_ids):
 
     # 1. AUTO-DETECT TYPE: Convert to standard list of integers
