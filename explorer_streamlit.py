@@ -732,16 +732,7 @@ with st.expander("Advanced Search", expanded=False):
             person_options = {row[0]: row[1] for row in db_persons}
         except Exception:
             person_options = {}
-            
-        f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
-        
-        # --- INSTITUTIONS / GROUPS (Kept Basic) ---
-        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
-        f_unit_operator = st.radio("Match selected units using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
-        
-        st.write("---")
-        
-        # --- PEOPLE (Advanced Control Panel) ---
+
         st.markdown("**Advanced People Search**")
         
         f_person_id = st.multiselect("Include these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
@@ -752,9 +743,21 @@ with st.expander("Advanced Search", expanded=False):
         f_person_exclude_operator = "AND" if "AND" in raw_person_exc_op else "OR"
         
         st.write("---")
+        # --- INSTITUTIONS / GROUPS (Kept Basic) ---
+        f_unit = st.multiselect("Institution/Group/Military Unit:", [opt for opt in get_filter_options("collectives", "collective_name") if opt != "All"], on_change=reset_map_and_search_flags)
+        f_unit_operator = st.radio("Match selected units using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_collective_op", on_change=reset_map_and_search_flags)
         
+             
+        f_vir_dist = st.multiselect("Distributio Virorum | Type of People Mentioned:", [opt for opt in get_filter_options("virorum_distributio", "virorum_distributio") if opt != "All"], on_change=reset_map_and_search_flags)
         f_status = st.multiselect("Attested Status Title", [opt for opt in get_filter_options("status_designations", "status_designation") if opt != "All"], on_change=reset_map_and_search_flags)
         f_pos = st.multiselect("Attested Office/Military Role:", [opt for opt in get_filter_options("positions", "position_description") if opt != "All"], on_change=reset_map_and_search_flags)
+      
+
+
+        
+
+        
+
 
 
          
