@@ -705,8 +705,8 @@ with st.expander("Advanced Search", expanded=False):
             "Search Strategy:",
             options=["overlap", "strict"],
             format_func=lambda x: (
-                "A: Search for all inscriptions whose date overlaps with this range" if x == "overlap"
-                else "B: Search for only inscriptions whose date is fully contained within this range"
+                "A: Search for all inscriptions whose date range overlaps with this range" if x == "overlap"
+                else "B: Search for only inscriptions whose date range is fully contained within this range"
             ),
             help=(
                 "• A: Returns all inscriptions dated to a time period that overlaps with your search window. "
