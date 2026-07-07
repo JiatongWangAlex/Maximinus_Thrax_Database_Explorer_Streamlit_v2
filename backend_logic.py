@@ -1517,7 +1517,8 @@ def fetch_metadata_by_object_id(object_id):
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
             
-# INTERACTIVE MAPdef generate_active_map():
+# INTERACTIVE MAP
+def generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
