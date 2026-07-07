@@ -651,7 +651,7 @@ with st.expander("Advanced Search", expanded=False):
     )
          
     st.caption(
-        "Supported logic operators", 
+        "Use Person Filters for queries like PERSON A NOT PERSON B | Supported logic operators", 
         help=(
             "**Supported Operators:**\n"
             "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
