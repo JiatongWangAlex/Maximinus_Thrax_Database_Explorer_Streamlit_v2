@@ -1508,9 +1508,7 @@ def fetch_metadata_by_object_id(object_id):
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
             
-# INTERACTIVE MAP
-
-def generate_active_map():
+# INTERACTIVE MAPdef generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -1623,7 +1621,7 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-# PROVINCES LAYER
+    # PROVINCES LAYER
     from collections import Counter
     
     # 1. Count total inscriptions per province
@@ -1807,6 +1805,7 @@ def generate_active_map():
             else:
                 popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
+            # FIXED STRUCTURAL TAG LEAK: Explicitly close the opened block for stacked records
             if overlap_count > 1:
                 popup_html += "</div>"
                      
@@ -1827,7 +1826,7 @@ def generate_active_map():
 
         folium.Marker(
             location=[lat, lon],
-            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon),
+            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon, class_name=""),
             popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
             tooltip=tooltip_label
         ).add_to(default_layer)
@@ -1835,24 +1834,22 @@ def generate_active_map():
         # PASS B: PLOT TO ERASURE OVERLAY LAYER
 
         if erased_count > 0:
-            # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
             if overlap_count > 1:
                 size = 16
                 e_border = "#400000"
                 e_fill = "#ff1a1a"
-                # Displays the unique erased subset value within the matching physical container
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
                 size = 10
                 e_border = "#400000"
                 e_fill = "#e56333"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 9999 !important; position: relative;"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
             folium.Marker(
                 location=[lat, lon],
-                icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon),
+                icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon, class_name=""),
                 popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
                 tooltip=e_tooltip
             ).add_to(erased_layer)
@@ -1877,7 +1874,6 @@ def generate_active_map():
                     if (mymap) {
                         var hiddenState = false;
                         
-                        // Native Leaflet map event listener - double click interface toggler
                         mymap.on('dblclick', function(e) {
                             hiddenState = !hiddenState;
                             
@@ -1904,8 +1900,7 @@ def generate_active_map():
     """
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
-
-
+        
         
 __all__ = [
         
