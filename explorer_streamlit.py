@@ -742,7 +742,7 @@ with st.expander("Advanced Search", expanded=False):
         st.write("---")
         
         # --- PEOPLE (Advanced Control Panel) ---
-        st.markdown("**People Query Matrix**")
+        st.markdown("**Advanced People Search**")
         
         f_person_id = st.multiselect("Include these people:", options=list(person_options.keys()), format_func=lambda x: person_options[x], on_change=reset_map_and_search_flags, key="ms_person_inc")
         f_person_operator = st.radio("Match included people using:", options=["OR", "AND"], horizontal=True, index=0, key="rad_person_op", on_change=reset_map_and_search_flags)
