@@ -17,11 +17,10 @@ AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FUL
 
 I have designed the webapp's layout and logic & created features tailored to my dataset, without AI/LLM input. I have also written the SQL queries used in the backend of this software and coded most of the elements which only involve native Streamlit features.
 
-HOWEVER, I am not a CS student and this is not a CS thesis. While I have some knowledge of Python and SQL,
-I accepted input from a LLM when implementing and debugging this software, specifically for managing session states 
-and for writing the JavaScript and HTML snippets introducing behaviors not native to Streamlit 
-(These parts of the code clear user input after every search, and scroll users down to the Results viewer 
-or Map viewer automatically after every search).
+
+
+HOWEVER, as I am not a CS student and this is not a CS thesis, I accepted input from a LLM when debugging and implementing this software, specifically for managing Streamlit session states correctly and injecting the JavaScript and HTML snippets that introduce behaviors not native to Streamlit.
+(These parts of the code are responsible for clearing user input after every search, and scrolling users down to the Results viewer or Map viewer automatically after every search).
 
 I have extensively tested the behavior of this Webapp myself; I believe it does execute all queries as I intended.
 
