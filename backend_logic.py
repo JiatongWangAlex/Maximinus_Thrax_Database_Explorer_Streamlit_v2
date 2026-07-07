@@ -62,6 +62,32 @@ def load_and_parse_json(file_path):
 CACHED_ROADS_DATA = load_and_parse_json(optimized_json_path)
 CACHED_PROVINCES_DATA = load_and_parse_json(provinces_json_path)
 
+
+@st.cache_resource
+def _initialize_ram_database(path):
+
+    disk_conn = sqlite3.connect(path)
+    mem_conn = sqlite3.connect(':memory:', check_same_thread=False)
+    
+
+    disk_conn.backup(mem_conn)
+    disk_conn.close()
+    
+    cursor = mem_conn.cursor()
+    cursor.execute("PRAGMA cache_size = -20000;")
+    cursor.execute("PRAGMA temp_store = MEMORY;")
+    cursor.execute("PRAGMA journal_mode = WAL;")
+    
+    return mem_conn
+
+def get_db_connection():
+    if not os.path.exists(db_path):
+        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
+        st.stop()
+        
+    return _initialize_ram_database(db_path)
+
+
 def get_inscription_report(cursor, inscription_ids):
 
     # 1. AUTO-DETECT TYPE: Convert to standard list of integers
@@ -560,21 +586,6 @@ ORDER BY mt.inscription_id DESC;"""
 
 
 
-def get_db_connection():
-    if not os.path.exists(db_path):
-        st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
-        st.stop()
-        
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    cursor.execute("PRAGMA cache_size = -20000;")
-  
-    cursor.execute("PRAGMA temp_store = MEMORY;")
-    
-    cursor.execute("PRAGMA journal_mode = WAL;")
-    
-    return conn
 
 
 
