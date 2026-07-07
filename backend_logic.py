@@ -31,8 +31,7 @@ IF you reuse this, make sure to change/check the section.
 FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
 
 ====================================================================
-"""
-import sqlite3
+"""import sqlite3
 import os
 import textwrap
 import streamlit as st
@@ -45,12 +44,22 @@ from branca.element import Element
 import itertools
 import time
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
-db_path = os.path.join(BASE_DIR, "maximinus_thrax.db")
 
+BASE_DIR = os.path.abspath(os.path.dirname(__file__)) if '__file__' in locals() else os.getcwd()
+
+db_path = os.path.join(BASE_DIR, "maximinus_thrax.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
 provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
 
+@st.cache_data
+def load_and_parse_json(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+CACHED_ROADS_DATA = load_and_parse_json(optimized_json_path)
+CACHED_PROVINCES_DATA = load_and_parse_json(provinces_json_path)
 
 def get_inscription_report(cursor, inscription_ids):
 
@@ -1508,12 +1517,12 @@ def fetch_metadata_by_object_id(object_id):
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
             
-# INTERACTIVE MAP
-def generate_active_map():
+# INTERACTIVE MAPdef generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
         return
+        
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1534,51 +1543,46 @@ def generate_active_map():
         cursor.execute(query, ids_to_map)
         matched_points = cursor.fetchall()
 
-        road_links_dict = {row[0]: {'roads': []} for row in matched_points}
-        if ids_to_map:
-            road_query = f"""
-                SELECT iar.inscription_id, ier.road_name, ier.itinere_id
-                FROM "inscription_and_road" iar
-                INNER JOIN "itiner_e_roads" ier ON iar.itiner_e_road_id = ier.itiner_e_road_id
-                WHERE iar.inscription_id IN ({placeholders});
-            """
-            cursor.execute(road_query, ids_to_map)
-            for ins_id, r_name, i_id in cursor.fetchall():
-                if ins_id in road_links_dict:
-                    road_links_dict[ins_id]['roads'].append((r_name, i_id))
+        if not matched_points:
+            st.info("None of the inscriptions have known geographic coordinates in the database.")
+            conn.close()
+            return
+
+        # Pre-aggregate road segments globally to bypass inline querying slowdowns
+        road_links_dict = {}
+        road_query = f"""
+            SELECT iar.inscription_id, ier.road_name, ier.itinere_id
+            FROM "inscription_and_road" iar
+            INNER JOIN "itiner_e_roads" ier ON iar.itiner_e_road_id = ier.itiner_e_road_id
+            WHERE iar.inscription_id IN ({placeholders});
+        """
+        cursor.execute(road_query, ids_to_map)
+        for ins_id, r_name, i_id in cursor.fetchall():
+            road_links_dict.setdefault(ins_id, []).append((r_name, i_id))
 
         # === PATH B LOOKUP: ERASED INSCRIPTIONS ===
-        erased_ids = set()
-        if ids_to_map:
-            erased_query = f"""
-                SELECT DISTINCT mt.inscription_id 
-                FROM "Max_Thrax" mt
-                INNER JOIN "interventions" i ON mt.inscription_id = i.patient_inscription
-                WHERE mt.inscription_id IN ({placeholders})
-                  AND mt.relevance_index = 1
-                  AND i.method_id = 2
-                  AND mt.inscription_id NOT IN (
-                      SELECT inscription_id FROM "inscriptions_and_persons" WHERE person_id = 50
-                  );
-            """
-            cursor.execute(erased_query, ids_to_map)
-            erased_ids = {row[0] for row in cursor.fetchall()}
+        erased_query = f"""
+            SELECT DISTINCT mt.inscription_id 
+            FROM "Max_Thrax" mt
+            INNER JOIN "interventions" i ON mt.inscription_id = i.patient_inscription
+            WHERE mt.inscription_id IN ({placeholders})
+              AND mt.relevance_index = 1
+              AND i.method_id = 2
+              AND mt.inscription_id NOT IN (
+                  SELECT inscription_id FROM "inscriptions_and_persons" WHERE person_id = 50
+              );
+        """
+        cursor.execute(erased_query, ids_to_map)
+        erased_ids = {row[0] for row in cursor.fetchall()}
 
         conn.close()
     except Exception as e:
         st.error(f"Map rendering fault: {e}")
         return
 
-    if not matched_points:
-        st.info("None of the inscriptions have known geographic coordinates in the database.")
-        return
-
-    # SET MAP CENTER TO LARINO
-    valid_center = [41.807100, 14.919200]
-    
-    # PERFORMANCE OPTIMIZATION 1: prefer_canvas=True forces browser-level graphic acceleration
+    # Base Folium Map Init
     mymap = folium.Map(
-        location=valid_center, 
+        location=[41.807100, 14.919200], # Center to Larino
         zoom_start=4.5, 
         tiles=None,
         zoom_snap=0.5, 
@@ -1590,184 +1594,149 @@ def generate_active_map():
         prefer_canvas=True
     )
     
-    # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
+    # Basemaps
     folium.TileLayer(
         tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
         name="Digital Atlas of the Roman Empire", 
-        overlay=False, 
-        control=True, 
-        attr="DARE",
-        show=True
+        overlay=False, attr="DARE", show=True
     ).add_to(mymap)
 
     folium.TileLayer(
         tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
         name="Ancient World Mapping Center Map", 
-        overlay=False, 
-        control=True, 
-        attr="AWMC",
-        show=False
+        overlay=False, attr="AWMC", show=False
     ).add_to(mymap)
     
-    # ITINER-E ROADS LAYER
-    optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
-    if os.path.exists(optimized_json_path):
-        with open(optimized_json_path, "r", encoding="utf-8") as f:
-            coords_data = json.load(f)
+    # ITINER-E ROADS LAYER (Instant lookup via Pre-Parsed RAM Cache)
+    if CACHED_ROADS_DATA:
         folium.GeoJson(
-            coords_data, 
+            CACHED_ROADS_DATA, 
             name="Roads (based on Itiner-e)", 
-            show=True, 
-            overlay=True, 
-            control=True,
+            show=True, overlay=True, control=True,
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-    # PROVINCES LAYER
-    from collections import Counter
-    search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
-    erased_counts = Counter([
-        row[9].strip() 
-        for row in matched_points 
-        if len(row) > 9 and row[9] and row[0] in erased_ids
-    ])
-    
-    if os.path.exists(provinces_json_path):
-        with open(provinces_json_path, "r", encoding="utf-8") as f:
-            provinces_data = json.load(f)
+    # PROVINCES LAYER (Instant lookup via Pre-Parsed RAM Cache)
+    if CACHED_PROVINCES_DATA:
+        from collections import Counter
+        search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
+        erased_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9] and row[0] in erased_ids])
         
-        features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
-        for feature in features:
+        # Accessing nested list to update tooltip indicators dynamically
+        for feature in CACHED_PROVINCES_DATA.get("features", []):
             props = feature.setdefault("properties", {})
             geo_name = props.get("Name") or props.get("province_name")
-            if geo_name:
-                geo_name_clean = geo_name.strip()
-                props["search_count"] = f"<br>{search_counts.get(geo_name_clean, 0)}"
-                props["erased_count"] = f"<br>{erased_counts.get(geo_name_clean, 0)}"
-            else:
-                props["search_count"] = "<br>0"
-                props["erased_count"] = "<br>0"
+            geo_name_clean = geo_name.strip() if geo_name else None
+            props["search_count"] = f"<br>{search_counts.get(geo_name_clean, 0)}"
+            props["erased_count"] = f"<br>{erased_counts.get(geo_name_clean, 0)}"
                 
         folium.GeoJson(
-            provinces_data, 
+            CACHED_PROVINCES_DATA, 
             name="Provinces (200CE)", 
-            show=True, 
-            overlay=True, 
-            control=True,
+            show=True, overlay=True, control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["Name", "search_count", "erased_count"], 
                 aliases=["Province:", "Matching<br>Inscriptions:", "Relevant<br>Erasures:"], 
-                localize=True,
-                style="font-family: sans-serif; font-size: 13px; padding: 8px;"
+                localize=True, style="font-family: sans-serif; font-size: 13px; padding: 8px;"
             )
         ).add_to(mymap)
 
-    # STACKABLE VISUAL LAYERS
+    # Visual Presentation Layers
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
 
-    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (UNCERTAINTY BOUNDS)
+    # Process Coordinates and Parse Uncertainty Poly-bounds in One Single Sweep
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
-        if lat is not None and lon is not None:
-            try:
-                coord_key = (float(lat), float(lon))
-                if coord_key not in coord_buckets:
-                    coord_buckets[coord_key] = []
-                coord_buckets[coord_key].append(row)
-            except (ValueError, TypeError):
-                continue 
+        if lat is None or lon is None:
+            continue
+        try:
+            coord_key = (float(lat), float(lon))
+            coord_buckets.setdefault(coord_key, []).append(row)
+        except (ValueError, TypeError):
+            continue 
 
+        # Inline uncertainty layout injection
         geo_json_str = row[13]
-        f_id = row[0]
         if geo_json_str:
             try:
-                polygon_geometry = json.loads(geo_json_str)
                 folium.GeoJson(
-                    polygon_geometry,
+                    json.loads(geo_json_str),
                     style_function=lambda feature: {
-                        "color": "#7f8c8d",       
-                        "weight": 2,
-                        "dashArray": "6, 6",      
-                        "fillColor": "#95a5a6",   
-                        "fillOpacity": 0.15,
+                        "color": "#7f8c8d", "weight": 2, "dashArray": "6, 6", "fillColor": "#95a5a6", "fillOpacity": 0.15
                     },
-                    tooltip=f"Uncertainty Bounds for Inscription ID: {f_id}"
+                    tooltip=f"Uncertainty Bounds for Inscription ID: {row[0]}"
                 ).add_to(range_layer)
             except Exception:
                 pass
-                
-    # GENERATE MARKERS FOR BOTH VISUAL LAYERS
+                    
+    # Plot Dynamic Spatial Markers using Fast Buffer String Formatting
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         bucket_erased_rows = [row for row in rows if row[0] in erased_ids]
         erased_count = len(bucket_erased_rows)
             
-        popup_html = ""
+        html_buffer = []
         if is_bucket_approximate:
-            popup_html += '<h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">WARNING: APPROXIMATE COORDINATES</h3>'
+            html_buffer.append('<h3 style="color: #000000; margin: 0 0 10px 0; font-weight: bold; text-align: center; font-size: 13px;">WARNING: APPROXIMATE COORDINATES</h3>')
         if overlap_count > 1:
-            popup_html += f"<div style='background-color:#f0f4ff; color:#001140; padding:5px; margin-bottom:8px; border:1px solid #d0daff; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
-        
+            html_buffer.append(f"<div style='background-color:#f0f4ff; color:#001140; padding:5px; margin-bottom:8px; border:1px solid #d0daff; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>")
+        elif is_bucket_approximate:
+            html_buffer.append("<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>Some legacy place names cannot be securely linked to a modern location.<br>Approximate coordinates represent the geometric center.<br></span><br>")
+
         for idx, row in enumerate(rows, 1):
             f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
-            province_name = row[9] if len(row) > 9 else "N/A"
-            place_name_val = row[10] if len(row) > 10 else None
-            pleiades_id_val = row[11] if len(row) > 11 else None
+            province = row[9] or "N/A"
+            place = row[10] or "N/A"
+            pleiades_id_val = str(row[11]).strip() if row[11] else ""
             is_approx = row[12]
 
-            ins_count = num_ins if num_ins is not None else "N/A"
-            sequence = seq_id if seq_id is not None else "N/A"
-            province = province_name if province_name is not None else "N/A"
-            place = place_name_val if place_name_val is not None else "N/A"
-            
-            pleiades_link = f'<a href="https://pleiades.stoa.org/places/{str(pleiades_id_val).strip()}" target="_blank">{str(pleiades_id_val).strip()}</a>' if pleiades_id_val and str(pleiades_id_val).strip() else 'N/A'
+            pleiades_link = f'<a href="https://pleiades.stoa.org/places/{pleiades_id_val}" target="_blank">{pleiades_id_val}</a>' if pleiades_id_val else 'N/A'
             ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text.replace("EDCS-", "")}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
             if overlap_count > 1:
                 item_border = "#7f8c8d" if is_approx == 1 else "#001140"
-                popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'><span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
+                html_buffer.append(f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'><span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>")
                 if f_id in erased_ids:
-                    popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
+                    html_buffer.append(" <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>")
                 if is_approx == 1:
-                    popup_html += " <span style='font-size:10px; color:#000000; font-weight:bold;'>(APPROXIMATE)</span>"
-                popup_html += "<br>"
+                    html_buffer.append(" <span style='font-size:10px; color:#000000; font-weight:bold;'>(APPROXIMATE)</span>")
+                html_buffer.append("<br>")
 
-            if overlap_count == 1 and is_approx == 1:
-                popup_html += "<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>Some legacy place names cannot be securely linked to a modern location.<br>Approximate coordinates represent the geometric center of the area where the place is likely located.<br></span><br>"
-                 
-            popup_html += f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
+            html_buffer.append(f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}")
             if overlap_count == 1 and f_id in erased_ids:
-                popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
+                html_buffer.append(" <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>")
                 
-            popup_html += f"<br><b>Number of Inscriptions:</b> {ins_count} | <b>Sequence ID:</b> {sequence}<br><b>Province:</b> {province}<br><b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}"
+            html_buffer.append(f"<br><b>Number of Inscriptions:</b> {num_ins if num_ins is not None else 'N/A'} | <b>Sequence ID:</b> {seq_id if seq_id is not None else 'N/A'}<br><b>Province:</b> {province}<br><b>Place:</b> {place} | <b>Pleiades:</b> {pleiades_link}")
             
             if support_id in (1, 2):
-                popup_html += "<br><b>Type of Inscription:</b> Milestone"
-                info = road_links_dict.get(f_id, {'roads': []})
-                if info['roads']:
-                    road_name = ", ".join(list(set(r[0] for r in info['roads'] if r[0])))
-                    popup_html += f"<br><b>road segment:</b> {road_name if road_name else 'N/A'}"
-                    links = [f'<a href="https://itiner-e.org/?id={r[1]}" target="_blank">itiner-e.org/?id={r[1]}</a>' for r in info['roads'] if r[1]]
-                    popup_html += f"<br><b>itiner-e link to road segment:</b> {', '.join(links) if links else 'N/A'}"
+                html_buffer.append("<br><b>Type of Inscription:</b> Milestone")
+                roads = road_links_dict.get(f_id, [])
+                if roads:
+                    road_name = ", ".join(list(set(r[0] for r in roads if r[0])))
+                    html_buffer.append(f"<br><b>road segment:</b> {road_name or 'N/A'}")
+                    links = [f'<a href="https://itiner-e.org/?id={r[1]}" target="_blank">itiner-e.org/?id={r[1]}</a>' for r in roads if r[1]]
+                    html_buffer.append(f"<br><b>itiner-e link to road segment:</b> {', '.join(links) if links else 'N/A'}")
                 else:
-                    popup_html += "<br><b>road segment:</b> N/A<br><b>itiner-e link to road segment:</b> N/A"
+                    html_buffer.append("<br><b>road segment:</b> N/A<br><b>itiner-e link to road segment:</b> N/A")
             else:
-                popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
+                html_buffer.append(f"<br><b>Type of Inscription:</b> {dist_tit or 'N/A'}<br><b>support:</b> {support_name or 'N/A'}")
             
             if overlap_count > 1:
-                popup_html += "</div>"
-                     
-        # PASS A: PLOT TO DEFAULT VIEW LAYER 
+                html_buffer.append("</div>")
+
+        popup_html = "".join(html_buffer)
+        shared_popup = folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480)
+
+        # PASS A: RENDER DIRECT STANDARD VIEW
         if overlap_count > 1:
             size, d_border, d_fill = 16, "#001140", "#1a53ff"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
-            # PERFORMANCE OPTIMIZATION 2: Lightened Tooltip payload strings
             tooltip_label = f"{overlap_count} entries (Approximate)" if is_bucket_approximate else f"{overlap_count} inscriptions"
         else:
             size, d_border, d_fill = 10, "#002fa7", "#33b5e5"
@@ -1776,36 +1745,36 @@ def generate_active_map():
 
         folium.Marker(
             location=[lat, lon],
-            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon, class_name=""),
-            popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
+            icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon),
+            popup=shared_popup,
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-        # PASS B: PLOT TO ERASURE OVERLAY LAYER
+        # PASS B: RENDER ERASURES HIGHLIGHT OVERLAY
         if erased_count > 0:
             if overlap_count > 1:
                 size, e_border, e_fill = 16, "#400000", "#ff1a1a"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{erased_count}</div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
                 e_tooltip = f"{erased_count} erasures"
             else:
                 size, e_border, e_fill = 10, "#400000", "#e56333"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 9999 !important; position: relative;"></div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Erasure)"
 
             folium.Marker(
                 location=[lat, lon],
-                icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon, class_name=""),
-                popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
+                icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon),
+                popup=shared_popup,
                 tooltip=e_tooltip
             ).add_to(erased_layer)
 
-    # Attach all layers to map
+    # Attach processed structures to map
     range_layer.add_to(mymap)
     default_layer.add_to(mymap)
     erased_layer.add_to(mymap)
     folium.LayerControl(collapsed=False).add_to(mymap)
 
-    # Global UI Script (Handles double-click interface hiding)
+    # Global Leaflet UI Macro Control Script
     double_click_hide_script = """
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
