@@ -1717,7 +1717,9 @@ def generate_active_map():
                 ).add_to(range_layer)
             except Exception:
                 pass
-                # GENERATE MARKERS FOR BOTH VISUAL LAYERS
+# GENERATE MARKERS FOR BOTH VISUAL LAYERS (COMPACT 11px PROFILE)
+    size = 11
+    
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
@@ -1807,16 +1809,15 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
                      
-        # PASS A: PLOT TO DEFAULT VIEW LAYER (UNIFORM SIZE 10)
-        size = 10
+        # PASS A: PLOT TO DEFAULT VIEW LAYER
         d_border = "#20304c" if is_bucket_approximate else "#001140"
         d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff"
         
         if overlap_count > 1:
-            d_icon = f'<div style="background-color: {d_fill}; border: 1.5px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 7px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4);">{overlap_count}</div>'
+            d_icon = f'<div style="background-color: {d_fill}; border: 1px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 6px; font-weight: 900; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); box-sizing: border-box; padding: 0; line-height: 1;">{overlap_count}</div>'
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
-            d_icon = f'<div style="background-color: {d_fill}; border: 1.5px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+            d_icon = f'<div style="background-color: {d_fill}; border: 1px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); box-sizing: border-box;"></div>'
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         folium.Marker(
@@ -1826,16 +1827,16 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-        # PASS B: PLOT TO ERASURE OVERLAY LAYER (UNIFORM SIZE 10)
+        # PASS B: PLOT TO ERASURE OVERLAY LAYER
         if erased_count > 0:
             e_border = "#4c2420" if is_bucket_approximate else "#400000"
             e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
             
             if erased_count > 1:
-                e_icon = f'<div style="background-color: {e_fill}; border: 1.5px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 7px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4);">{erased_count}</div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 1px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 6px; font-weight: 900; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); box-sizing: border-box; padding: 0; line-height: 1;">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
-                e_icon = f'<div style="background-color: {e_fill}; border: 1.5px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 1px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); box-sizing: border-box;"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
             folium.Marker(
@@ -1844,6 +1845,7 @@ def generate_active_map():
                 popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
                 tooltip=e_tooltip
             ).add_to(erased_layer)
+                
     # Attach all layers to map
     range_layer.add_to(mymap)
     default_layer.add_to(mymap)
