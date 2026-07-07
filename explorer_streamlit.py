@@ -57,7 +57,7 @@ To Future Me: This script is just the streamlit interface
 This file itself is somewhat reusable for a different project as long as backend_logic.py and the schema of version_58.db stays the same.
 
 
-HOWEVER the parts of the interface (Advanced Search, Search Results List View, and Map Viewer) which contain logic flagging inscriptions according
+HOWEVER the parts of the interface (Advanced Search,  List View, and Map Viewer) which contain logic flagging inscriptions according
 to whether they are relevant to Maximinus Thrax or whether the erasure they suffered are relevant to Maximinus Thrax need to change.
 
 BECAUSE the logic that determines whether an erasure is relevant to Maximinus Thrax (this is hardcoded to exclude any inscription
@@ -530,8 +530,8 @@ with st.expander("Click to View Site Instructions / Welcome Text", expanded=Fals
 * Insert the EDCS record number formatted as `EDCS-12345678` and click **Generate Report**.
 
 ### Inscription ID
-* Browsing the map and want to learn more about a specific inscription without scrolling to it in the search results? Type its ID here and click **Generate Report!**
-* > **NOTE:** This will clear your original search results. Consider opening a new window for this if you are using complex filters.
+* Browsing the map and want to learn more about a specific inscription without scrolling to it in the ? Type its ID here and click **Generate Report!**
+* > **NOTE:** This will clear your original . Consider opening a new window for this if you are using complex filters.
     
 ### Lookup Person ID by Name
 * Want to search for a specific individual without using the main search bar? Insert the person's name, click the **Person Name** button, and look at the **Select Person** field to the right.
@@ -1226,12 +1226,12 @@ else:
     with col_exp_left:
         st.button(
             label="Export Results to CSV", key="global_csv_disabled_footer_csv",
-            use_container_width=True, disabled=True, help="Make a search before exporting search results."
+            use_container_width=True, disabled=True, help="Make a search before exporting ."
         )
     with col_exp_mid:
         st.button(
             label="Generate Map", key="global_map_disabled_footer_map",
-            use_container_width=True, disabled=True, help="Make a search before mapping search results."
+            use_container_width=True, disabled=True, help="Make a search before mapping ."
         )
 
 # --- AUTOMATIC SEARCH COMMIT DETECTOR ---
@@ -1353,6 +1353,9 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
     
     if "list_view_expanded" not in st.session_state:
         st.session_state["list_view_expanded"] = True
+        
+    if "show_comma_list" not in st.session_state:
+        st.session_state["show_comma_list"] = False
 
     matched_ids = st.session_state.active_inscription_ids
     
@@ -1404,7 +1407,6 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
             
             # Using standard native Streamlit height scroll container
             with st.container(height=200):
-                
                 for row in overview_rows:
                     ins_id, obj_id, ins_ref, line_ref, prov_name, type_of_inscription, dating_val, erasure_status = row
                     
@@ -1423,6 +1425,26 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                         f"**Dating:** {dating_val} | "
                         f"*{erasure_status}*"
                     )
+            
+            st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+            
+            # Toggle Button logic to open or close the secondary container
+            if st.button(
+                "Show inscription ID's as a comma separated list" if not st.session_state["show_comma_list"] else "Hide comma separated list", 
+                use_container_width=True, 
+                key="btn_toggle_comma_container"
+            ):
+                st.session_state["show_comma_list"] = not st.session_state["show_comma_list"]
+                st.rerun()
+                
+            # Secondary dynamic sub-container that prints the formatted list within parentheses
+            if st.session_state["show_comma_list"]:
+                with st.container(border=True):
+                    comma_separated_ids = ", ".join(str(x) for x in sorted(list(set(matched_ids))))
+                    parenthesized_list = f"({comma_separated_ids})"
+                    
+                    st.caption("Formatted for SQL IN clauses or bulk lookup operations (Click right icon to Copy):")
+                    st.code(parenthesized_list, language="text")
                 
     except Exception as overview_error:
         st.warning(f"Could not render the List View container: {overview_error}")
