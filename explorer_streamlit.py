@@ -138,7 +138,8 @@ def commit_search_and_wipe_inputs():
     
     if "lit_display_map" in st.session_state:
         del st.session_state.lit_display_map
-
+             
+    st.session_state["show_comma_list"] = False
     st.session_state["inputs_are_dirty"] = False
     st.session_state["skip_scroll"] = False
 
