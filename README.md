@@ -13,7 +13,7 @@ The roman provinces polygons in roman_provinces.json are created by me based on 
 
 ## Software Disclaimer
 
-AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
+AI/LLM USE DISCLAIMER: The dataset and data structure of the database behind this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of the research process for my BA thesis.
 
 I have written the SQL queries used in the backend of this software, and coded most of the elements which only involve native Streamlit features.
 
