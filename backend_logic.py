@@ -1623,7 +1623,7 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-    # PROVINCES LAYER
+# PROVINCES LAYER
     from collections import Counter
     
     # 1. Count total inscriptions per province
@@ -1687,15 +1687,15 @@ def generate_active_map():
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
 
     # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (UNCERTAINTY BOUNDS)
-    inscription_pin_dictionary = {}
+    coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
         if lat is not None and lon is not None:
             try:
                 coord_key = (float(lat), float(lon))
-                if coord_key not in inscription_pin_dictionary:
-                    inscription_pin_dictionary[coord_key] = []
-                inscription_pin_dictionary[coord_key].append(row)
+                if coord_key not in coord_buckets:
+                    coord_buckets[coord_key] = []
+                coord_buckets[coord_key].append(row)
             except (ValueError, TypeError):
                 continue 
 
@@ -1718,10 +1718,8 @@ def generate_active_map():
             except Exception:
                 pass
                 
-    # GENERATE MARKERS FOR BOTH VISUAL LAYERS (UNIFIED 11px PROFILE)
-    size = 11
-    
-    for (lat, lon), rows in inscription_pin_dictionary.items():
+    # GENERATE MARKERS FOR BOTH VISUAL LAYERS
+    for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
@@ -1767,6 +1765,7 @@ def generate_active_map():
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
                 popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
                 
+                # Dynamic UX Tag placement inside the Record header line
                 if f_id in erased_ids:
                     popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 if is_approx == 1:
@@ -1785,6 +1784,7 @@ def generate_active_map():
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
             )
             
+            # Dynamic UX Tag placement for Single Marker views
             if overlap_count == 1 and f_id in erased_ids:
                 popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 
@@ -1810,15 +1810,19 @@ def generate_active_map():
             if overlap_count > 1:
                 popup_html += "</div>"
                      
-        # PASS A: PLOT TO DEFAULT VIEW LAYER
-        d_border = "#20304c" if is_bucket_approximate else "#001140"
-        d_fill = "#6c7c9c" if is_bucket_approximate else "#001140" 
-        
+        # PASS A: PLOT TO DEFAULT VIEW LAYER 
+
         if overlap_count > 1:
-            d_icon = f'<div style="background-color: {d_fill}; border: 1px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 7px; font-weight: 900; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); box-sizing: border-box; padding: 0; line-height: 1;">{overlap_count}</div>'
+            size = 16
+            d_border = "#20304c" if is_bucket_approximate else "#001140"
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#1a53ff"
+            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
             tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
         else:
-            d_icon = f'<div style="background-color: {d_fill}; border: 1px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); box-sizing: border-box;"></div>'
+            size = 10
+            d_border = "#20304c" if is_bucket_approximate else "#002fa7"
+            d_fill = "#6c7c9c" if is_bucket_approximate else "#33b5e5"
+            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
         folium.Marker(
@@ -1829,15 +1833,21 @@ def generate_active_map():
         ).add_to(default_layer)
 
         # PASS B: PLOT TO ERASURE OVERLAY LAYER
+
         if erased_count > 0:
-            e_border = "#4c2420" if is_bucket_approximate else "#400000"
-            e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
-            
-            if erased_count > 1:
-                e_icon = f'<div style="background-color: {e_fill}; border: 1px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 7px; font-weight: 900; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); box-sizing: border-box; padding: 0; line-height: 1;">{erased_count}</div>'
+            # UX RE-ENGINEERING: Marker size strictly mirrors default layer (overlap_count) to prevent donuts
+            if overlap_count > 1:
+                size = 16
+                e_border = "#4c2420" if is_bucket_approximate else "#400000"
+                e_fill = "#9c726c" if is_bucket_approximate else "#ff1a1a"
+                # Displays the unique erased subset value within the matching physical container
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
-                e_icon = f'<div style="background-color: {e_fill}; border: 1px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); box-sizing: border-box;"></div>'
+                size = 10
+                e_border = "#4c2420" if is_bucket_approximate else "#400000"
+                e_fill = "#9c726c" if is_bucket_approximate else "#e56333"
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
             folium.Marker(
@@ -1894,6 +1904,7 @@ def generate_active_map():
     """
     mymap.get_root().header.add_child(folium.Element(double_click_hide_script))
     st.session_state.trigger_map_html = mymap._repr_html_()
+
 
         
 __all__ = [
