@@ -1234,11 +1234,18 @@ def execute_advanced_search(f_dict):
                 query_params[p_name] = item
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
 
-    # EXPLICIT METADATA FILTERS
+# FILTERS WITH RADIO TOGGLES
+    # PERSON FILTERS
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
+    
+    # EXCLUSION
+    person_excludes = f_dict.get('person_exclude', [])
+    person_exclude_op = f_dict.get('person_exclude_operator', 'OR')
+
+    # INCLUSION
     if person_ids and person_ids != "All" and person_ids != ["All"]:
-        applied_criteria_summary.append(f"  • Person ({person_op}): {', '.join(map(str, person_ids))}")
+        applied_criteria_summary.append(f"  • Include Person ({person_op}): {', '.join(map(str, person_ids))}")
         person_params = []
         for idx, p_id in enumerate(person_ids):
             p_param_name = f"param_person_id_{idx}"
@@ -1251,6 +1258,38 @@ def execute_advanced_search(f_dict):
             """)
         else:
             where_clauses.append(f"ip_f.person_id IN ({', '.join(person_params)})")
+
+    # 2. NEW ADVANCED EXCLUSION LOGIC WITH OWN OPERATOR (A NOT B Matrix)
+    if person_excludes and person_excludes != "All" and person_excludes != ["All"]:
+        applied_criteria_summary.append(f"  • Exclude Person ({person_exclude_op}): {', '.join(map(str, person_excludes))}")
+        p_exc_params = []
+        for idx, p_id in enumerate(person_excludes):
+            p_exc_param_name = f"param_person_exc_{idx}"
+            query_params[p_exc_param_name] = p_id
+            p_exc_params.append(f":{p_exc_param_name}")
+        
+        if person_exclude_op == "AND":
+            # Exclude ONLY if every single person in the blacklist is tied to this inscription
+            where_clauses.append(f"""
+                NOT EXISTS (
+                    SELECT 1 FROM "inscriptions_and_persons" ip_exc
+                    WHERE ip_exc.inscription_id = mt.inscription_id 
+                    AND ip_exc.person_id IN ({', '.join(p_exc_params)})
+                    GROUP BY ip_exc.inscription_id
+                    HAVING COUNT(DISTINCT ip_exc.person_id) = {len(person_excludes)}
+                )
+            """)
+        else:
+            # OR (Default): Drop the inscription if ANY of these blacklisted people show up
+            where_clauses.append(f"""
+                NOT EXISTS (
+                    SELECT 1 FROM "inscriptions_and_persons" ip_exc
+                    WHERE ip_exc.inscription_id = mt.inscription_id 
+                    AND ip_exc.person_id IN ({', '.join(p_exc_params)})
+                )
+            """)
+
+    # COLLECTIVE FILTERS
 
     collective_names = f_dict.get('collective_name', [])
     collective_op = f_dict.get('collective_operator', 'OR')
@@ -1287,7 +1326,7 @@ def execute_advanced_search(f_dict):
         """)
 
     # ==========================================================================
-    # ADVANCED TEXT CLAUSE STRATEGY CONTROLLER
+    # ADVANCED TEXT SEARCH
     # ==========================================================================
     phrase = f_dict.get('text', '').strip()
     # SAFE LOOKUP: aligned explicitly to the exact key used by your st.radio widget
