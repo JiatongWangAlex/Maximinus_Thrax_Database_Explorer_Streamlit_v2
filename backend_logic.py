@@ -266,11 +266,10 @@ def get_inscription_report(cursor, inscription_ids):
                 curr_tag = " [current inscription]" if sib_id == ins_id else ""
                 
                 item_interv = interv_by_ins_id.get(sib_id, [])
-                
                 if not item_interv:
-                    report.append(f"**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
+                    report.append(f"\n**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
                 else:
-                    report.append(f"**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
+                    report.append(f"\n**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
                     for _, interv_id, idx, note, m_id, ext_desc, meth_desc in item_interv:
                         idx_lbl = idx if idx else 1
                         note_str = f" {note}" if note else ""
@@ -282,7 +281,7 @@ def get_inscription_report(cursor, inscription_ids):
                         elif m_id == 4:
                             report.append(f"  * _intervention {idx_lbl} :_ monument damage{note_str}")
                         elif m_id == 5:
-                            report.append(f"  * _intervention {idx_lbl} :_ restoration of erased text{note_str}")
+                            report.append(f"  * _intervention {idx_lbl} :_ restoration of erased text by next inscription {note_str}")
                         elif m_id == 6:
                             report.append(f"  * _intervention {idx_lbl} :_ reuse as support for new inscription{note_str}")
                         else:
