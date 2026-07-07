@@ -1443,7 +1443,7 @@ if st.session_state.get("active_search_has_run") and st.session_state.get("activ
                     comma_separated_ids = ", ".join(str(x) for x in sorted(list(set(matched_ids))))
                     parenthesized_list = f"({comma_separated_ids})"
                     
-                    st.caption("Formatted for SQL IN clauses or bulk lookup operations (Click right icon to Copy):")
+                    st.caption("Inscription ID list formatted for SQL IN clauses:")
                     st.code(parenthesized_list, language="text")
                 
     except Exception as overview_error:
