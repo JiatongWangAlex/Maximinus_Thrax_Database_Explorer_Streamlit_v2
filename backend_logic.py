@@ -684,9 +684,16 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
         LEFT JOIN "persons" p ON ip.person_id = p.person_id
         LEFT JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
         LEFT JOIN "collectives" c ON ic.collective_id = c.collective_id
+        LEFT JOIN "places" pl ON mt.place_id = pl.place_id
+        LEFT JOIN "context_types" ct ON mt.context_id = ct.context_id
+        LEFT JOIN "materials" m ON mt.material_id = m.material_id
+        LEFT JOIN "support" s ON mt.support_id = s.support_id
+        LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
+        LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
+        LEFT JOIN "objects" o ON mt.object_id = o.object_id
+        LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
         WHERE ({where_clauses}) {base_intersect_sql}
     """
-    
     params = {**base_query_params, "w": f"%{word}%"}
     cursor.execute(match_sql, params)
     results = {row[0] for row in cursor.fetchall()}
@@ -700,10 +707,7 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
 
 
 def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clauses, base_query_params):
-    """
-    Shared execution engine with top-level diagnostics to catch why 
-    the search loop might be skipped entirely.
-    """
+
     if base_where_clauses is None: base_where_clauses = []
     if base_query_params is None: base_query_params = {}
     
@@ -778,18 +782,12 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
 # =========================================================================
 
 def exact_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
-    """
-    Exploded Exact Search Strategy.
-    Restricted strictly to the physical inscription text and stripped layout fields.
-    """
+
     return _execute_set_search_logic(cursor, user_input, False, base_where_clauses, base_query_params)
 
 
 def assisted_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
-    """
-    Exploded Assisted Search Strategy.
-    Enables deep relational fallbacks into deep collections, alternate readings, and names.
-    """
+        
     return _execute_set_search_logic(cursor, user_input, True, base_where_clauses, base_query_params)
 
 # KEY WORD OR PHRASE SEARCH
