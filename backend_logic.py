@@ -1128,7 +1128,7 @@ def execute_advanced_search(f_dict):
     st.session_state["active_search_query_params"] = query_params
     st.session_state["active_search_has_run"] = True
 
-    # SQL SETUP (Cleaned out mt.further_bibliography to align with core schema reduction)
+    # SQL SETUP 
     base_sql = """
         SELECT DISTINCT
             mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref,
@@ -1158,6 +1158,7 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
         LEFT JOIN "collectives" col ON ic.collective_id = col.collective_id
         LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
+        LEFT JOIN "places" pl ON mt.place_id = pl.place_id
         WHERE 1=1
     """
     
@@ -1219,7 +1220,8 @@ def execute_advanced_search(f_dict):
         ('method_description', 'meth.method_description', 'Method of Intervention'),
         ('extent_description', 'ext.extent_description', 'Extent of Intervention'),
         ('target_description', 'targ.target_description', 'Target of Intervention'),
-        ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)')
+        ('status_tituli_name', 'st.status_tituli_name', 'Status Tituli (Conservation)'),
+        ('place_name', 'pl.place_name', 'Place'),
     ]
 
     for key, column_sql, display_name in mapping:
