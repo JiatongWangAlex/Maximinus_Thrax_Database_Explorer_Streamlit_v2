@@ -340,7 +340,7 @@ def reset_map_and_search_flags():
     st.session_state["active_search_has_run"] = False
     st.session_state["trigger_map_html"] = None
 
-#SETUP FOR CSV EXPORT
+
 def export_results_to_csv(cursor):
     import io
     import csv
@@ -471,7 +471,6 @@ def export_results_to_csv(cursor):
     return csv_buffer.getvalue()
          
     
-#SETUP FOR SQL QUERY EXPORT
 
 def generate_sql_query_from_filters():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
@@ -499,6 +498,7 @@ def generate_sql_query_from_filters():
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
+        
     return f"""
 SELECT DISTINCT
     mt.inscription_id AS [Inscription ID],
@@ -581,12 +581,27 @@ LEFT JOIN "support" s ON mt.support_id = s.support_id
 LEFT JOIN "context_types" ct ON mt.context_id = ct.context_id
 LEFT JOIN "provinces" pr ON mt.province_id = pr.province_id
 LEFT JOIN "objects" o ON mt.object_id = o.object_id
-LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
 LEFT JOIN "status_tituli" st ON mt.status_tituli_id = st.status_tituli_id
 LEFT JOIN "distributio_titulorum" dt ON mt.distributio_titulorum_id = dt.distributio_titulorum_id
+LEFT JOIN "places" pl ON mt.place_id = pl.place_id
+LEFT JOIN "inscriptions_and_persons" ip_f ON mt.inscription_id = ip_f.inscription_id
+LEFT JOIN "status_designation_attestations" sda ON ip_f.inscription_person_id = sda.inscription_person_id
+LEFT JOIN "status_designations" sd ON sda.status_designation_id = sd.status_designation_id
+LEFT JOIN "position_attestations" pa ON ip_f.inscription_person_id = pa.inscription_person_id
+LEFT JOIN "positions" pos ON pa.position_id = pos.position_id
+LEFT JOIN "persons_and_virorum_distributio" pvd ON ip_f.person_id = pvd.person_id
+LEFT JOIN "virorum_distributio" vd ON pvd.virorum_distributio_id = vd.virorum_distributio_id
+LEFT JOIN "interventions_and_inscriptions" iai ON mt.inscription_id = iai.inscription_id
+LEFT JOIN "interventions" inter ON iai.intervention_id = inter.intervention_id
+LEFT JOIN "methods" meth ON inter.method_id = meth.method_id
+LEFT JOIN "extent" ext ON inter.extent_id = ext.extent_id
+LEFT JOIN "interventions_and_targets" iat ON inter.intervention_id = iat.intervention_id
+LEFT JOIN "targets" targ ON iat.target_id = targ.target_id
+LEFT JOIN "inscriptions_and_collectives" ic ON mt.inscription_id = ic.inscription_id
+LEFT JOIN "collectives" col ON ic.collective_id = col.collective_id
 WHERE 1=1 {where_str}
-ORDER BY mt.inscription_id DESC;"""
-
+ORDER BY mt.inscription_id DESC;
+"""
 
 #for underlining words with non standard spellings in inscription text
 def convert_markdown_bold_to_underline(text):
