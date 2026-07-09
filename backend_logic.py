@@ -111,7 +111,7 @@ def get_inscription_report(cursor, inscription_ids):
     placeholders = ",".join(["?"] * len(valid_ids))
     
 
-    # 1 to many relationships
+    # 1 to 1 and 1 to many relationships
     sql_main = f"""
         SELECT 
             mt.inscription_id, mt.inscription_ref, mt.line_ref, 
