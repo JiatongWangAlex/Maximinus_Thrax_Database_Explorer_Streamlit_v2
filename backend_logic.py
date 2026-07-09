@@ -473,7 +473,7 @@ def generate_bulk_search_csv(cursor):
     
 #SETUP FOR SQL QUERY EXPORT
 
-def generate_bulk_search_sql():
+def generate_sql_query_from_filters():
     """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
     
@@ -1873,7 +1873,7 @@ __all__ = [
     'get_db_connection',
     'reset_map_and_search_flags',
     'generate_bulk_search_csv',
-    'generate_bulk_search_sql',
+    'generate_sql_query_from_filters',
     'convert_markdown_bold_to_underline',
     'clean_epigraphic_text',
     'convert_roman_to_arabic_in_text',
