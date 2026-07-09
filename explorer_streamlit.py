@@ -882,11 +882,6 @@ with st.expander("Advanced Search", expanded=False):
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_sql_query_from_filters()
-
-            st.info(
-                "Note: This query will not reflect your text search results."
-                "Text search uses regex, which is not part of SQL."
-            )
                  
             sql_clicked = st.download_button(
                 label="Download Filters as SQL Query",
@@ -897,6 +892,11 @@ with st.expander("Advanced Search", expanded=False):
                 key="btn_download_raw_sql_query"
             )
             
+            st.info(
+                "Note: This query will not reflect your text search results."
+                "Text search uses regex, which is not part of SQL."
+            )
+                 
             if sql_clicked:
                 st.session_state["skip_scroll"] = True
                 st.rerun()
