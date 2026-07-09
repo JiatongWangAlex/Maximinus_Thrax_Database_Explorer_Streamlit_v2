@@ -545,9 +545,24 @@ With advanced search, you can look for multiple words by connecting them with Bo
 
 #### Available Filters:
 The advanced search suite offers the following filters: 
-* Relevance?, Material, Support, Context, Number of Inscriptions on Object, Province, Status Designation, Office/Military Role, Distributio Virorum, Distributio Titulorum, Intervention?, Method of Intervention, Extent of Intervention, Target of Intervention, and Organization/Military Unit.
+
+Inscription Metadata:
+Inscription Relevance to Maximinus Thrax, Province, Place, Distributio Titulorum | Type of Inscription, Support Type, Context Type, Material, Status Tituli | Preservation Status, Number of Inscriptions on Object, Start Year, End Year, Search Strategy
+
+People and Institutions:
+Advanced People Search, Institution/Group/Military Unit Search, Distributio Virorum | Type of People Mentioned, Attested Status Title, Attested Office/Military Role
+
+Later Modifications / Reuse
+Intervention Status, Intervention Relevance to Maximinus Thrax, Method of Intervention, Extent of Intervention, Target of Intervention
 
 > **Note on the "Relevance?" field:** Some physical objects bear both an inscription created during the reign of Maximinus Thrax and an earlier or later inscription. For all inscriptions explicitly mentioning Maximinus Thrax, Gaius Iulius Verus Maximus, or a military unit bearing the honorary epithet *Maximiniana*, the relevance field resolves to `true`.
+
+You may also download your search conditions as an sql query
+
+### Bibliography Search
+You may now search inscriptions by their bibliography (either full or abbreviated)
+
+
 """)
 
 # MAIN SEARCH AND PERSON AND INSCRIPTION REPORTS
