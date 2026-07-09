@@ -341,7 +341,7 @@ def reset_map_and_search_flags():
     st.session_state["trigger_map_html"] = None
 
 #SETUP FOR CSV EXPORT
-def generate_bulk_search_csv(cursor):
+def export_results_to_csv(cursor):
     import io
     import csv
     
@@ -1872,7 +1872,7 @@ __all__ = [
     'get_inscription_report',
     'get_db_connection',
     'reset_map_and_search_flags',
-    'generate_bulk_search_csv',
+    'export_results_to_csv',
     'generate_sql_query_from_filters',
     'convert_markdown_bold_to_underline',
     'clean_epigraphic_text',
