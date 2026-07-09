@@ -1542,5 +1542,25 @@ if 'should_scroll' in locals() and should_scroll:
     )
 
 
+st.write("---")
+
+st.markdown(
+    """
+    <div style="text-align: center; color: #64748b; font-size: 14px; margin-bottom: 15px;">
+        This dataset combines data generated through original research with data from open-access digital resources.
+        You can donwload my entire dataset here (as an SQLite database).
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+
+st.link_button(
+    label="Download Dataset",
+    url="https://github.com/JiatongWangAlex/Maximinus_Thrax_Database_Explorer_Streamlit_v2/raw/refs/heads/main/maximinus_thrax.db",
+    help="Click to download the dataset directly from GitHub",
+    use_container_width=True
+)
+
 
 
