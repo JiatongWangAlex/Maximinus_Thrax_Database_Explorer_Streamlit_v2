@@ -1565,11 +1565,11 @@ st.link_button(
     use_container_width=True 
 )
 
-with st.expander("How to Cite This Project (Chicago Style)"):
+with st.popover("Cite This Project"):
     st.markdown("**Bibliography Style:**")
     st.code(
         'Wang, J. "Memory Sanctions against Maximinus Thrax." Supplemental website/database. '
-        'BA thesis, Università degli Studi di Roma "La Sapienza" , 2026. https://maximinusthraxdatabaseui.streamlit.app/.',
+        'BA thesis, Università degli Studi di Roma "La Sapienza", 2026. https://maximinusthraxdatabaseui.streamlit.app/.',
         language="text"
     )
     
