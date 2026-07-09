@@ -893,7 +893,7 @@ with st.expander("Advanced Search", expanded=False):
             )
             
             st.info(
-                "Note: This query will not reflect your text search results."
+                "Note: This query will not reflect your text ."
                 "Text search uses regex, which is not part of SQL."
             )
                  
@@ -1372,6 +1372,9 @@ st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></
 # SEARCH RESULTS
 st.markdown("### Search Results")
 
+if not st.session_state.get("active_search_has_run"):
+    st.info("Please make a search!")
+         
 # RESULTS LIST VIEW
 if st.session_state.get("active_search_has_run") and st.session_state.get("active_inscription_ids"):
     
