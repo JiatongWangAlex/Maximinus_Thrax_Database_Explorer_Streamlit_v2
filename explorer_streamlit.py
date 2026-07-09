@@ -1578,7 +1578,7 @@ with st.popover("Cite this Project"):
     st.markdown("**APA:**")
     st.code(
         'Wang, J. (2026). Memory Sanctions against Maximinus Thrax [Undergraduate thesis, '
-        'Università degli Studi di Roma "La Sapienza"]. Maximinus Thrax Database. '
+        'Università degli Studi di Roma "La Sapienza"]. Supplemental website/database. '
         'https://maximinusthraxdatabaseui.streamlit.app/.',
         language="text"
     )
@@ -1586,7 +1586,7 @@ with st.popover("Cite this Project"):
     st.markdown("**MLA:**")
     st.code(
         'Wang, J. Memory Sanctions against Maximinus Thrax. 2026. Università degli Studi di Roma '
-        '"La Sapienza", BA thesis. Maximinus Thrax Database, '
+        '"La Sapienza", BA thesis. Supplemental website/database, '
         'maximinusthraxdatabaseui.streamlit.app/.',
         language="text"
     )
