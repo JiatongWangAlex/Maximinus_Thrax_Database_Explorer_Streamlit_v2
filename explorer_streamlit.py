@@ -1565,6 +1565,13 @@ st.link_button(
     use_container_width=True 
 )
 
+# TODO: Uncomment when thesis is ready
+# st.link_button(
+#     label="Download the Full Thesis (PDF)",
+#     url="https://github.com/YOUR_USERNAME/YOUR_REPO/raw/main/your_thesis_filename.pdf", 
+#     help="Click to download the full BA thesis PDF directly from GitHub",
+#     use_container_width=True 
+# )
 import streamlit as st
 
 with st.popover("Cite this Project"):
