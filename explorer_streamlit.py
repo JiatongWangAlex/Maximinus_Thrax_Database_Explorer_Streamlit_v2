@@ -1106,7 +1106,7 @@ if (
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            global_csv_string = generate_bulk_search_csv(cursor)
+            global_csv_string = export_results_to_csv(cursor)
             conn.close()
         except Exception as e:
             global_csv_string = f"Error compiling dataset: {str(e)}"
