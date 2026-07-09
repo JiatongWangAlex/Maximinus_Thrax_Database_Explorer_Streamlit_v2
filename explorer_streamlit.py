@@ -1358,7 +1358,7 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
         st.download_button(
             label="Download Map as HTML",
             data=st.session_state.trigger_map_html,
-            file_name="roman_inscriptions_map.html",
+            file_name="maximinus_thrax_database_search_results_map.html",
             mime="text/html",
             key=f"download_map_html_v{current_version}"
         )
