@@ -67,7 +67,6 @@ import sqlite3
 import os
 import streamlit as st
 
-# Global storage slot to keep the connection permanently alive in memory
 if "GLOBAL_RAM_DB" not in st.session_state:
     st.session_state["GLOBAL_RAM_DB"] = None
 
@@ -101,7 +100,6 @@ _initialize_ram_database(db_path)
 
 def get_inscription_report(cursor, inscription_ids):
 
-    # 1. AUTO-DETECT TYPE: Convert to standard list of integers
     if isinstance(inscription_ids, (int, str)):
         valid_ids = [int(inscription_ids)]
     else:
