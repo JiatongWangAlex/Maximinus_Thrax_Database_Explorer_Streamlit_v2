@@ -881,7 +881,7 @@ with st.expander("Advanced Search", expanded=False):
              
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
-            dynamic_sql_query = generate_bulk_search_sql()
+            dynamic_sql_query = generate_sql_query_from_filters()
             
             sql_clicked = st.download_button(
                 label="Download SQL Query",
