@@ -1565,17 +1565,28 @@ st.link_button(
     use_container_width=True 
 )
 
-with st.popover("Cite This Project"):
-    st.markdown("**Bibliography Style:**")
+import streamlit as st
+
+with st.popover("Cite this Project"):
+    st.markdown("**Chicago:**")
     st.code(
         'Wang, J. "Memory Sanctions against Maximinus Thrax." Supplemental website/database. '
         'BA thesis, Università degli Studi di Roma "La Sapienza", 2026. https://maximinusthraxdatabaseui.streamlit.app/.',
         language="text"
     )
     
-    st.markdown("**Footnote Style:**")
+    st.markdown("**APA:**")
     st.code(
-        'J. Wang, "Memory Sanctions against Maximinus Thrax" (supplemental website/database, '
-        'BA thesis, Università degli Studi di Roma "La Sapienza", 2026), https://maximinusthraxdatabaseui.streamlit.app/.',
+        'Wang, J. (2026). Memory Sanctions against Maximinus Thrax [Undergraduate thesis, '
+        'Università degli Studi di Roma "La Sapienza"]. Maximinus Thrax Database. '
+        'https://maximinusthraxdatabaseui.streamlit.app/.',
+        language="text"
+    )
+    
+    st.markdown("**MLA:**")
+    st.code(
+        'Wang, J. Memory Sanctions against Maximinus Thrax. 2026. Università degli Studi di Roma '
+        '"La Sapienza", BA thesis. Maximinus Thrax Database, '
+        'maximinusthraxdatabaseui.streamlit.app/.',
         language="text"
     )
