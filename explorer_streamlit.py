@@ -882,9 +882,12 @@ with st.expander("Advanced Search", expanded=False):
     with col_btn2:
         if st.session_state.get("active_search_has_run"):
             dynamic_sql_query = generate_sql_query_from_filters()
-            
+            sql_help_text = (
+                "Note: This query will not reflect your text search results."
+                "Text search uses custom methods outside of raw SQL."
+            )
             sql_clicked = st.download_button(
-                label="Download SQL Query",
+                label="Download Filters as SQL Query",
                 data=dynamic_sql_query,
                 file_name="search_results_compiled_query.sql",
                 mime="text/plain",
@@ -897,7 +900,7 @@ with st.expander("Advanced Search", expanded=False):
                 st.rerun()
         else:
             st.button(
-                label="Download SQL Query",
+                label="Download Filters as SQL Query",
                 key="btn_advanced_sql_disabled",
                 use_container_width=True,
                 disabled=True,
