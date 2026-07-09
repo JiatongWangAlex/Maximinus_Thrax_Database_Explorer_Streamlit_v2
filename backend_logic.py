@@ -110,9 +110,8 @@ def get_inscription_report(cursor, inscription_ids):
 
     placeholders = ",".join(["?"] * len(valid_ids))
     
-    # ----------------------------------------------------
-    # 1. BATCH FETCH MAIN DETAILS
-    # ----------------------------------------------------
+
+    # 1 to 1 relationships
     sql_main = f"""
         SELECT 
             mt.inscription_id, mt.inscription_ref, mt.line_ref, 
@@ -140,9 +139,8 @@ def get_inscription_report(cursor, inscription_ids):
         if row[7]:  # object_id
             object_ids.add(row[7])
 
-    # ----------------------------------------------------
-    # 2. BATCH FETCH MULTI-VALUED FIELDS
-    # ----------------------------------------------------
+    # 1 to many relationships
+
     tm_map = {}
     dist_map = {}
     persons_map = {}
@@ -191,10 +189,10 @@ def get_inscription_report(cursor, inscription_ids):
         for ins_id, c_id, c_name in cursor.fetchall():
             coll_map.setdefault(ins_id, []).append((c_id, c_name))
 
-    # ----------------------------------------------------
-    # 3. BATCH FETCH OBJECT LINKS (Siblings & Interventions)
-    # ----------------------------------------------------
-    siblings_map = {}
+   
+    # Object & Interventions
+
+    siblings_map = {} # inscriptions on the same object
     interv_by_ins_id = {}  
     targets_map = {}
 
@@ -239,9 +237,7 @@ def get_inscription_report(cursor, inscription_ids):
             ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc, obj_id = row
             interv_by_ins_id.setdefault(ins_id, []).append((ins_id, interv_id, idx, note, m_id, ext_desc, meth_desc))
 
-    # ----------------------------------------------------
-    # 4. STRING STITCHING PIPELINE
-    # ----------------------------------------------------
+
     out_str = []
 
     for ins_id in valid_ids:
@@ -333,11 +329,10 @@ def get_inscription_report(cursor, inscription_ids):
                             report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
             report.append("\n")
 
-        # Append the formatted dossier body and its divider rule
         out_str.append("\n".join(report))
         out_str.append("\n\n---\n\n")
 
-    # 5. FINAL FLATTENING PASSTHROUGH
+
     return "\n\n".join(out_str)
 
 #SETUP FOR STOPPING PEOPLE FROM TRYING TO GENERATE A MAP OR EXPORT CSV BEFORE CLICKING SEARCH AGAIN AND BEING MAD ABOUT HAVING WRONG RESULTS
