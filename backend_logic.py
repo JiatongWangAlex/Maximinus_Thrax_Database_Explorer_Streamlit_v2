@@ -588,16 +588,9 @@ WHERE 1=1 {where_str}
 ORDER BY mt.inscription_id DESC;"""
 
 
-
-
-
-
-
+#for underlining words with non standard spellings in inscription text
 def convert_markdown_bold_to_underline(text):
-    """Tracks asterisks across lines exactly like a Markdown parser,
-
-    converting **text** into underlined text(!), even if it straddles lines.
-    """
+        
     output = []
     i = 0
     n = len(text)
@@ -693,8 +686,6 @@ def _get_ids_for_single_word(cursor, word, is_assisted, base_intersect_sql, base
     
 
     strategy_label = "ASSISTED" if is_assisted else "EXACT"
-
-    # -------------------------------
     
     return results
 
@@ -769,10 +760,6 @@ def _execute_set_search_logic(cursor, user_input, is_assisted, base_where_clause
         text_rows = cursor.fetchall()
 
     return text_rows, [], len(text_rows)
-
-# =========================================================================
-# PUBLIC SEARCH INVERSION ENGINE FAMILY
-# =========================================================================
 
 def exact_search(cursor, user_input, base_where_clauses=None, base_query_params=None):
 
@@ -849,7 +836,6 @@ def run_standard_search(user_input):
     except Exception as e:
         st.error(f"An unexpected database error occurred: {e}")
             
-# LOOK UP INSCRIPTION BY EDCS NUMBER OR TM NUMBER
 
 def run_ref_search(ref_query):
     if not ref_query.strip():
@@ -920,8 +906,6 @@ def process_attestation_rows(rows):
         grouped[item_name][ins_id] = grouped[item_name].get(ins_id, 0) + 1
     return grouped
                 
-# LOOK UP PERSON BY NAME (to see if the user query matches any individual logged in the database so they may select the correct individual in the next box)
-
 def lookup_person_options(name_query):
     if not name_query.strip():
         st.warning("Please enter a name to match.")
@@ -938,7 +922,6 @@ def lookup_person_options(name_query):
     except Exception as e:
         st.error(f"Person search failed: {e}")
 
-# PERSON REPORT FUNCTION
 def generate_person_report(p_id):
     # SQL QUERIES FOR PERSON REPORT
     sql_get_person_details = "SELECT person_name, person_notes FROM persons WHERE person_id = ?;"
@@ -999,20 +982,16 @@ def generate_person_report(p_id):
         person_notes = name_row[1] if name_row[1] else "None"
         header_message = f"### **{person_name}**\n\n---"
         
-        # 2. Fetch all overall unique inscriptions linked to this person
         cursor.execute(sql_get_all_person_inscriptions, (person_id_int,))
         all_inscriptions = cursor.fetchall()  
         
-        # Keep track of active inscriptions for the map component
         st.session_state.active_inscription_ids = [r[0] for r in all_inscriptions if r[0] is not None]
         st.session_state["active_search_where_clauses"] = []  
         st.session_state["active_search_has_run"] = True      
         
-        # Maps & sets to keep track of unique IDs and translate ID -> Ref
         all_insc_ids = {r[0] for r in all_inscriptions if r[0] is not None}
         all_insc_id_to_ref = {r[0]: (r[1] if r[1] else f"Insc ID {r[0]}") for r in all_inscriptions if r[0] is not None}
 
-        # 3. Fetch data sets using the clean standalone helper function
         cursor.execute(sql_get_positions, (person_id_int,))
         positions_data = process_attestation_rows(cursor.fetchall())
         
@@ -1022,7 +1001,6 @@ def generate_person_report(p_id):
         cursor.execute(sql_get_units, (person_id_int,))
         units_data = process_attestation_rows(cursor.fetchall())
         
-        # Track every unique inscription ID accounted for across all groupings
         attested_insc_ids = set()
         for dataset in [positions_data, status_data, units_data]:
             for category in dataset:
@@ -1030,10 +1008,8 @@ def generate_person_report(p_id):
                 
         has_any_attestations = len(attested_insc_ids) > 0
 
-        # --- CONDITION LOGIC FOR OUTPUT GENERATION ---
         report_lines = [f"**Name:** {person_name} | **Person ID:** {person_id_int}\n"]
         
-        # ALTERNATIVE OUTPUT 1: Completely un-affiliated person
         if not has_any_attestations:
             insc_strings = [f"{ref} (id: [{ins_id}](?ins_id={ins_id}))" for ins_id, ref in all_insc_id_to_ref.items()]
             insc_display = ", ".join(insc_strings) if insc_strings else "None"
@@ -1044,7 +1020,6 @@ def generate_person_report(p_id):
             st.session_state.search_results = f"{header_message}\n\n" + "\n".join(report_lines)
             return
 
-        # NORMAL ENTRY & ALTERNATIVE OUTPUT 2 CASING
         report_lines.append(f"**Mentioned in {len(all_insc_ids)} inscription(s)**\n")
         
 
@@ -1106,9 +1081,6 @@ def get_filter_options(table, col):
         pass
     return options
 
-
-# SET UP ADVANCED SEARCH
-
 def execute_advanced_search(f_dict):
     global active_inscription_ids
     applied_criteria_summary = []
@@ -1118,8 +1090,7 @@ def execute_advanced_search(f_dict):
     st.session_state["active_search_where_clauses"] = where_clauses
     st.session_state["active_search_query_params"] = query_params
     st.session_state["active_search_has_run"] = True
-
-    # SQL SETUP 
+ 
     base_sql = """
         SELECT DISTINCT
             mt.inscription_id, mt.inscription_text, mt.inscription_ref, mt.line_ref,
@@ -1152,8 +1123,7 @@ def execute_advanced_search(f_dict):
         LEFT JOIN "places" pl ON mt.place_id = pl.place_id
         WHERE 1=1
     """
-    
-    # NEW INTERVENTION FILTER TOGGLE STRATEGY
+        
     intervention_toggle = f_dict.get('intervention_toggle', 'Interventions Relevant to Maximinus Thrax')
     if intervention_toggle == 'Interventions Relevant to Maximinus Thrax':
         applied_criteria_summary.append("  • Scope: Interventions Relevant to Maximinus Thrax")
@@ -1174,7 +1144,6 @@ def execute_advanced_search(f_dict):
     else:
         applied_criteria_summary.append("  • Scope: All Interventions")
 
-    # PRE-COMPILE THE FIXED ADVANCED FILTERS
     req_start = f_dict.get('start_date')
     req_end = f_dict.get('end_date')
     dating_strategy = f_dict.get('dating_strategy', 'overlap')
@@ -1258,16 +1227,16 @@ def execute_advanced_search(f_dict):
                 query_params[p_name] = item
             where_clauses.append(f"{column_sql} IN ({', '.join(param_names)})")
 
-# FILTERS WITH RADIO TOGGLES
-    # PERSON FILTERS
+
+    # Advanced Person Search
     person_ids = f_dict.get('person_id', [])
     person_op = f_dict.get('person_operator', 'OR')
     
-    # EXCLUSION
+
     person_excludes = f_dict.get('person_exclude', [])
     person_exclude_op = f_dict.get('person_exclude_operator', 'OR')
 
-    # INCLUSION
+
     if person_ids and person_ids != "All" and person_ids != ["All"]:
         applied_criteria_summary.append(f"  • Include Person ({person_op}): {', '.join(map(str, person_ids))}")
         person_params = []
@@ -1291,7 +1260,7 @@ def execute_advanced_search(f_dict):
                 )
             """)
 
-    # 2. EXCLUSION
+
     if person_excludes and person_excludes != "All" and person_excludes != ["All"]:
         applied_criteria_summary.append(f"  • Exclude Person ({person_exclude_op}): {', '.join(map(str, person_excludes))}")
         p_exc_params = []
@@ -1321,7 +1290,7 @@ def execute_advanced_search(f_dict):
                 )
             """)
 
-    # COLLECTIVE FILTERS
+
 
     collective_names = f_dict.get('collective_name', [])
     collective_op = f_dict.get('collective_operator', 'OR')
@@ -1357,11 +1326,10 @@ def execute_advanced_search(f_dict):
                     WHERE ip_sub.inscription_id = mt.inscription_id AND vd_sub.virorum_distributio IN ({', '.join(vd_params)}))
         """)
 
-    # ==========================================================================
+
     # ADVANCED TEXT SEARCH
-    # ==========================================================================
+
     phrase = f_dict.get('text', '').strip()
-    # SAFE LOOKUP: aligned explicitly to the exact key used by your st.radio widget
     search_mode = f_dict.get('adv_text_search_mode', 'Exact Match') 
     applied_criteria_summary.append(f"  • Keyword/Phrase: '{phrase}' [Mode: {search_mode}]")
 
@@ -1374,7 +1342,6 @@ def execute_advanced_search(f_dict):
         cursor = conn.cursor()
 
         if phrase:
-            # Route directly to the corresponding target execution strategy
             if search_mode == "Exact Match":
                 text_rows, fallback_rows, direct_count = exact_search(
                     cursor=cursor,
@@ -1390,13 +1357,11 @@ def execute_advanced_search(f_dict):
                     base_query_params=query_params
                 )
         else:
-            # If no phrase was provided, fallback to running the base filters matching standard sql loops
             final_sql = base_sql + (" AND " + " AND ".join(where_clauses) if where_clauses else "")
             cursor.execute(final_sql, query_params)
             text_rows = cursor.fetchall()
             direct_count = len(text_rows)
 
-# DEDUPLICATE AND RESOLVE STREAMS INTO THE DISPLAY SESSION STATES
         seen_text_ids = {row[0] for row in text_rows}
         unique_fallback_rows = []
         seen_fallback_ids = set()
@@ -1415,7 +1380,7 @@ def execute_advanced_search(f_dict):
             conn.close()
             return
             
-        # CALCULATE UNIQUE OBJECT DOSSIERS
+
         unique_objects = set()
         chunk_size = 900
         for i in range(0, len(all_matched_ids), chunk_size):
@@ -1424,19 +1389,16 @@ def execute_advanced_search(f_dict):
             for row in cursor.fetchall(): 
                 unique_objects.add(row[0])
 
-        # STITCH VISUAL DOSSIER LAYOUT FOR DISPLAY
+        
         total_inscriptions = len(all_matched_ids)
         indirect_count = total_inscriptions - direct_count
 
-        # Build your custom Advanced Search summary header string
         header = f"## Advanced Search Results\nFound {direct_count} direct match(es) and {indirect_count} indirect match(es)!\n"
         header += "**Filters Applied:**\n" + ("\n".join(applied_criteria_summary) if applied_criteria_summary else "• *None*\n")
         header += f"\nCompiled reports for all **{total_inscriptions}** matching inscriptions on **{len(unique_objects)}** objects:\n\n---\n\n"
         
-        # Fire your updated function to get a single stitched text block
         stitched_body = get_inscription_report(cursor, all_matched_ids)
 
-        # Concatenate the header and body cleanly into session state without loops
         st.session_state.search_results = header + stitched_body
         conn.close()
             
@@ -1468,12 +1430,10 @@ def fetch_metadata_by_id(inscription_ids_input):
         st.session_state["active_search_where_clauses"] = []  
         st.session_state["active_search_has_run"] = True      
             
-        # 1. Hand it a list of IDs, and get back the pre-stitched text asset directly
         dossier_body = get_inscription_report(cursor, valid_ids)
             
         conn.close()
         
-        # 2. Put that stitched output straight into the results state!
         st.session_state.search_results = dossier_body
         
     except Exception as e:
@@ -1499,10 +1459,8 @@ def fetch_metadata_by_object_id(object_id):
         )
         inscription_count = cursor.fetchone()[0] or 0
         
-        # Build the big markdown header message
         header_message = f"### **{inscription_count}** inscription(s) on this object\n\n---"
-        
-        # 2. Grab all companion inscription IDs that share this specific object_id
+
         cursor.execute(
             'SELECT inscription_id FROM "Max_Thrax" WHERE object_id = ? ORDER BY sequence_id ASC, inscription_id ASC', 
             (object_id.strip(),)
@@ -1517,23 +1475,20 @@ def fetch_metadata_by_object_id(object_id):
             
             conn.close()
         else:
-            # 3. One-shot execution: Let the string-returning function build the entire body asset at once
             dossier_body = get_inscription_report(cursor, sibling_ids)
             
             conn.close()
             
-            # 4. Update active workspace IDs and combine the header with the pre-stitched string
             st.session_state.active_inscription_ids = sibling_ids
             st.session_state["active_search_where_clauses"] = []
             st.session_state["active_search_has_run"] = True
             
-            # Combine the custom header message with the pre-compiled dossier body string
             st.session_state.search_results = f"{header_message}\n\n{dossier_body}"
             
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
             
-# INTERACTIVE MAP
+
 def generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
@@ -1572,7 +1527,7 @@ def generate_active_map():
                 if ins_id in road_links_dict:
                     road_links_dict[ins_id]['roads'].append((r_name, i_id))
 
-        # === PATH B LOOKUP: ERASED INSCRIPTIONS ===
+  
         erased_ids = set()
         if ids_to_map:
             erased_query = f"""
@@ -1598,10 +1553,9 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
-    # SET MAP CENTER TO LARINO
+    # The map is centered at Larino; Since we have so many northern inscriptions, centering at Sicily is too far south.
     valid_center = [41.807100, 14.919200]
-    
-    # INITIALIZE MAP CONTAINER
+
     mymap = folium.Map(
         location=valid_center, 
         zoom_start=4.5, 
@@ -1614,7 +1568,6 @@ def generate_active_map():
         smooth_wheel_zoom=True,
     )
     
-    # BASEMAPS - DARE SET TO TRUE (DEFAULT BASEMAP)
     folium.TileLayer(
         tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
         name="Digital Atlas of the Roman Empire", 
@@ -1633,7 +1586,6 @@ def generate_active_map():
         show=False
     ).add_to(mymap)
     
-    # ITINER-E ROADS LAYER (Updated to use Cache)
     if CACHED_ROADS_DATA:
         folium.GeoJson(
             CACHED_ROADS_DATA, 
@@ -1644,14 +1596,11 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#ff33a1", "weight": 1.0, "opacity": 0.8}
         ).add_to(mymap)
 
-    # PROVINCES LAYER (Updated to use Cache safely)
     from collections import Counter
     import copy
-    
-    # 1. Count total inscriptions per province
+        
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
     
-    # 2. Count ONLY erased inscriptions per province
     erased_counts = Counter([
         row[9].strip() 
         for row in matched_points 
@@ -1702,13 +1651,10 @@ def generate_active_map():
             </style>
         """))
 
-         
-    # STACKABLE VISUAL LAYERS
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
 
-    # GENERATE SPECIAL FEATURES FOR INSCRIPTIONS LAYER (UNCERTAINTY BOUNDS)
     coord_buckets = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
@@ -1739,8 +1685,7 @@ def generate_active_map():
                 ).add_to(range_layer)
             except Exception:
                 pass
-                
-    # GENERATE MARKERS FOR BOTH VISUAL LAYERS
+                    
     for (lat, lon), rows in coord_buckets.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
@@ -1806,7 +1751,6 @@ def generate_active_map():
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
             )
             
-            # Dynamic UX Tag placement for Single Marker views
             if overlap_count == 1 and f_id in erased_ids:
                 popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 
@@ -1829,11 +1773,9 @@ def generate_active_map():
             else:
                 popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
-            # FIXED STRUCTURAL TAG LEAK: Explicitly close the opened block for stacked records
             if overlap_count > 1:
                 popup_html += "</div>"
                      
-        # PASS A: PLOT TO DEFAULT VIEW LAYER 
 
         if overlap_count > 1:
             size = 16
@@ -1855,7 +1797,6 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-        # PASS B: PLOT TO ERASURE OVERLAY LAYER
 
         if erased_count > 0:
             if overlap_count > 1:
@@ -1878,14 +1819,12 @@ def generate_active_map():
                 tooltip=e_tooltip
             ).add_to(erased_layer)
 
-    # Attach all layers to map
     range_layer.add_to(mymap)
     default_layer.add_to(mymap)
     erased_layer.add_to(mymap)
     
     folium.LayerControl(collapsed=False).add_to(mymap)
 
-    # Global UI Script (Handles double-click interface hiding)
     double_click_hide_script = """
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
