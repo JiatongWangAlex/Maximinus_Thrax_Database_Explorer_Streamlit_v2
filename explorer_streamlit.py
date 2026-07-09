@@ -1557,7 +1557,6 @@ st.markdown(
 
 st.link_button(
     label="Download Dataset",
-    type="primary",
     url="https://github.com/JiatongWangAlex/Maximinus_Thrax_Database_Explorer_Streamlit_v2/raw/refs/heads/main/maximinus_thrax.db",
     help="Click to download the dataset directly from GitHub",
     use_container_width=True
