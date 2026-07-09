@@ -1320,8 +1320,6 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
 
 is_map_open = st.session_state.get("map_expander_open", True)
 current_version = st.session_state.get("map_version", 0)
-
-
 # MAP VIEWER (Always Visible)
 with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"interactive_map_expander_v{current_version}"):
     if st.session_state.get("map_status") == "zero_search_results":
@@ -1356,12 +1354,19 @@ with st.expander("Expand/Collapse Interactive Map", expanded=is_map_open, key=f"
         if st.session_state.get("unmappable_html_notice"):
             st.markdown(st.session_state["unmappable_html_notice"], unsafe_allow_html=True)
             
+
+        st.download_button(
+            label="Download Map as HTML",
+            data=st.session_state.trigger_map_html,
+            file_name="roman_inscriptions_map.html",
+            mime="text/html",
+            key=f"download_map_html_v{current_version}"
+        )
+        
         st.components.v1.html(st.session_state.trigger_map_html, height=720, scrolling=True)
         
     else:
         st.info("No map generated yet. Make a search and click 'Generate Map' to plot inscriptions matching your query on a map.")
-
-
 
 st.markdown('<div id="results-anchor" style="position: relative; top: -40px;"></div>', unsafe_allow_html=True)
 # SEARCH RESULTS
