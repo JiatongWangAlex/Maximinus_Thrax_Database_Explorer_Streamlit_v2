@@ -1542,6 +1542,7 @@ def generate_active_map():
                 if ins_id in road_links_dict:
                     road_links_dict[ins_id]['roads'].append((r_name, i_id))
 
+  
         erased_ids = set()
         if ids_to_map:
             erased_query = f"""
@@ -1567,6 +1568,7 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
+    # The map is centered at Larino; Since we have so many northern inscriptions, centering at Sicily is too far south.
     valid_center = [41.807100, 14.919200]
 
     mymap = folium.Map(
@@ -1580,23 +1582,6 @@ def generate_active_map():
         doubleClickZoom=False,
         smooth_wheel_zoom=True,
     )
-    
-    custom_panes_js = """
-    <script>
-    L.Map.addInitHook(function () {
-        // Create custom layer pane for Default Inscriptions
-        var defaultPane = this.createPane('default-dots-pane');
-        defaultPane.style.zIndex = 610; // Hovers directly above GeoJSON vector layers
-        defaultPane.style.pointerEvents = 'auto';
-
-        // Create custom layer pane for Erasures (forces them on top of default markers)
-        var erasedPane = this.createPane('erased-dots-pane');
-        erasedPane.style.zIndex = 620; // Ultimate priority layer
-        erasedPane.style.pointerEvents = 'auto';
-    });
-    </script>
-    """
-    mymap.get_root().html.add_child(folium.Element(custom_panes_js))
     
     folium.TileLayer(
         tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
@@ -1638,6 +1623,7 @@ def generate_active_map():
     ])
     
     if CACHED_PROVINCES_DATA:
+        # Clone the cached data so we don't accidentally write over the global app data
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
         
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
@@ -1649,6 +1635,7 @@ def generate_active_map():
                 count = search_counts.get(geo_name_clean, 0)
                 erased_count = erased_counts.get(geo_name_clean, 0)
                 
+                # Inject both counts into the GeoJSON properties
                 props["search_count"] = f"<br>{count}"
                 props["erased_count"] = f"<br>{erased_count}"
             else:
@@ -1683,15 +1670,15 @@ def generate_active_map():
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
 
-    coordinates_dictionary = {}
+    coordinate_dictionary = {}
     for row in matched_points:
         lat, lon = row[1], row[2]
         if lat is not None and lon is not None:
             try:
                 coord_key = (float(lat), float(lon))
-                if coord_key not in coordinates_dictionary:
-                    coordinates_dictionary[coord_key] = []
-                coordinates_dictionary[coord_key].append(row)
+                if coord_key not in coordinate_dictionary:
+                    coordinate_dictionary[coord_key] = []
+                coordinate_dictionary[coord_key].append(row)
             except (ValueError, TypeError):
                 continue 
 
@@ -1714,7 +1701,7 @@ def generate_active_map():
             except Exception:
                 pass
                     
-    for (lat, lon), rows in coordinates_dictionary.items():
+    for (lat, lon), rows in coordinate_dictionary.items():
         overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
@@ -1760,6 +1747,7 @@ def generate_active_map():
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
                 popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
                 
+                # Dynamic UX Tag placement inside the Record header line
                 if f_id in erased_ids:
                     popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 if is_approx == 1:
@@ -1817,13 +1805,11 @@ def generate_active_map():
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
             tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
 
-        # Standard Default View Marker
         folium.Marker(
             location=[lat, lon],
             icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=d_icon, class_name=""),
             popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
-            tooltip=tooltip_label,
-            options={"pane": "default-dots-pane"} # <--- FORCES ABSOLUTE LAYER OVERLAY
+            tooltip=tooltip_label
         ).add_to(default_layer)
 
 
@@ -1832,22 +1818,20 @@ def generate_active_map():
                 size = 16
                 e_border = "#400000"
                 e_fill = "#ff1a1a"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); position: relative;">{erased_count}</div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{erased_count}</div>'
                 e_tooltip = f"{erased_count} relevant erasures here"
             else:
                 size = 10
                 e_border = "#400000"
                 e_fill = "#e56333"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); position: relative;"></div>'
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 9999 !important; position: relative;"></div>'
                 e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
 
-            # Dedicated Erasures View Marker
             folium.Marker(
                 location=[lat, lon],
                 icon=folium.DivIcon(icon_size=(size, size), icon_anchor=(size // 2, size // 2), html=e_icon, class_name=""),
                 popup=folium.Popup(f"<div style='max-height: 280px; overflow-y: auto;'>{popup_html}</div>", min_width=340, max_width=480),
-                tooltip=e_tooltip,
-                options={"pane": "erased-dots-pane"} # <--- FORCES ABSOLUTE TOP PRIORITY
+                tooltip=e_tooltip
             ).add_to(erased_layer)
 
     range_layer.add_to(mymap)
