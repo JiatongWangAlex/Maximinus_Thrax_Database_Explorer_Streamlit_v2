@@ -893,8 +893,8 @@ with st.expander("Advanced Search", expanded=False):
             )
             
             st.info(
-                "Note: This query will not reflect your text ."
-                "Text search uses regex, which is not part of SQL."
+                "Note: This query will not reflect your text input if you combined a text search with filters."
+                "If you wish to query the inscriptions returned by a text search, copy their ID's using the "Show Inscription ID's as a comma separated list" button in the Results List View window"
             )
                  
             if sql_clicked:
