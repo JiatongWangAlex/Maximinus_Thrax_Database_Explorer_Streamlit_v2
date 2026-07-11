@@ -1639,7 +1639,7 @@ def generate_active_map():
                 
                 text_blob = (
                     f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: block; line-height: 1.4;'>"
-                    f"<b>{ins_count} inscriptions</b> on <b>{obj_count} objects</b> in this province matched your search, "
+                    f"<b>{ins_count} inscription(s)</b> on <b>{obj_count} object(s)</b> in this province matched your search, "
                     f"<b>{erased_count} of them are erased</b> due to the memory sanction against Maximinus Thrax."
                     f"</span>"
                 )
@@ -1661,16 +1661,16 @@ def generate_active_map():
                 fields=["province_clean_name", "summary_blob"], 
                 aliases=["", ""], 
                 localize=True,
-                style="font-family: sans-serif; padding: 10px; width: 300px; max-width: 300px; min-width: 300px;"
+                style="font-family: sans-serif; padding: 10px; width: 250px; max-width: 250px; min-width: 250px;"
             )
         ).add_to(mymap)
         
         mymap.get_root().header.add_child(folium.Element("""
             <style>
                 .leaflet-tooltip {
-                    width: 300px !important;
-                    max-width: 300px !important;
-                    min-width: 300px !important;
+                    width: 250px !important;
+                    max-width: 250px !important;
+                    min-width: 250px !important;
                     white-space: normal !important;
                 }
                 .leaflet-tooltip table {
