@@ -1661,16 +1661,16 @@ def generate_active_map():
                 fields=["province_clean_name", "summary_blob"], 
                 aliases=["", ""], 
                 localize=True,
-                style="font-family: sans-serif; padding: 10px; width: 300px; max-width: 350px; min-width: 350px;"
+                style="font-family: sans-serif; padding: 10px; width: 300px; max-width: 300px; min-width: 300px;"
             )
         ).add_to(mymap)
         
         mymap.get_root().header.add_child(folium.Element("""
             <style>
                 .leaflet-tooltip {
-                    width: 350px !important;
-                    max-width: 350px !important;
-                    min-width: 350px !important;
+                    width: 300px !important;
+                    max-width: 300px !important;
+                    min-width: 300px !important;
                     white-space: normal !important;
                 }
                 .leaflet-tooltip table {
