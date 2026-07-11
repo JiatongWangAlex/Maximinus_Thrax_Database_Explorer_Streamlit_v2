@@ -1640,7 +1640,7 @@ def generate_active_map():
                 text_blob = (
                     f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: block; line-height: 1.4;'>"
                     f"<b>{ins_count} inscription(s)</b> on <b>{obj_count} object(s)</b> in this province matched your search, "
-                    f"<b>{erased_count} of them are erased</b> due to the memory sanction against Maximinus Thrax."
+                    f"<b>{erased_count} of them are/is erased</b> due to the memory sanction against Maximinus Thrax."
                     f"</span>"
                 )
                 
