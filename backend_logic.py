@@ -1502,9 +1502,7 @@ def fetch_metadata_by_object_id(object_id):
             
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
-            
-
-def generate_active_map():
+            def generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
@@ -1514,10 +1512,11 @@ def generate_active_map():
         cursor = conn.cursor()
         placeholders = ",".join("?" for _ in ids_to_map)
         
+        # Added m.object_id to selection array (index 14)
         query = f"""
             SELECT m.inscription_id, p.latitude, p.longitude, m.inscription_ref, m.sequence_id, 
                    m.support_id, s.support_name, dt.distributio_titulorum, o.number_of_inscriptions, pr.province_name,
-                   p.place_name, p.pleiades_id, p.approximate_location, p.approximate_area
+                   p.place_name, p.pleiades_id, p.approximate_location, p.approximate_area, m.object_id
             FROM "Max_Thrax" m
             INNER JOIN "places" p ON m.place_id = p.place_id
             LEFT JOIN "support" s ON m.support_id = s.support_id
@@ -1542,7 +1541,6 @@ def generate_active_map():
                 if ins_id in road_links_dict:
                     road_links_dict[ins_id]['roads'].append((r_name, i_id))
 
-  
         erased_ids = set()
         if ids_to_map:
             erased_query = f"""
@@ -1568,7 +1566,6 @@ def generate_active_map():
         st.info("None of the inscriptions have known geographic coordinates in the database.")
         return
 
-    # The map is centered at Larino; Since we have so many northern inscriptions, centering at Sicily is too far south.
     valid_center = [41.807100, 14.919200]
 
     mymap = folium.Map(
@@ -1615,7 +1612,6 @@ def generate_active_map():
     import copy
         
     search_counts = Counter([row[9].strip() for row in matched_points if len(row) > 9 and row[9]])
-    
     erased_counts = Counter([
         row[9].strip() 
         for row in matched_points 
@@ -1623,9 +1619,7 @@ def generate_active_map():
     ])
     
     if CACHED_PROVINCES_DATA:
-        # Clone the cached data so we don't accidentally write over the global app data
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
-        
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         for feature in features:
             props = feature.setdefault("properties", {})
@@ -1634,8 +1628,6 @@ def generate_active_map():
                 geo_name_clean = geo_name.strip()
                 count = search_counts.get(geo_name_clean, 0)
                 erased_count = erased_counts.get(geo_name_clean, 0)
-                
-                # Inject both counts into the GeoJSON properties
                 props["search_count"] = f"<br>{count}"
                 props["erased_count"] = f"<br>{erased_count}"
             else:
@@ -1702,12 +1694,32 @@ def generate_active_map():
                 pass
                     
     for (lat, lon), rows in coordinate_dictionary.items():
-        overlap_count = len(rows)
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-        bucket_erased_rows = [row for row in rows if row[0] in erased_ids]
-        erased_count = len(bucket_erased_rows)
+        # --- SMART DUAL MATRIX EVALUATION LOOP ---
+        distinct_objects = set()
+        distinct_inscriptions = set()
+        
+        erased_objects = set()
+        erased_inscriptions = set()
+        
+        for row in rows:
+            ins_id = row[0]
+            obj_id = row[14]
             
+            distinct_inscriptions.add(ins_id)
+            if obj_id is not None:
+                distinct_objects.add(obj_id)
+                
+            if ins_id in erased_ids:
+                erased_inscriptions.add(ins_id)
+                if obj_id is not None:
+                    erased_objects.add(obj_id)
+
+        object_count = len(distinct_objects) if distinct_objects else len(rows)
+        inscription_count = len(distinct_inscriptions)
+        total_erased_objects = len(erased_objects) if distinct_objects else len(erased_inscriptions)
+
         popup_html = ""
         if is_bucket_approximate:
             popup_html += """
@@ -1715,12 +1727,21 @@ def generate_active_map():
                 WARNING: APPROXIMATE COORDINATES
             </h3>
             """
-        if overlap_count > 1:
+        
+        # Condition Check: Object and Inscription count both > 1 (Large Marker logic)
+        if object_count > 1 and inscription_count > 1:
             bg_color = "#f0f4ff" 
             text_color = "#001140"
             border_color = "#d0daff"
-            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{overlap_count} Inscriptions at this Location</div>"
+            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{object_count} Distinct Objects ({inscription_count} Inscriptions) Here</div>"
         
+        # Condition Check: 1 Object but containing multiple distinct text Inscriptions
+        elif object_count == 1 and inscription_count > 1:
+            bg_color = "#fffbeb" 
+            text_color = "#92400e"
+            border_color = "#fef3c7"
+            popup_html += f"<div style='background-color:{bg_color}; color:{text_color}; padding:5px; margin-bottom:8px; border:1px solid {border_color}; border-radius:4px; font-weight:bold; text-align:center; font-size:12px;'>{inscription_count} Inscriptions on this Object!</div>"
+
         for idx, row in enumerate(rows, 1):
             f_id, _, _, ref_text, seq_id, support_id, support_name, dist_tit, num_ins = row[:9]
             province_name = row[9] if len(row) > 9 else "N/A"
@@ -1742,23 +1763,22 @@ def generate_active_map():
             ref_link = f'<a href="https://edcs.hist.uzh.ch/monument/{ref_text.replace("EDCS-", "")}" target="_blank">{ref_text}</a>' if ref_text else 'N/A'
             report_url = f"https://maximinusthraxdatabaseui.streamlit.app/?ins_id={f_id}"
 
-            if overlap_count > 1:
+            if inscription_count > 1:
                 item_border = "#7f8c8d" if is_approx == 1 else "#001140"
                 popup_html += f"<div style='border-left: 3px solid {item_border}; padding-left: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc;'> "
-                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {overlap_count}</span>"
+                popup_html += f"<span style='font-size:11px; font-weight:bold; color:#555;'>Record {idx} of {inscription_count}</span>"
                 
-                # Dynamic UX Tag placement inside the Record header line
                 if f_id in erased_ids:
                     popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 if is_approx == 1:
                     popup_html += " <span style='font-size:10px; color:#000000; font-weight:bold;'>(APPROXIMATE)</span>"
                 popup_html += "<br>"
 
-            if overlap_count == 1 and is_approx == 1:
+            if inscription_count == 1 and is_approx == 1:
                 popup_html += (
                     "<span style='font-size: 12px; color: #000000; font-weight: normal; line-height: 1.4;'>"
                     "Some legacy place names cannot be securely linked to a modern location.<br>"
-                    "Approximate coordinates represent the geometric center of the area where the place is likely located. This area is estimated based on identifiable sites reported in the vicinity,or based on the mile number of a milestone associated with the place.<br>"
+                    "Approximate coordinates represent the geometric center of the area where the place is likely located.<br>"
                     "</span><br>"
                 )
                  
@@ -1766,7 +1786,7 @@ def generate_active_map():
                 f"<b>Inscription ID:</b> <a href='{report_url}' target='_blank'>{f_id}</a> | <b>Ref:</b> {ref_link}"
             )
             
-            if overlap_count == 1 and f_id in erased_ids:
+            if inscription_count == 1 and f_id in erased_ids:
                 popup_html += " <span style='font-size:11px; color:#e56333; font-weight:bold;'>| Erasure relevant to Maximinus Thrax</span>"
                 
             popup_html += (
@@ -1788,22 +1808,23 @@ def generate_active_map():
             else:
                 popup_html += f"<br><b>Type of Inscription:</b> {dist_tit if dist_tit else 'N/A'}<br><b>support:</b> {support_name if support_name else 'N/A'}"
             
-            if overlap_count > 1:
+            if inscription_count > 1:
                 popup_html += "</div>"
-                     
 
-        if overlap_count > 1:
+        # --- ASSIGN VISUAL LAYER STYLES BASED ON OBJECTS ---
+        if object_count > 1 and inscription_count > 1:
             size = 16
             d_border = "#001140"
             d_fill = "#1a53ff"
-            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{overlap_count}</div>'
-            tooltip_label = f"{overlap_count} entries here (Contains Approximate Locations)" if is_bucket_approximate else f"{overlap_count} inscriptions here"
+            d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4);">{object_count}</div>'
+            tooltip_label = f"{object_count} objects here ({inscription_count} inscriptions)"
         else:
+            # Handles BOTH (1 obj + 1 ins) AND (1 obj + multi-ins)
             size = 10
             d_border = "#002fa7"
             d_fill =  "#33b5e5"
             d_icon = f'<div style="background-color: {d_fill}; border: 2px solid {d_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>'
-            tooltip_label = f"ID: {rows[0][0]} (Approximate Location)" if is_bucket_approximate else f"ID: {rows[0][0]}"
+            tooltip_label = f"ID: {rows[0][0]} (1 Object, {inscription_count} Inscriptions)" if inscription_count > 1 else f"ID: {rows[0][0]}"
 
         folium.Marker(
             location=[lat, lon],
@@ -1812,20 +1833,21 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-
-        if erased_count > 0:
-            if overlap_count > 1:
+        # --- ERASURE LAYER PROCESSING ---
+        if len(erased_inscriptions) > 0:
+            if object_count > 1 and inscription_count > 1:
                 size = 16
                 e_border = "#400000"
                 e_fill = "#ff1a1a"
-                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{erased_count}</div>'
-                e_tooltip = f"{erased_count} relevant erasures here"
+                # Displays the total erased OBJECT count inside the marker radius
+                e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; color: #ffffff; border-radius: 50%; width: {size}px; height: {size}px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); z-index: 9999 !important; position: relative;">{total_erased_objects}</div>'
+                e_tooltip = f"{total_erased_objects} erased objects here"
             else:
                 size = 10
                 e_border = "#400000"
                 e_fill = "#e56333"
                 e_icon = f'<div style="background-color: {e_fill}; border: 2px solid {e_border}; border-radius: 50%; width: {size}px; height: {size}px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index: 9999 !important; position: relative;"></div>'
-                e_tooltip = f"ID: {bucket_erased_rows[0][0]} (Relevant Erasure)"
+                e_tooltip = f"ID: {list(erased_inscriptions)[0]} (Relevant Erasure)"
 
             folium.Marker(
                 location=[lat, lon],
@@ -1848,13 +1870,10 @@ def generate_active_map():
                 if (mapElements.length > 0) {
                     var mapId = mapElements[0].id;
                     var mymap = window[mapId];
-                    
                     if (mymap) {
                         var hiddenState = false;
-                        
                         mymap.on('dblclick', function(e) {
                             hiddenState = !hiddenState;
-                            
                             var selectors = [
                                 '.leaflet-control-zoom', 
                                 '.leaflet-control-layers', 
@@ -1863,7 +1882,6 @@ def generate_active_map():
                                 '.legend',
                                 '.leaflet-control-scale'
                             ];
-                            
                             selectors.forEach(function(sel) {
                                 document.querySelectorAll(sel).forEach(function(el) {
                                     el.style.setProperty('display', hiddenState ? 'none' : 'block', 'important');
