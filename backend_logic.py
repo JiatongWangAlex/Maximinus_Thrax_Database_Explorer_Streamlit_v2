@@ -1621,7 +1621,7 @@ def generate_active_map():
         if len(row) > 9 and row[9] and row[0] in erased_ids
     ])
     
-    if CACHED_PROVINCES_DATA:
+if CACHED_PROVINCES_DATA:
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         
@@ -1632,19 +1632,13 @@ def generate_active_map():
             if geo_name:
                 geo_name_clean = geo_name.strip()
                 
-                # --- GET SEARCH DATA COUNTS ---
-                # Calculate the matching inscriptions and distinct objects in this province
                 prov_rows = [row for row in matched_points if len(row) > 9 and row[9] and row[9].strip() == geo_name_clean]
                 ins_count = len(prov_rows)
                 obj_count = len({row[14] for row in prov_rows if row[14] is not None}) if prov_rows else 0
-                
-                # Calculate the erased inscriptions in this province
                 erased_count = sum(1 for row in prov_rows if row[0] in erased_ids)
-                
-                # --- BUILD THE HTML TEXT BLOB ---
-                # Using <span> tags to keep the syntax safe and highly readable within the tooltip table cell
+
                 text_blob = (
-                    f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: inline-block; max-width: 250px; line-height: 1.4;'>"
+                    f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: block; line-height: 1.4;'>"
                     f"<b>{ins_count} inscriptions</b> on <b>{obj_count} objects</b> in this province matched your search, "
                     f"<b>{erased_count} of them are erased</b> due to the memory sanction against Maximinus Thrax."
                     f"</span>"
@@ -1665,28 +1659,42 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["province_clean_name", "summary_blob"], 
-                aliases=["", ""],  # Empty strings clear out the ugly 'Key:' table prefixes completely
+                aliases=["", ""], 
                 localize=True,
-                style="font-family: sans-serif; padding: 10px; max-width: 280px;"
+                className="fixed-province-tooltip"
             )
         ).add_to(mymap)
         
-        # Modified the stylesheet slightly to handle the row styling perfectly for the new dual-row layout
         mymap.get_root().header.add_child(folium.Element("""
             <style>
-                .leaflet-tooltip table {
-                    border-collapse: collapse;
+                /* Force the core container frame to a static width */
+                .fixed-province-tooltip {
+                    width: 260px !important;
+                    max-width: 260px !important;
+                    min-width: 260px !important;
+                    font-family: sans-serif; 
+                    padding: 10px !important;
+                    white-space: normal !important;
                 }
-                .leaflet-tooltip table tr:first-child td {
+                
+                .fixed-province-tooltip table {
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                    border-collapse: collapse !important;
+                }
+                .fixed-province-tooltip table td {
+                    text-align: left !important;
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                }
+                /* Visual Formatting for Row Blocks */
+                .fixed-province-tooltip table tr:first-child td {
                     font-size: 15px !important;
                     padding-bottom: 6px !important;
                     border-bottom: 1px solid #ddd !important;
                 }
-                .leaflet-tooltip table tr:last-child td {
+                .fixed-province-tooltip table tr:last-child td {
                     padding-top: 6px !important;
-                }
-                .leaflet-tooltip table td {
-                    text-align: left !important;
                 }
             </style>
         """))
