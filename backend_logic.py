@@ -1632,11 +1632,17 @@ def generate_active_map():
             if geo_name:
                 geo_name_clean = geo_name.strip()
                 
+                # --- GET SEARCH DATA COUNTS ---
+                # Calculate the matching inscriptions and distinct objects in this province
                 prov_rows = [row for row in matched_points if len(row) > 9 and row[9] and row[9].strip() == geo_name_clean]
                 ins_count = len(prov_rows)
                 obj_count = len({row[14] for row in prov_rows if row[14] is not None}) if prov_rows else 0
+                
+                # Calculate the erased inscriptions in this province
                 erased_count = sum(1 for row in prov_rows if row[0] in erased_ids)
-
+                
+                # --- BUILD THE HTML TEXT BLOB ---
+                # Changed display to block so it naturally fills out the new 400px layout width
                 text_blob = (
                     f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: block; line-height: 1.4;'>"
                     f"<b>{ins_count} inscriptions</b> on <b>{obj_count} objects</b> in this province matched your search, "
@@ -1659,42 +1665,40 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["province_clean_name", "summary_blob"], 
-                aliases=["", ""], 
+                aliases=["", ""],  # Empty strings clear out the ugly 'Key:' table prefixes completely
                 localize=True,
-                className="fixed-province-tooltip"
+                # Locked the tooltip object wrapper limits to 400px here
+                style="font-family: sans-serif; padding: 10px; width: 400px; max-width: 400px; min-width: 400px;"
             )
         ).add_to(mymap)
         
+        # Modified the stylesheet slightly to handle the row styling perfectly for the new dual-row layout
         mymap.get_root().header.add_child(folium.Element("""
             <style>
-                /* Force the core container frame to a static width */
-                .fixed-province-tooltip {
-                    width: 260px !important;
-                    max-width: 260px !important;
-                    min-width: 260px !important;
-                    font-family: sans-serif; 
-                    padding: 10px !important;
+                /* Enforce 400px on Leaflet's base tooltip container wrapper */
+                .leaflet-tooltip {
+                    width: 400px !important;
+                    max-width: 400px !important;
+                    min-width: 400px !important;
                     white-space: normal !important;
                 }
-                
-                .fixed-province-tooltip table {
+                .leaflet-tooltip table {
+                    border-collapse: collapse;
                     width: 100% !important;
-                    table-layout: fixed !important;
-                    border-collapse: collapse !important;
+                    table-layout: fixed !important; /* Forces text wrapping within 400px */
                 }
-                .fixed-province-tooltip table td {
-                    text-align: left !important;
-                    white-space: normal !important;
-                    word-wrap: break-word !important;
-                }
-                /* Visual Formatting for Row Blocks */
-                .fixed-province-tooltip table tr:first-child td {
+                .leaflet-tooltip table tr:first-child td {
                     font-size: 15px !important;
                     padding-bottom: 6px !important;
                     border-bottom: 1px solid #ddd !important;
                 }
-                .fixed-province-tooltip table tr:last-child td {
+                .leaflet-tooltip table tr:last-child td {
                     padding-top: 6px !important;
+                }
+                .leaflet-tooltip table td {
+                    text-align: left !important;
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
                 }
             </style>
         """))
