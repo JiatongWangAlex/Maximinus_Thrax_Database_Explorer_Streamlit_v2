@@ -1631,18 +1631,12 @@ def generate_active_map():
             
             if geo_name:
                 geo_name_clean = geo_name.strip()
-                
-                # --- GET SEARCH DATA COUNTS ---
-                # Calculate the matching inscriptions and distinct objects in this province
+
                 prov_rows = [row for row in matched_points if len(row) > 9 and row[9] and row[9].strip() == geo_name_clean]
                 ins_count = len(prov_rows)
                 obj_count = len({row[14] for row in prov_rows if row[14] is not None}) if prov_rows else 0
-                
-                # Calculate the erased inscriptions in this province
                 erased_count = sum(1 for row in prov_rows if row[0] in erased_ids)
                 
-                # --- BUILD THE HTML TEXT BLOB ---
-                # Changed display to block so it naturally fills out the new 400px layout width
                 text_blob = (
                     f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: block; line-height: 1.4;'>"
                     f"<b>{ins_count} inscriptions</b> on <b>{obj_count} objects</b> in this province matched your search, "
@@ -1665,27 +1659,32 @@ def generate_active_map():
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["province_clean_name", "summary_blob"], 
-                aliases=["", ""],  # Empty strings clear out the ugly 'Key:' table prefixes completely
+                aliases=["", ""], 
                 localize=True,
-                # Locked the tooltip object wrapper limits to 400px here
-                style="font-family: sans-serif; padding: 10px; width: 400px; max-width: 400px; min-width: 400px;"
+                style="font-family: sans-serif; padding: 10px; width: 350px; max-width: 350px; min-width: 350px;"
             )
         ).add_to(mymap)
         
-        # Modified the stylesheet slightly to handle the row styling perfectly for the new dual-row layout
         mymap.get_root().header.add_child(folium.Element("""
             <style>
-                /* Enforce 400px on Leaflet's base tooltip container wrapper */
                 .leaflet-tooltip {
-                    width: 400px !important;
-                    max-width: 400px !important;
-                    min-width: 400px !important;
+                    width: 350px !important;
+                    max-width: 350px !important;
+                    min-width: 350px !important;
                     white-space: normal !important;
                 }
                 .leaflet-tooltip table {
                     border-collapse: collapse;
                     width: 100% !important;
-                    table-layout: fixed !important; /* Forces text wrapping within 400px */
+                    table-layout: fixed !important;
+                }
+                .leaflet-tooltip table td:first-child {
+                    width: 0% !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .leaflet-tooltip table td:last-child {
+                    width: 100% !important;
                 }
                 .leaflet-tooltip table tr:first-child td {
                     font-size: 15px !important;
