@@ -1,7 +1,7 @@
 """
 Jiatong Wang | DATABASE GUI 
 --------------------------------------------------------------------   
-AI/LLM USE DISCLAIMER: The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
+The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
 
 I have designed the webapp, written the SQL queries used in the backend of this software, and coded most of the elements 
 which only involve native Streamlit features.
