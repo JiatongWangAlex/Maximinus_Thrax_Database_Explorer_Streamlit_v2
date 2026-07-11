@@ -1624,18 +1624,37 @@ def generate_active_map():
     if CACHED_PROVINCES_DATA:
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
+        
         for feature in features:
             props = feature.setdefault("properties", {})
             geo_name = props.get("Name") or props.get("province_name")
+            
             if geo_name:
                 geo_name_clean = geo_name.strip()
-                count = search_counts.get(geo_name_clean, 0)
-                erased_count = erased_counts.get(geo_name_clean, 0)
-                props["search_count"] = f"<br>{count}"
-                props["erased_count"] = f"<br>{erased_count}"
+                
+                # --- GET SEARCH DATA COUNTS ---
+                # Calculate the matching inscriptions and distinct objects in this province
+                prov_rows = [row for row in matched_points if len(row) > 9 and row[9] and row[9].strip() == geo_name_clean]
+                ins_count = len(prov_rows)
+                obj_count = len({row[14] for row in prov_rows if row[14] is not None}) if prov_rows else 0
+                
+                # Calculate the erased inscriptions in this province
+                erased_count = sum(1 for row in prov_rows if row[0] in erased_ids)
+                
+                # --- BUILD THE HTML TEXT BLOB ---
+                # Using <span> tags to keep the syntax safe and highly readable within the tooltip table cell
+                text_blob = (
+                    f"<span style='font-weight: normal; font-size: 12px; white-space: normal; display: inline-block; max-width: 250px; line-height: 1.4;'>"
+                    f"<b>{ins_count} inscriptions</b> on <b>{obj_count} objects</b> in this province matched your search, "
+                    f"<b>{erased_count} of them are erased</b> due to the memory sanction against Maximinus Thrax."
+                    f"</span>"
+                )
+                
+                props["province_clean_name"] = f"<b>{geo_name_clean}</b>"
+                props["summary_blob"] = text_blob
             else:
-                props["search_count"] = "<br>0"
-                props["erased_count"] = "<br>0"
+                props["province_clean_name"] = "<b>Unknown Province</b>"
+                props["summary_blob"] = "<span style='font-size: 12px; color: #777;'>No data available.</span>"
                 
         folium.GeoJson(
             provinces_data, 
@@ -1645,21 +1664,33 @@ def generate_active_map():
             control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
-                fields=["Name", "search_count", "erased_count"], 
-                aliases=["Province:", "Matching<br>Inscriptions:", "Relevant<br>Erasures:"], 
+                fields=["province_clean_name", "summary_blob"], 
+                aliases=["", ""],  # Empty strings clear out the ugly 'Key:' table prefixes completely
                 localize=True,
-                style="font-family: sans-serif; font-size: 13px; padding: 8px;"
+                style="font-family: sans-serif; padding: 10px; max-width: 280px;"
             )
         ).add_to(mymap)
         
+        # Modified the stylesheet slightly to handle the row styling perfectly for the new dual-row layout
         mymap.get_root().header.add_child(folium.Element("""
             <style>
+                .leaflet-tooltip table {
+                    border-collapse: collapse;
+                }
+                .leaflet-tooltip table tr:first-child td {
+                    font-size: 15px !important;
+                    padding-bottom: 6px !important;
+                    border-bottom: 1px solid #ddd !important;
+                }
+                .leaflet-tooltip table tr:last-child td {
+                    padding-top: 6px !important;
+                }
                 .leaflet-tooltip table td {
                     text-align: left !important;
-                    padding-right: 15px !important;
                 }
             </style>
         """))
+
 
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
