@@ -1,23 +1,10 @@
 """
 Jiatong Wang | DATABASE GUI 
 --------------------------------------------------------------------   
-The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as part of my BA thesis.
-
-I have designed the webapp, written the SQL queries used in the backend of this software, and coded most of the elements 
-which only involve native Streamlit features.
-
-HOWEVER, as I am not a CS student and this is not a CS thesis, I accepted input from a LLM when debugging and implementing this software, 
-specifically for managing Streamlit session states correctly and injecting the JavaScript and HTML snippets that introduce behaviors not native to Streamlit.
-(These parts of the code are responsible for clearing user input after every search, and scrolling users down to the Results 
-viewer or Map viewer automatically after every search).
-
-I have extensively tested the behavior of this Webapp myself; I believe it does execute all queries as I intended.
-
-That said, if you would like to be extra sure, please download the database and query list, and query directly inside 
-your SQL database browser. 
+The dataset and data structure queried by this GUI is FULLY HUMAN MADE AND HUMAN DESIGNED as a supplement to my BA thesis.
 
 
-Purpose: This GUI allows anyone to browse my BA thesis database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
+Purpose: This GUI allows anyone to browse my BA thesis supplemental database (a relational database in SQLite about memory sanctions against Maximinus Thrax) .
          It offers an interactive map and intuitive searches & filters.
          It also offers the option to download search results as a csv file, or export advanced search settings as an sql query 
          (The WHERE clause is dynamically generated based on user input. I have provided a default SELECT statement.
