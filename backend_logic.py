@@ -1621,7 +1621,7 @@ def generate_active_map():
         if len(row) > 9 and row[9] and row[0] in erased_ids
     ])
     
-if CACHED_PROVINCES_DATA:
+    if CACHED_PROVINCES_DATA:
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         
