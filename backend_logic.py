@@ -1661,7 +1661,7 @@ def generate_active_map():
                 fields=["province_clean_name", "summary_blob"], 
                 aliases=["", ""], 
                 localize=True,
-                style="font-family: sans-serif; padding: 10px; width: 350px; max-width: 350px; min-width: 350px;"
+                style="font-family: sans-serif; padding: 10px; width: 300px; max-width: 350px; min-width: 350px;"
             )
         ).add_to(mymap)
         
