@@ -1493,7 +1493,7 @@ def fetch_metadata_by_object_id(object_id):
             dossier_body = get_inscription_report(cursor, sibling_ids)
             
             conn.close()
-            
+                
             st.session_state.active_inscription_ids = sibling_ids
             st.session_state["active_search_where_clauses"] = []
             st.session_state["active_search_has_run"] = True
@@ -1502,7 +1502,10 @@ def fetch_metadata_by_object_id(object_id):
             
     except Exception as e:
         st.session_state.search_results = f"Error fetching metadata by object ID: {e}"
-            def generate_active_map():
+
+
+
+def generate_active_map():
     ids_to_map = st.session_state.active_inscription_ids
     if not ids_to_map:
         st.warning("No active search or report results are currently loaded to map.")
