@@ -798,8 +798,8 @@ with st.expander("Advanced Search", expanded=False):
 
     with col_btn1:
         form_payload = {
-            "text": f_text,
-            "adv_text_search_mode": text_search_mode,
+            #"text": f_text,
+            #"adv_text_search_mode": text_search_mode,
             "relevance_index": (
                 "All"
                 if f_rel == "All inscriptions regardless of relevance"
