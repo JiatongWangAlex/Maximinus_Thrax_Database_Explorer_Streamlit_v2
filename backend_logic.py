@@ -63,10 +63,6 @@ CACHED_ROADS_DATA = load_and_parse_json(optimized_json_path)
 CACHED_PROVINCES_DATA = load_and_parse_json(provinces_json_path)
 
 
-import sqlite3
-import os
-import streamlit as st
-
 if "GLOBAL_RAM_DB" not in st.session_state:
     st.session_state["GLOBAL_RAM_DB"] = None
 
@@ -87,10 +83,18 @@ def _initialize_ram_database(path):
     st.session_state["GLOBAL_RAM_DB"] = mem_conn
     return mem_conn
 
+
+def clean_row_factory(cursor, row):
+    return tuple("" if val is None else val for val in row)
+        
 def get_db_connection():
     if not os.path.exists(db_path):
         st.error(f"Missing database file! Please place 'version_58.db' in: {BASE_DIR}")
         st.stop()
+        
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = clean_row_factory
+    return conn
         
     _initialize_ram_database(db_path)
     return sqlite3.connect("file:maximinus_thrax_db?mode=memory&cache=shared", uri=True, check_same_thread=False)
