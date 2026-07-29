@@ -514,19 +514,19 @@ def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
             content = stripped_line
             p = doc.add_paragraph()
             
-        # Parse inline bolding (**text**) and markdown links [text](url)
-        pattern = r'(\*\*.*?\*\*|\[.*?\]\(.*?\))'
+        # STRICT REGEX: Ensure [brackets] are IMMEDIATELY followed by (parentheses) with no spaces/text in between
+        pattern = r'(\*\*.*?\*\*|\[[^\]]+\]\([^)]+\))'
         tokens = re.split(pattern, content)
         
         for token in tokens:
             if not token:
                 continue
-            # Bold text
+            # Bold text (**text**)
             if token.startswith("**") and token.endswith("**"):
                 p.add_run(token[2:-2]).bold = True
             # Markdown link [text](url)
             elif token.startswith("[") and "]" in token and "(" in token and token.endswith(")"):
-                link_match = re.match(r'\[(.*?)\]\((.*?)\)', token)
+                link_match = re.match(r'\[([^\]]+)\]\(([^)]+)\)', token)
                 if link_match:
                     label, url = link_match.groups()
                     
@@ -536,14 +536,14 @@ def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
                     else:
                         full_url = url
                         
-                    # 1. Add label and opening parenthesis (no underline)
+                    # 1. Label and opening parenthesis (no underline)
                     p.add_run(f"{label} (")
                     
-                    # 2. Add full URL (underlined only)
+                    # 2. URL (underlined only)
                     url_run = p.add_run(full_url)
                     url_run.underline = True
                     
-                    # 3. Add closing parenthesis (no underline)
+                    # 3. Closing parenthesis (no underline)
                     p.add_run(")")
                 else:
                     p.add_run(token)
