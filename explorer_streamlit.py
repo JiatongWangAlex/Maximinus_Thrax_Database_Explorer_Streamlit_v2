@@ -1081,7 +1081,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
 
 
 
-# EXPORT TO CSV, TXT, AND GENERATE MAP BUTTONS
+# EXPORT TO CSV, DOC, AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid_left, col_exp_mid_right, col_exp_right = st.columns([1, 1, 1, 1])
 
 has_basic_results = bool(st.session_state.get("active_inscription_ids"))
@@ -1115,21 +1115,41 @@ if (
             st.session_state["skip_scroll"] = True
             st.rerun()
 
+    # --- 2. WORD (.DOC) EXPORT BUTTON ---
     with col_exp_mid_left:
-        txt_data = st.session_state.get("search_results", "")
-        txt_clicked = st.download_button(
-            label="Export Results to TXT",
-            data=txt_data,
-            file_name="search_results_export.txt",
-            mime="text/plain",
+        raw_text = st.session_state.get("search_results", "")
+        
+        html_formatted_text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
+        html_formatted_text = html_formatted_text.replace("\n", "<br>")
+        
+        doc_content = f"""
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body {{ font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.4; }}
+            </style>
+        </head>
+        <body>
+            {html_formatted_text}
+        </body>
+        </html>
+        """
+
+        doc_clicked = st.download_button(
+            label="Export to Word (.doc)",
+            data=doc_content,
+            file_name="search_results_export.doc",
+            mime="application/msword",
             use_container_width=True,
-            key="btn_global_results_txt_export"
+            key="btn_global_results_doc_export"
         )
         
-        if txt_clicked:
+        if doc_clicked:
             st.session_state["skip_scroll"] = True
             st.rerun()
 
+    # --- 3. GENERATE MAP BUTTON ---
     with col_exp_mid_right:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
@@ -1244,8 +1264,8 @@ else:
         )
     with col_exp_mid_left:
         st.button(
-            label="Export Results to TXT",
-            key="global_txt_disabled_footer_txt",
+            label="Export to Word (.doc)",
+            key="global_doc_disabled_footer_doc",
             use_container_width=True,
             disabled=True,
             help="Make a search before exporting."
