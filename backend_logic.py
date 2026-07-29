@@ -1609,8 +1609,11 @@ def generate_active_map():
         overlay=False, 
         control=True, 
         attr="AWMC",
+        max_zoom=18,
+        max_native_zoom=11,
         show=False
     ).add_to(mymap)
+        
     
     if CACHED_ROADS_DATA:
         folium.GeoJson(
