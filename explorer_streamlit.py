@@ -650,20 +650,20 @@ with st.expander("Advanced Search", expanded=False):
     st.markdown("### Advanced Search")
     st.caption("Scroll down and click 'Execute Advanced Search' to search!")
          
-    st.markdown("#### Text Search")       
-    f_text = st.text_input(
-        "Can be combined with Filters | Boolean Logic Operators Allowed:", 
-        placeholder="e.g. Maximinus AND legatum",
-       on_change=reset_map_and_search_flags
-    )
+   # st.markdown("#### Text Search")       
+   # f_text = st.text_input(
+       # "Can be combined with Filters | Boolean Logic Operators Allowed:", 
+       # placeholder="e.g. Maximinus AND legatum",
+      # on_change=reset_map_and_search_flags
+   # )
          
-    st.caption(
-        "Use 'Advanced People Search' for queries like PERSON A NOT PERSON B | See Supported logic operators", 
-        help=(
-            "**Supported Operators:**\n"
-            "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
-        )
-    )
+   # st.caption(
+       # "Use 'Advanced People Search' for queries like PERSON A NOT PERSON B | See Supported logic operators", 
+       # help=(
+           # "**Supported Operators:**\n"
+           # "You can use **AND**, **OR**, and **NOT** in your queries; Other boolean operators are not supported by SQL \n"
+       # )
+  #  )
          
    # text_search_mode = st.radio(
        # "Text Search Strategy:",
@@ -798,8 +798,8 @@ with st.expander("Advanced Search", expanded=False):
 
     with col_btn1:
         form_payload = {
-            "text": f_text,
-            "adv_text_search_mode": text_search_mode,
+            #"text": f_text,
+            #"adv_text_search_mode": text_search_mode,
             "relevance_index": (
                 "All"
                 if f_rel == "All inscriptions regardless of relevance"
