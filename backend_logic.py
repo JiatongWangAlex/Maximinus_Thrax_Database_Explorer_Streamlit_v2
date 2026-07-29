@@ -1594,14 +1594,14 @@ def generate_active_map():
         smooth_wheel_zoom=True,
     )
     
-    folium.TileLayer(
-        tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
-        name="Digital Atlas of the Roman Empire", 
-        overlay=False, 
-        control=True, 
-        attr="DARE",
-        show=True
-    ).add_to(mymap)
+    #folium.TileLayer(
+        #tiles="https://dh.gu.se/tiles/imperium/{z}/{x}/{y}.png", 
+        #name="Digital Atlas of the Roman Empire", 
+        #overlay=False, 
+        #control=True, 
+        #attr="DARE",
+        #show=True
+    #).add_to(mymap)
 
     folium.TileLayer(
         tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
