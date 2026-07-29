@@ -488,24 +488,21 @@ def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
     for line in lines:
         stripped_line = line.strip()
         
-        # Horizontal dividers
         if stripped_line in ["---", "***", "___"]:
             p = doc.add_paragraph()
             p.add_run("____________________________________________________").bold = True
             continue
             
-        # Empty lines
+
         if not stripped_line:
             continue
             
-        # Headings (# ## ###)
         if stripped_line.startswith("#"):
             level = min(stripped_line.count("#", 0, 6), 3)
             heading_text = stripped_line.lstrip("#").strip()
             doc.add_heading(heading_text, level=level)
             continue
             
-        # Bullet points (* or -)
         is_bullet = stripped_line.startswith("* ") or stripped_line.startswith("- ")
         if is_bullet:
             content = stripped_line[2:].strip()
@@ -514,32 +511,31 @@ def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
             content = stripped_line
             p = doc.add_paragraph()
             
-        # STRICT REGEX: Ensure [brackets] are IMMEDIATELY followed by (parentheses) with no spaces/text in between
-        pattern = r'(\*\*.*?\*\*|\[[^\]]+\]\([^)]+\))'
+        pattern = r'(\*\*.*?\*\*|_[^_]+_|\[[^\]]+\]\([^)]+\))'
         tokens = re.split(pattern, content)
         
         for token in tokens:
             if not token:
                 continue
-            # Bold text (**text**)
+
             if token.startswith("**") and token.endswith("**"):
                 p.add_run(token[2:-2]).bold = True
-            # Markdown link [text](url)
+
+            elif token.startswith("_") and token.endswith("_") and len(token) > 2:
+                p.add_run(token[1:-1]).italic = True
+
             elif token.startswith("[") and "]" in token and "(" in token and token.endswith(")"):
                 link_match = re.match(r'\[([^\]]+)\]\(([^)]+)\)', token)
                 if link_match:
                     label, url = link_match.groups()
                     
-                    # Convert relative query params (e.g., "?person_id=84") into full absolute URLs
                     if url.startswith("?"):
                         full_url = f"{BASE_URL}{url}"
                     else:
                         full_url = url
                         
-                    # 1. Label and opening parenthesis (no underline)
                     p.add_run(f"{label} (")
                     
-                    # 2. URL (underlined only)
                     url_run = p.add_run(full_url)
                     url_run.underline = True
                     
@@ -550,7 +546,6 @@ def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
             else:
                 p.add_run(token)
 
-    # Save to memory stream
     target_stream = io.BytesIO()
     doc.save(target_stream)
     target_stream.seek(0)
