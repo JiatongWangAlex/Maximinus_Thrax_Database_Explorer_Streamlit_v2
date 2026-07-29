@@ -55,25 +55,12 @@ different memory sanction campaign therefore for this corpus. Therefore, in this
 person_id 50 from being counted as a relevant erasure can safely exclude ALL erasures ON monuments relevevant to Maximinus Thrax
 BUT ARE NOT actually part of the memory sanction campaign against him)
 
-SOME OF THE FUNCTIONS IN backend_logic.py also relies on this particularity of THIS corpus. Please check those too.
-
-FURTHERMORE
-
-PLEASE CHECK backend_logic.py for the following items which are hardcoded
+SOME OF THE FUNCTIONS IN backend_logic.py also relies on this particularity of THIS corpus.
 
 HARDCODED STUFF IN BACKEND_LOGIC.PY
---------------------------------------------------------------------
-
---------------------------------------------------------------------
 In get_inscription_report the text output for each method_id and extent_id are hardcoded, instead of being dynamically fetched from a field in the database. 
 IF you reuse this, make sure to change/check the section.
 
-                   
-FURHTERMORE, AS AFORMENTIONED, CHECK ALL LOGIC THAT RELIES ON FILTERING BY PERSON_ID = 50 or PERSON_ID != 50
-
-====================================================================
-
-====================================================================
 """
 
 
@@ -90,6 +77,7 @@ from branca.element import Element
 import itertools
 import time
 import sys
+from docx import Document
 
 
 streamlit_cloud_path = "/mount/src/maximinus_thrax_database_explorer_streamlit_v2"
