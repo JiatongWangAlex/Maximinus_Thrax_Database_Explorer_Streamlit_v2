@@ -1081,8 +1081,8 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
 
 
 
-# EXPORT TO CSV AND GENERATE MAP BUTTONS
-col_exp_left, col_exp_mid, col_exp_right = st.columns([1.5, 1.5, 1.5])
+# EXPORT TO CSV, TXT, AND GENERATE MAP BUTTONS
+col_exp_left, col_exp_mid_left, col_exp_mid_right, col_exp_right = st.columns([1, 1, 1, 1])
 
 has_basic_results = bool(st.session_state.get("active_inscription_ids"))
 has_advanced_results = (st.session_state.get("csv_mode") == "advanced" and bool(st.session_state.get("active_search_where_clauses")))
@@ -1092,6 +1092,7 @@ if (
     and st.session_state.get("active_search_has_run")
     and not st.session_state.get("inputs_are_dirty", False)
 ):
+    # --- 1. CSV EXPORT BUTTON ---
     with col_exp_left:
         try:
             conn = get_db_connection()
@@ -1113,8 +1114,23 @@ if (
         if csv_clicked:
             st.session_state["skip_scroll"] = True
             st.rerun()
+
+    with col_exp_mid_left:
+        txt_data = st.session_state.get("search_results", "")
+        txt_clicked = st.download_button(
+            label="Export Results to TXT",
+            data=txt_data,
+            file_name="search_results_export.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="btn_global_results_txt_export"
+        )
         
-    with col_exp_mid:
+        if txt_clicked:
+            st.session_state["skip_scroll"] = True
+            st.rerun()
+
+    with col_exp_mid_right:
         if st.button("Generate Map", key="global_map_btn", use_container_width=True, type="primary"):
             active_ids = st.session_state.get("active_inscription_ids", [])
             
@@ -1211,7 +1227,7 @@ if (
                 
                 except Exception as e:
                     st.error(f"Database setup error inside button: {e}")
-            
+                         
             st.session_state["map_expander_open"] = True
             st.session_state["map_version"] = st.session_state.get("map_version", 0) + 1
             st.session_state["trigger_map_scroll"] = True
