@@ -1091,7 +1091,7 @@ if (
             global_csv_string = f"Error compiling dataset: {str(e)}"
 
         csv_clicked = st.download_button(
-            label="Export Results to CSV",
+            label="Export to CSV",
             data=global_csv_string,
             file_name="search_results_export.csv",
             mime="text/csv",
