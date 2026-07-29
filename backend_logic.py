@@ -1609,7 +1609,7 @@ def generate_active_map():
         overlay=False, 
         control=True, 
         attr="AWMC",
-        show=False
+        show=True
     ).add_to(mymap)
         
     
