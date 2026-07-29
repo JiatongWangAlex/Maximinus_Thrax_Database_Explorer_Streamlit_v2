@@ -1604,7 +1604,7 @@ def generate_active_map():
     ).add_to(mymap)
 
     folium.TileLayer(
-        tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
+        tiles="https://a.tiles.mapbox.com/v4/awmc.map-09sfzc3t/{z}/{x}/{y}.png", 
         name="Ancient World Mapping Center Map", 
         overlay=False, 
         control=True, 
