@@ -470,7 +470,74 @@ def export_results_to_csv(cursor):
         writer.writerow(list(row))
     return csv_buffer.getvalue()
          
+def convert_markdown_to_docx(markdown_text: str) -> io.BytesIO:
+    """Parses raw search result Markdown text and outputs a native .docx binary stream."""
+    doc = Document()
     
+    if not markdown_text:
+        target_stream = io.BytesIO()
+        doc.save(target_stream)
+        target_stream.seek(0)
+        return target_stream
+
+    lines = markdown_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    
+    for line in lines:
+        stripped_line = line.strip()
+        
+        # Horizontal dividers
+        if stripped_line in ["---", "***", "___"]:
+            p = doc.add_paragraph()
+            p.add_run("____________________________________________________").bold = True
+            continue
+            
+        # Empty lines
+        if not stripped_line:
+            continue
+            
+        # Headings (# ## ###)
+        if stripped_line.startswith("#"):
+            level = min(stripped_line.count("#", 0, 6), 3)
+            heading_text = stripped_line.lstrip("#").strip()
+            doc.add_heading(heading_text, level=level)
+            continue
+            
+        # Bullet points (* or -)
+        is_bullet = stripped_line.startswith("* ") or stripped_line.startswith("- ")
+        if is_bullet:
+            content = stripped_line[2:].strip()
+            p = doc.add_paragraph(style='List Bullet')
+        else:
+            content = stripped_line
+            p = doc.add_paragraph()
+            
+        # Parse inline bolding (**text**) and markdown links [text](url)
+        pattern = r'(\*\*.*?\*\*|\[.*?\]\(.*?\))'
+        tokens = re.split(pattern, content)
+        
+        for token in tokens:
+            if not token:
+                continue
+            # Bold text
+            if token.startswith("**") and token.endswith("**"):
+                p.add_run(token[2:-2]).bold = True
+            # Markdown link [text](url) -> formatted as "text (url)" with underline
+            elif token.startswith("[") and "]" in token and "(" in token and token.endswith(")"):
+                link_match = re.match(r'\[(.*?)\]\((.*?)\)', token)
+                if link_match:
+                    label, url = link_match.groups()
+                    run = p.add_run(f"{label} ({url})")
+                    run.underline = True
+                else:
+                    p.add_run(token)
+            else:
+                p.add_run(token)
+
+    # Save to memory stream
+    target_stream = io.BytesIO()
+    doc.save(target_stream)
+    target_stream.seek(0)
+    return target_stream
 
 def generate_sql_query_from_filters():
     where_str = ""
@@ -1976,5 +2043,6 @@ __all__ = [
     'fetch_metadata_by_id',
     'fetch_metadata_by_object_id',
     'generate_active_map',
+    'convert_markdown_to_docx',
     
 ]
