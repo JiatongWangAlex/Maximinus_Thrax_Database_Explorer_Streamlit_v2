@@ -294,7 +294,7 @@ def get_inscription_report(cursor, inscription_ids):
         if obj_id:
             report.append("\n---\n\n")
             siblings = siblings_map.get(obj_id, [])
-            report.append(f"#### {len(siblings)} inscriptions on object:\n")
+            report.append(f"#### {len(siblings)} inscription(s) on object:\n")
             for s_id, s_seq, s_ref, s_lref in siblings:
                 curr_tag = " [current inscription]" if s_id == ins_id else ""
                 line_tag = f" {s_lref}" if s_lref else ""
