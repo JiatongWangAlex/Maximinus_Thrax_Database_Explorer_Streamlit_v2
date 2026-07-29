@@ -1069,7 +1069,7 @@ with st.expander("Search by Bibliography / Literature Search", expanded=False):
 
 
 
-# EXPORT TO CSV, DOC, AND GENERATE MAP BUTTONS
+# EXPORT TO CSV, DOCX, AND GENERATE MAP BUTTONS
 col_exp_left, col_exp_mid_left, col_exp_mid_right, col_exp_right = st.columns([1, 1, 1, 1])
 
 has_basic_results = bool(st.session_state.get("active_inscription_ids"))
@@ -1103,39 +1103,26 @@ if (
             st.session_state["skip_scroll"] = True
             st.rerun()
 
-    # --- 2. WORD (.DOC) EXPORT BUTTON ---
+    # --- 2. WORD (.DOCX) EXPORT BUTTON ---
     with col_exp_mid_left:
-        raw_text = st.session_state.get("search_results", "")
-        
-        html_formatted_text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
-        html_formatted_text = html_formatted_text.replace("\n", "<br>")
-        
-        doc_content = f"""
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.4; }}
-            </style>
-        </head>
-        <body>
-            {html_formatted_text}
-        </body>
-        </html>
-        """
-
-        doc_clicked = st.download_button(
-            label="Export to Word (.doc)",
-            data=doc_content,
-            file_name="search_results_export.doc",
-            mime="application/msword",
-            use_container_width=True,
-            key="btn_global_results_doc_export"
-        )
-        
-        if doc_clicked:
-            st.session_state["skip_scroll"] = True
-            st.rerun()
+        try:
+            raw_text = st.session_state.get("search_results", "")
+            docx_stream = convert_markdown_to_docx(raw_text)
+            
+            doc_clicked = st.download_button(
+                label="Export to Word (.docx)",
+                data=docx_stream,
+                file_name="search_results_export.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+                key="btn_global_results_docx_export"
+            )
+            
+            if doc_clicked:
+                st.session_state["skip_scroll"] = True
+                st.rerun()
+        except Exception as e:
+            st.error(f"Error compiling Word file: {e}")
 
     # --- 3. GENERATE MAP BUTTON ---
     with col_exp_mid_right:
@@ -1252,8 +1239,8 @@ else:
         )
     with col_exp_mid_left:
         st.button(
-            label="Export to Word (.doc)",
-            key="global_doc_disabled_footer_doc",
+            label="Export to Word (.docx)",
+            key="global_docx_disabled_footer_docx",
             use_container_width=True,
             disabled=True,
             help="Make a search before exporting."
@@ -1313,26 +1300,22 @@ elif st.session_state.get("active_search_has_run") and not st.session_state.get(
     st.components.v1.html(
         f"""
         <script>
-            // Cache breaker pass: {cache_breaker}
             var attempts = 0;
-            var maxAttempts = 60; // 60 attempts * 50ms = 3 full seconds of waiting power
+            var maxAttempts = 60; 
 
             function executeResultsScroll() {{
                 var target = window.parent.document.getElementById('results-anchor');
                 
                 if (target) {{
-                    // Anchor found! Wait for the paint engine to settle, then scroll smoothly
                     window.parent.requestAnimationFrame(function() {{
                         target.scrollIntoView({{behavior: 'smooth', block: 'start'}});
                     }});
                 }} else if (attempts < maxAttempts) {{
-                    // Not ready yet. Increment counter, wait 50ms, and hunt again
                     attempts++;
                     setTimeout(executeResultsScroll, 50);
                 }}
             }}
             
-            // Start the radar hunt immediately when the component initializes
             executeResultsScroll();
         </script>
         """,
