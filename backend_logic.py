@@ -44,7 +44,7 @@ import io
 from branca.element import Element
 import itertools
 import time
-
+from docx import Document
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__)) if '__file__' in locals() else os.getcwd()
 
