@@ -473,7 +473,6 @@ def export_results_to_csv(cursor):
     
 
 def generate_sql_query_from_filters():
-    """Generates a comprehensive, runnable raw SQL script matching active search parameters down to the column."""
     where_str = ""
     
     current_mode = st.session_state.get("csv_mode", "ids")
@@ -484,10 +483,23 @@ def generate_sql_query_from_filters():
         
         processed_clauses = []
         for c in clauses:
-            for k, v in params.items():
+            # Sort parameters by length (longest first) so :text_mode is replaced BEFORE :text
+            sorted_params = sorted(params.items(), key=lambda x: len(x[0]), reverse=True)
+            
+            for k, v in sorted_params:
                 target_placeholder = f":{k}"
                 if target_placeholder in c:
-                    c = c.replace(target_placeholder, f"'{v}'" if isinstance(v, str) else str(v))
+                    if isinstance(v, str):
+                        safe_v = v.replace("'", "''") # Prevent SQL syntax errors
+                        # Automatically format wildcard LIKE queries if not already formatted
+                        if "LIKE" in c.upper() and not (safe_v.startswith("%") or safe_v.endswith("%")):
+                            c = c.replace(target_placeholder, f"'%{safe_v}%'")
+                        else:
+                            c = c.replace(target_placeholder, f"'{safe_v}'")
+                    elif v is None:
+                        c = c.replace(target_placeholder, "NULL")
+                    else:
+                        c = c.replace(target_placeholder, str(v))
             processed_clauses.append(c)
             
         if processed_clauses:
@@ -498,7 +510,6 @@ def generate_sql_query_from_filters():
             id_string = ", ".join(map(str, active_ids))
             where_str = f" AND mt.inscription_id IN ({id_string})"
 
-        
     return f"""
 SELECT DISTINCT
     mt.inscription_id AS [Inscription ID],
@@ -562,18 +573,18 @@ SELECT DISTINCT
         'None'
     ) AS [Linked Intervention IDs],
     COALESCE(
-                (
-                    SELECT GROUP_CONCAT(
-                        'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
-                    )
-                    FROM (SELECT intervention_id, note, intervention_index as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
-                    JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
-                    LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
-                    LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
-                    WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
-                ),
-                'no interventions'
-            ) AS interventions,
+        (
+            SELECT GROUP_CONCAT(
+                'intervention ' || idx || ' : ' || CASE WHEN iam.method_id = 2 THEN COALESCE(e2.extent_description, '') || ' ' || COALESCE(m2.method_description, '') || ' of inscription' WHEN iam.method_id = 3 THEN 'reuse of monument ' || COALESCE(i.note, '') WHEN iam.method_id = 4 THEN 'monument damage ' || COALESCE(i.note, '') ELSE '' END, '; '
+            )
+            FROM (SELECT intervention_id, note, intervention_index as idx, inscription_id, role_id FROM "interventions_and_inscriptions") i
+            JOIN "interventions" iam ON i.intervention_id = iam.intervention_id
+            LEFT JOIN "extent" e2 ON iam.extent_id = e2.extent_id
+            LEFT JOIN "methods" m2 ON iam.method_id = m2.method_id
+            WHERE i.inscription_id = mt.inscription_id AND i.role_id = 1 AND iam.method_id <> 1
+        ),
+        'no interventions'
+    ) AS interventions,
     COALESCE(mt.expanded_bibliography, 'N/A') AS [Bibliography]
 FROM "Max_Thrax" mt
 LEFT JOIN "materials" m ON mt.material_id = m.material_id
