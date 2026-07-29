@@ -299,32 +299,36 @@ def get_inscription_report(cursor, inscription_ids):
             report.append("\n---\n\n")
             siblings = siblings_map.get(obj_id, [])
             report.append(f"#### {len(siblings)} inscription(s) on object:\n")
+            
+            # --- SECTION 1: INSCRIPTIONS ON OBJECT ---
             for s_id, s_seq, s_ref, s_lref in siblings:
                 curr_tag = " [current inscription]" if s_id == ins_id else ""
                 
-                # Clean s_ref and s_lref: eliminate None, empty strings, and literal "None"
-                ref_str = str(s_ref).strip() if s_ref else ""
-                ref_tag = ref_str if ref_str.lower() != "none" else ""
+                # Combine ref and lref cleanly with spaces
+                label_parts = [p.strip() for p in [s_ref, s_lref] if p and str(p).strip()]
+                label_str = f" {' '.join(label_parts)}" if label_parts else ""
                 
-                lref_str = str(s_lref).strip() if s_lref else ""
-                lref_tag = f" {lref_str}" if (lref_str and lref_str.lower() != "none") else ""
-                
-                # Add a space after ref_tag only if it exists
-                ref_prefix = f" {ref_tag}" if ref_tag else ""
-                
-                report.append(f"* {s_seq}.{ref_prefix}{lref_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
+                report.append(f"* {s_seq}.{label_str}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
             report.append("\n")
-        
+
+            # --- SECTION 2: INTERVENTIONS ---
             report.append("#### Interventions (Later Modifications / Reuse)\n")
             for sib_id, _, sib_ref, sib_lref in siblings:
-                sib_line = f" {sib_lref}" if sib_lref else ""
                 curr_tag = " [current inscription]" if sib_id == ins_id else ""
                 
+                # Combine ref and lref into a clean header label
+                label_parts = [p.strip() for p in [sib_ref, sib_lref] if p and str(p).strip()]
+                label_str = " ".join(label_parts)
+                
+                header_title = f"{label_str}{curr_tag}".strip()
+                if not header_title:
+                    header_title = "Inscription"
+
                 item_interv = interv_by_ins_id.get(sib_id, [])
                 if not item_interv:
-                    report.append(f"\n**{sib_ref}{sib_line}{curr_tag} :** _no interventions_")
+                    report.append(f"{header_title} : _no interventions_\n")
                 else:
-                    report.append(f"\n**{sib_ref}{sib_line}{curr_tag} :** {len(item_interv)} intervention(s)")
+                    report.append(f"{header_title} : {len(item_interv)} intervention(s)")
                     for _, interv_id, idx, note, m_id, ext_desc, meth_desc in item_interv:
                         idx_lbl = idx if idx else 1
                         note_str = f" {note}" if note else ""
@@ -342,7 +346,7 @@ def get_inscription_report(cursor, inscription_ids):
                         else:
                             report.append(f"  * _intervention {idx_lbl} :_ unknown intervention method ({m_id})")
             report.append("\n")
-
+        
         out_str.append("\n".join(report))
         out_str.append("\n\n---\n\n")
 
