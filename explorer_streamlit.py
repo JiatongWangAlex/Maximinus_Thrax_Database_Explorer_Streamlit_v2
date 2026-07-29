@@ -1236,13 +1236,27 @@ if (
 else:
     with col_exp_left:
         st.button(
-            label="Export Results to CSV", key="global_csv_disabled_footer_csv",
-            use_container_width=True, disabled=True, help="Make a search before exporting ."
+            label="Export Results to CSV",
+            key="global_csv_disabled_footer_csv",
+            use_container_width=True,
+            disabled=True,
+            help="Make a search before exporting."
         )
-    with col_exp_mid:
+    with col_exp_mid_left:
         st.button(
-            label="Generate Map", key="global_map_disabled_footer_map",
-            use_container_width=True, disabled=True, help="Make a search before mapping ."
+            label="Export Results to TXT",
+            key="global_txt_disabled_footer_txt",
+            use_container_width=True,
+            disabled=True,
+            help="Make a search before exporting."
+        )
+    with col_exp_mid_right:
+        st.button(
+            label="Generate Map",
+            key="global_map_disabled_footer_map",
+            use_container_width=True,
+            disabled=True,
+            help="Make a search before mapping."
         )
 
 # --- AUTOMATIC SEARCH COMMIT DETECTOR ---
