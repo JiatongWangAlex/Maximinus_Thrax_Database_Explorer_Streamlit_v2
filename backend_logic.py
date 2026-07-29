@@ -297,10 +297,11 @@ def get_inscription_report(cursor, inscription_ids):
             report.append(f"#### {len(siblings)} inscription(s) on object:\n")
             for s_id, s_seq, s_ref, s_lref in siblings:
                 curr_tag = " [current inscription]" if s_id == ins_id else ""
-                line_tag = f" {s_lref}" if s_lref else ""
+                s_ref = s_ref if (s_ref and str(s_ref).strip().lower() != "none") else " "
+                line_tag = f" {s_lref}" if (s_lref and str(s_lref).strip().lower() != "none") else " "
                 report.append(f"* {s_seq}. {s_ref}{line_tag}{curr_tag} (id: [{s_id}](?ins_id={s_id}))")
             report.append("\n")
-
+                
             report.append("#### Interventions (Later Modifications / Reuse)\n")
             for sib_id, _, sib_ref, sib_lref in siblings:
                 sib_line = f" {sib_lref}" if sib_lref else ""
