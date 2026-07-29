@@ -50,7 +50,8 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__)) if '__file__' in locals() 
 
 db_path = os.path.join(BASE_DIR, "maximinus_thrax.db")
 optimized_json_path = os.path.join(BASE_DIR, "itinere_land_roads_optimized.json")
-provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json") 
+provinces_json_path = os.path.join(BASE_DIR, "roman_provinces.json")
+province_centers_json_path = os.path.join(BASE_DIR, "new_province_centers.geojson")
 
 @st.cache_data
 def load_and_parse_json(file_path):
@@ -61,7 +62,7 @@ def load_and_parse_json(file_path):
 
 CACHED_ROADS_DATA = load_and_parse_json(optimized_json_path)
 CACHED_PROVINCES_DATA = load_and_parse_json(provinces_json_path)
-
+CACHED_PROVINCE_CENTERS_DATA = load_and_parse_json(province_centers_json_path)
 
 import sqlite3
 import os
@@ -1634,6 +1635,8 @@ def generate_active_map():
     ])
     
     if CACHED_PROVINCES_DATA:
+        provinces_layer = folium.FeatureGroup(name="Provinces (200CE)", show=True)
+        
         provinces_data = copy.deepcopy(CACHED_PROVINCES_DATA)
         features = provinces_data.get("features", [provinces_data] if isinstance(provinces_data, dict) else [])
         
@@ -1664,10 +1667,6 @@ def generate_active_map():
                 
         folium.GeoJson(
             provinces_data, 
-            name="Provinces (200CE)", 
-            show=True, 
-            overlay=True, 
-            control=True,
             style_function=lambda feature: {"color": "#544CA4", "weight": 2, "fillColor": "#1a53ff", "fillOpacity": 0.05},
             tooltip=folium.GeoJsonTooltip(
                 fields=["province_clean_name", "summary_blob"], 
@@ -1675,7 +1674,37 @@ def generate_active_map():
                 localize=True,
                 style="font-family: sans-serif; padding: 10px; width: 250px; max-width: 250px; min-width: 250px;"
             )
-        ).add_to(mymap)
+        ).add_to(provinces_layer)
+        
+        if CACHED_PROVINCE_CENTERS_DATA:
+            for c_feat in CACHED_PROVINCE_CENTERS_DATA.get("features", []):
+                c_props = c_feat.get("properties", {})
+                c_coords = c_feat.get("geometry", {}).get("coordinates", [])
+                p_name = c_props.get("province_name") or c_props.get("Name") or c_props.get("name")
+                
+                if p_name and len(c_coords) >= 2:
+                    folium.Marker(
+                        location=[c_coords[1], c_coords[0]],
+                        icon=folium.DivIcon(
+                            html=f'''
+                            <div style="
+                                pointer-events: none;
+                                user-select: none;
+                                font-family: 'Times New Roman', Georgia, serif;
+                                font-size: 10pt;
+                                font-weight: bold;
+                                letter-spacing: 1.2px;
+                                color: #544CA4;
+                                text-transform: uppercase;
+                                text-shadow: 1px 1px 3px #ffffff, -1px -1px 3px #ffffff;
+                                white-space: nowrap;
+                                transform: translate(-50%, -50%);
+                            ">{p_name}</div>
+                            '''
+                        )
+                    ).add_to(provinces_layer)
+
+        provinces_layer.add_to(mymap)
         
         mymap.get_root().header.add_child(folium.Element("""
             <style>
@@ -1714,7 +1743,65 @@ def generate_active_map():
             </style>
         """))
 
+    dare_cities_layer = folium.FeatureGroup(name="DARE city and settlements", show=True)
+    
+    try:
+        dare_url = "https://raw.githubusercontent.com/klokantech/roman-empire/master/data/places.geojson"
+        res = requests.get(dare_url, timeout=5).json()
+        places = [f for f in res.get("features", []) if f.get("properties", {}).get("type") in ["capital", "major", "city"]]
+        
+        for place in places:
+            coords = place["geometry"]["coordinates"]  # [lon, lat]
+            name = place["properties"].get("name", "")
+            
+            if name:
+                folium.Marker(
+                    location=[coords[1], coords[0]],
+                    icon=folium.DivIcon(
+                        html=f'''
+                        <div class="dare-city-label" style="
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
+                            pointer-events: none;
+                            user-select: none;
+                            transform: translate(-3px, -50%);
+                        ">
+                            <div style="
+                                width: 4px; 
+                                height: 4px; 
+                                background-color: #444444; 
+                                border: 1px solid #ffffff; 
+                                border-radius: 50%;
+                                flex-shrink: 0;
+                            "></div>
+                            <div style="
+                                font-family: 'Times New Roman', Georgia, serif;
+                                font-size: 8.5pt;
+                                font-weight: 600;
+                                color: #333333;
+                                text-shadow: 1px 1px 2px #ffffff, -1px -1px 2px #ffffff;
+                                white-space: nowrap;
+                            ">{name}</div>
+                        </div>
+                        '''
+                    )
+                ).add_to(dare_cities_layer)
+        dare_cities_layer.add_to(mymap)
+    except Exception:
+        pass  
 
+    # Dynamic CSS Rule: Keep cities hidden on zoomed-out Mediterranean views (zoom levels 3, 4, 5)
+    city_zoom_css = """
+    <style>
+        .leaflet-zoom-3 .dare-city-label,
+        .leaflet-zoom-4 .dare-city-label,
+        .leaflet-zoom-5 .dare-city-label {
+            display: none !important;
+        }
+    </style>
+    """
+    mymap.get_root().header.add_child(folium.Element(city_zoom_css))
     range_layer = folium.FeatureGroup(name="Show Location Range for Approximate Coordinates", show=False)
     default_layer = folium.FeatureGroup(name="Inscriptions (Default View)", show=True)
     erased_layer = folium.FeatureGroup(name="Inscriptions (Show Erasures relevant to Maximinus Thrax in Red)", show=False)
@@ -1753,7 +1840,6 @@ def generate_active_map():
     for (lat, lon), rows in coordinate_dictionary.items():
         is_bucket_approximate = any(row[12] == 1 for row in rows)
         
-        # --- SMART DUAL MATRIX EVALUATION LOOP ---
         distinct_objects = set()
         distinct_inscriptions = set()
         
@@ -1868,7 +1954,7 @@ def generate_active_map():
             if inscription_count > 1:
                 popup_html += "</div>"
 
-        # --- ASSIGN VISUAL LAYER STYLES BASED ON OBJECTS ---
+        # Locations with more than 1 inscriptions/objects with more than one inscriptions
         if object_count > 1 and inscription_count > 1:
             size = 16
             d_border = "#001140"
@@ -1890,7 +1976,7 @@ def generate_active_map():
             tooltip=tooltip_label
         ).add_to(default_layer)
 
-        # --- ERASURE LAYER PROCESSING ---
+        # Erased Objects
         if len(erased_inscriptions) > 0:
             if object_count > 1 and inscription_count > 1:
                 size = 16
