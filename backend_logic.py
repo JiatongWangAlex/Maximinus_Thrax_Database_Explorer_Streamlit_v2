@@ -1604,13 +1604,11 @@ def generate_active_map():
     ).add_to(mymap)
 
     folium.TileLayer(
-        tiles="https://a.tiles.mapbox.com/v4/awmc.map-09sfzc3t/{z}/{x}/{y}.png", 
+        tiles="https://cawm.lib.uiowa.edu/tiles/{z}/{x}/{y}.png", 
         name="Ancient World Mapping Center Map", 
         overlay=False, 
         control=True, 
         attr="AWMC",
-        max_zoom=18,
-        max_native_zoom=11,
         show=False
     ).add_to(mymap)
         
